@@ -169,9 +169,16 @@ function generatePatternDates(pattern: string, year: number, month: number) {
 }
 
 type Schedule = {
-  pattern: string; // adjust fields as needed
+  schedule_id: any;
+  barangay: { barangay_name: any; barangay_id: any }[]; // or your real types
   days: string;
+  date_created: any;
+  start_time: any;
+  end_time: any;
+  status: any;
 };
+
+const [schedules, setSchedules] = useState<Schedule[]>([]);
 
 function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
   const now = new Date();
@@ -300,8 +307,8 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
 // Schedules Viewer for GCP
 function GCPScheduleSection() {
   const [mainLoading, setMainLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [schedules, setSchedules] = useState([]);
+  const [error, setError] = useState<string | null>(null);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
 
   useEffect(() => {
     async function fetchGCPSchedules() {
@@ -329,9 +336,9 @@ function GCPScheduleSection() {
           .eq("gcp_user_id", userId);
 
         if (error) throw error;
-        setSchedules(data || []);
-      } catch (err) {
-        setError(err.message);
+        setSchedules((data as Schedule[]) || []);
+      } catch (err: any) {
+        setError(err.message ?? "Failed to load schedules.");
       } finally {
         setMainLoading(false);
       }
@@ -362,7 +369,6 @@ function GCPScheduleSection() {
             <div>
               <strong>Start Time:</strong> {schedule.start_time || "N/A"}
             </div>
-            {/* Calendar preview */}
             <ScheduleCalendar schedule={schedule} />
           </div>
         ))
