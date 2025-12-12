@@ -119,7 +119,22 @@ function generatePatternDates(pattern, year, month) {
   return dates;
 }
 
-function ScheduleCalendar({ schedule }) {
+type BarangayRef = {
+  barangay_name: string | null;
+  barangay_id: string | number | null;
+};
+
+type Schedule = {
+  schedule_id: any;
+  barangay: { barangay_name: any; barangay_id: any }[]; // or your real types
+  days: string;
+  date_created: any;
+  start_time: any;
+  end_time: any;
+  status: any;
+};
+
+function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
