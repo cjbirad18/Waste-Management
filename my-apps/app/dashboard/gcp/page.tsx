@@ -168,6 +168,11 @@ function generatePatternDates(pattern: string, year: number, month: number) {
   return dates;
 }
 
+type BarangayRef = {
+  barangay_name: string | null;
+  barangay_id: string | number | null;
+};
+
 type Schedule = {
   schedule_id: any;
   barangay: { barangay_name: any; barangay_id: any }[]; // or your real types
