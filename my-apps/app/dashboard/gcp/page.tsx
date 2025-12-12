@@ -170,6 +170,7 @@ function generatePatternDates(pattern: string, year: number, month: number) {
 
 type Schedule = {
   pattern: string; // adjust fields as needed
+  days: string;
 };
 
 function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
