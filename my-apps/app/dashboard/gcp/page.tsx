@@ -366,7 +366,7 @@ function GCPScheduleSection() {
         schedules.map((schedule) => (
           <div key={schedule.schedule_id} className="mb-8">
             <h3 className="font-semibold text-lg mb-2">
-              Barangay: {schedule.barangay?.barangay_name || "N/A"}
+              Barangay: {schedule.barangay?.[0]?.barangay_name || "N/A"}
             </h3>
             <div>
               <strong>Days/Pattern:</strong> {schedule.days}
