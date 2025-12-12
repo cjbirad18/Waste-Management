@@ -253,6 +253,20 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
   );
 }
 
+type ResidentSchedule = {
+  schedule_id: any;
+  barangay: { barangay_name: any; barangay_id: any }[]; // array from Supabase relation
+  days: any;
+  date_created: any;
+  gcp_user: { first_name: any; last_name: any }[];
+  collection_details: {
+    collectiondetails_id: any;
+    truck: { plate_number: any; truck_code: any }[];
+    collection_date: any;
+    status: any;
+  }[];
+};
+
 type ResidentSchedulesProps = {
   residentBarangayId: string | number | null;
   barangays: { barangay_id: string | number; barangay_name: string }[];
@@ -265,12 +279,13 @@ function ResidentSchedulesFeature({
   const [selectedBarangayId, setSelectedBarangayId] =
     useState(residentBarangayId);
 
+  const [schedules, setSchedules] = useState<ResidentSchedule[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     setSelectedBarangayId(residentBarangayId);
   }, [residentBarangayId]);
-  const [schedules, setSchedules] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function fetchSchedules() {
@@ -281,42 +296,44 @@ function ResidentSchedulesFeature({
           .from("collection_schedules")
           .select(
             `
-     schedule_id,
-     barangay:barangay_id (
-       barangay_name,
-       barangay_id
-     ),
-     days,
-     date_created,
-     gcp_user:gcp_user_id (
-       first_name,
-       last_name
-     ),
-     collection_details:collection_details (
-       collectiondetails_id,
-       truck:truck_id (
-         plate_number,
-         truck_code
-       ),
-       collection_date,
-       status
-     )
-  `
+            schedule_id,
+            barangay:barangay_id (
+              barangay_name,
+              barangay_id
+            ),
+            days,
+            date_created,
+            gcp_user:gcp_user_id (
+              first_name,
+              last_name
+            ),
+            collection_details:collection_details (
+              collectiondetails_id,
+              truck:truck_id (
+                plate_number,
+                truck_code
+              ),
+              collection_date,
+              status
+            )
+          `
           )
           .order("date_created", { ascending: false });
+
         if (error) throw error;
-        setSchedules(data || []);
-      } catch (err) {
-        setError(err.message);
+        setSchedules((data as ResidentSchedule[]) || []);
+      } catch (err: any) {
+        setError(err.message ?? "Failed to load schedules.");
       } finally {
         setLoading(false);
       }
     }
+
     fetchSchedules();
   }, []);
 
   const schedule = schedules.find(
-    (s) => String(s.barangay?.barangay_id) === String(selectedBarangayId)
+    (s) => String(s.barangay?.[0]?.barangay_id) === String(selectedBarangayId)
   );
 
   return (
