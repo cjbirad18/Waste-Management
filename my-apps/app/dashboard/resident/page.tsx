@@ -347,7 +347,7 @@ function ResidentSchedulesFeature({
         </label>
         <select
           id="barangay-select"
-          value={selectedBarangayId}
+          value={selectedBarangayId ?? ""} // coerce null to ""
           onChange={(e) => setSelectedBarangayId(e.target.value)}
           className="p-2 border border-gray-400 rounded w-full max-w-xs"
         >
