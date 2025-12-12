@@ -253,7 +253,15 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
   );
 }
 
-function ResidentSchedulesFeature({ residentBarangayId, barangays }) {
+type ResidentSchedulesProps = {
+  residentBarangayId: string | number | null;
+  barangays: { barangay_id: string | number; barangay_name: string }[];
+};
+
+function ResidentSchedulesFeature({
+  residentBarangayId,
+  barangays,
+}: ResidentSchedulesProps) {
   const [selectedBarangayId, setSelectedBarangayId] =
     useState(residentBarangayId);
 
