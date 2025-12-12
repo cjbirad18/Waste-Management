@@ -103,7 +103,7 @@ function SidebarItem({
   );
 }
 
-function generatePatternDates(pattern, year, month) {
+function generatePatternDates(pattern: string, year: number, month: number) {
   if (!pattern) return [];
   const validDays =
     pattern === "MWF" ? [1, 3, 5] : pattern === "TTH" ? [2, 4] : [];
