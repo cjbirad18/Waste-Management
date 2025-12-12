@@ -148,19 +148,23 @@ function SidebarItem({
   );
 }
 
-function generatePatternDates(pattern, year, month) {
+function generatePatternDates(pattern: string, year: number, month: number) {
   if (!pattern) return [];
+
   const validDays =
     pattern === "MWF" ? [1, 3, 5] : pattern === "TTH" ? [2, 4] : [];
-  let dates = [];
+
+  const dates: Date[] = [];
   let date = startOfMonth(new Date(year, month));
   const end = endOfMonth(date);
+
   while (date <= end) {
     if (validDays.includes(date.getDay())) {
       dates.push(new Date(date));
     }
     date = addDays(date, 1);
   }
+
   return dates;
 }
 
