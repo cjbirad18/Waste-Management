@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, FormEvent, ChangeEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 const friendlyRole = (role: string): string => {
   switch (role.toLowerCase()) {
     case "swmo":
+    case "swmo head":
       return "SWMO Head";
     case "tcemo":
+    case "tcemo head":
       return "TCEMO Head";
     case "bwmc":
       return "BWMC";
@@ -23,23 +25,15 @@ const friendlyRole = (role: string): string => {
   }
 };
 
+const normalizeRole = (role: string): string => {
+  const lower = role.toLowerCase().trim();
+  if (lower === "swmo head" || lower === "swmo") return "swmo";
+  if (lower === "tcemo head" || lower === "tcemo") return "tcemo";
+  return lower;
+};
+
 const routeFromRole = (role: string): string => {
-  switch (role.toLowerCase().trim()) {
-    case "swmo head":
-      return "swmo";
-    case "tcemo head":
-      return "tcemo";
-    case "bwmc":
-      return "bwmc";
-    case "secretary":
-      return "secretary";
-    case "gcp":
-      return "gcp";
-    case "resident":
-      return "resident";
-    default:
-      return "resident";
-  }
+  return normalizeRole(role);
 };
 
 function ErrorModal({
@@ -52,37 +46,41 @@ function ErrorModal({
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    // Start animation after mount
     setShow(true);
   }, []);
 
   const handleClose = () => {
     setShow(false);
-    setTimeout(onClose, 250); // allow animation to finish before removing from DOM
+    setTimeout(onClose, 250);
   };
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/40 transition-opacity duration-300 ${
-        show ? "opacity-100" : "opacity-0"
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-all duration-300 ${
+        show ? "opacity-100" : "opacity-0 pointer-events-none"
       }`}
     >
       <div
-        className={`bg-white rounded-lg p-6 shadow-lg max-w-xs w-full border border-red-200 transform transition-all duration-300
-          ${
-            show
-              ? "scale-100 opacity-100 translate-y-0"
-              : "opacity-0 scale-90 translate-y-12"
-          }
-        `}
+        className={`w-full max-w-sm rounded-3xl border-2 border-orange-500/40 bg-gradient-to-br from-slate-800/95 to-gray-800/95 p-6 text-slate-200 shadow-2xl shadow-orange-900/30 backdrop-blur-2xl transform transition-all duration-500 ${
+          show
+            ? "scale-100 opacity-100 translate-y-0"
+            : "opacity-0 scale-95 translate-y-6"
+        }`}
       >
-        <h2 className="text-lg font-bold mb-3 text-red-600 flex items-center gap-2">
-          <span>⚠️</span> Account Notice
-        </h2>
-        <p className="text-gray-800 mb-4">{message}</p>
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 bg-orange-500/20 rounded-2xl flex items-center justify-center border border-orange-500/30 flex-shrink-0">
+            <span className="text-xl">⚠️</span>
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-orange-300 mb-1">
+              Account Notice
+            </h2>
+            <p className="text-xs text-slate-300 leading-relaxed">{message}</p>
+          </div>
+        </div>
         <button
           onClick={handleClose}
-          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded shadow w-full"
+          className="w-full rounded-2xl bg-gradient-to-r from-orange-600/90 to-orange-700/90 px-4 py-2.5 text-xs font-bold text-slate-100 hover:from-orange-500/90 hover:shadow-lg hover:shadow-orange-500/25 transition-all duration-300 backdrop-blur-sm border border-orange-500/30"
         >
           Close
         </button>
@@ -95,7 +93,7 @@ export default function LoginClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const roleParam = searchParams.get("role") || "resident";
-  const role = roleParam.toLowerCase();
+  const expectedRole = normalizeRole(roleParam);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -103,7 +101,7 @@ export default function LoginClient() {
 
   const handleCloseModal = () => setErrorMessage("");
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage("");
 
@@ -111,10 +109,12 @@ export default function LoginClient() {
       email,
       password,
     });
+
     if (error) {
       setErrorMessage(error.message);
       return;
     }
+
     if (data.user) {
       const { data: userProfile, error: profileError } = await supabase
         .from("users")
@@ -125,6 +125,20 @@ export default function LoginClient() {
       if (profileError || !userProfile?.role) {
         setErrorMessage(
           "Your account profile is incomplete. Please contact the administrator."
+        );
+        await supabase.auth.signOut();
+        return;
+      }
+
+      const userRole = normalizeRole(userProfile.role);
+
+      if (userRole !== expectedRole) {
+        setErrorMessage(
+          `This login page is for ${friendlyRole(
+            expectedRole
+          )} only. Your account role is ${friendlyRole(
+            userRole
+          )}. Please use the correct login page.`
         );
         await supabase.auth.signOut();
         return;
@@ -141,9 +155,8 @@ export default function LoginClient() {
         return;
       }
 
-      // Step 5: Block resident login unless status is exactly "approved"
       if (
-        userProfile.role.toLowerCase() === "resident" &&
+        userRole === "resident" &&
         userProfile.status?.toLowerCase() !== "approved"
       ) {
         setErrorMessage(
@@ -154,7 +167,7 @@ export default function LoginClient() {
         await supabase.auth.signOut();
         return;
       } else if (
-        userProfile.role.toLowerCase() !== "resident" &&
+        userRole !== "resident" &&
         userProfile.status?.toLowerCase() === "rejected"
       ) {
         setErrorMessage("Your account has been rejected.");
@@ -162,73 +175,114 @@ export default function LoginClient() {
         return;
       }
 
-      // Step 6: Other approved users can enter
       router.push(`/dashboard/${routeFromRole(userProfile.role)}`);
     }
   };
 
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-green-50 to-green-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 font-sans relative overflow-hidden">
+      {/* Subtle background animation */}
+      <div className="fixed inset-0 opacity-30">
+        <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 animate-pulse" />
+      </div>
+
       {errorMessage && (
         <ErrorModal message={errorMessage} onClose={handleCloseModal} />
       )}
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md"
-      >
-        <h1 className="text-3xl font-bold mb-6 text-center text-green-700">
-          Login as {friendlyRole(role)}
-        </h1>
-        <div className="mb-4">
-          <label className="block mb-2 text-green-900 font-semibold">
-            Email
-          </label>
-          <input
-            className="w-full px-4 py-2 border border-green-200 rounded-md focus:outline-none focus:ring focus:ring-green-300 text-black"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            placeholder="Enter your email"
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block mb-2 text-green-900 font-semibold">
-            Password
-          </label>
-          <input
-            className="w-full px-4 py-2 border border-green-200 rounded-md focus:outline-none focus:ring focus:ring-green-300 text-black"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            placeholder="Password"
-          />
-        </div>
-        <button
-          type="submit"
-          className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-md transition duration-200"
-        >
-          Login
-        </button>
-        {role === "resident" && (
-          <div className="mt-2 text-center">
-            <span className="text-green-700">or </span>
-            <a
-              href="/register"
-              className="underline font-semibold text-black hover:text-green-900"
-            >
-              Register
-            </a>
+
+      <div className="w-full max-w-md px-6 relative z-10">
+        <div className="text-center mb-8">
+          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 mx-auto mb-4 hover:scale-110 transition-all duration-300">
+            🚛
           </div>
-        )}
-        <a
-          href="/"
-          className="w-full mt-4 block bg-gray-200 hover:bg-gray-300 text-green-700 font-semibold py-2 rounded-md text-center transition duration-200"
+          <p className="text-xs uppercase tracking-[0.3em] bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-bold">
+            Track-the-Truck
+          </p>
+          <h1 className="mt-2 text-2xl md:text-3xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-2xl">
+            Role Login
+          </h1>
+          <p className="text-sm text-emerald-400 mt-1 font-medium">
+            {friendlyRole(roleParam)}
+          </p>
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="rounded-3xl border border-green-800/50 bg-gradient-to-br from-slate-800/95 to-gray-800/95 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl space-y-6 relative overflow-hidden"
         >
-          Back to Home
-        </a>
-      </form>
+          {/* Subtle glow border */}
+          <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-transparent to-emerald-500/10 rounded-3xl blur-xl opacity-50" />
+
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-emerald-300 uppercase tracking-wide">
+                Email Address
+              </label>
+              <input
+                className="w-full rounded-2xl border border-green-800/50 bg-slate-900/80 px-5 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20"
+                type="email"
+                value={email}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setEmail(e.target.value)
+                }
+                required
+                placeholder="Enter your email"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-emerald-300 uppercase tracking-wide">
+                Password
+              </label>
+              <input
+                className="w-full rounded-2xl border border-green-800/50 bg-slate-900/80 px-5 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20"
+                type="password"
+                value={password}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setPassword(e.target.value)
+                }
+                required
+                placeholder="Enter your password"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="group relative w-full rounded-2xl bg-gradient-to-r from-green-600/95 to-emerald-600/95 px-6 py-4 text-sm font-bold text-slate-100 shadow-xl shadow-green-500/30 hover:shadow-2xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-green-500/30 overflow-hidden"
+            >
+              <span className="relative z-10">Sign In →</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            </button>
+          </div>
+
+          {expectedRole === "resident" && (
+            <div className="pt-4 text-center border-t border-green-800/30">
+              <p className="text-xs text-slate-400 mb-2">No account yet?</p>
+              <a
+                href="/register"
+                className="block w-full rounded-2xl bg-emerald-500/20 px-4 py-3 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/30 hover:text-emerald-200 transition-all duration-300 backdrop-blur-sm border border-emerald-500/40 hover:border-emerald-400/60"
+              >
+                Create Resident Account
+              </a>
+            </div>
+          )}
+
+          <a
+            href="/"
+            className="block w-full rounded-2xl bg-slate-700/50 px-4 py-3 text-center text-xs font-semibold text-slate-300 hover:bg-slate-600/50 hover:text-emerald-300 transition-all duration-300 backdrop-blur-sm border border-slate-600/50 hover:border-emerald-500/50"
+          >
+            ← Back to Dashboard
+          </a>
+        </form>
+
+        {/* Status indicator */}
+        <div className="mt-6 text-center">
+          <div className="inline-flex items-center gap-2 text-xs text-emerald-400 bg-slate-800/50 px-4 py-2 rounded-full backdrop-blur-sm border border-emerald-500/30">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            Secured by Supabase
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

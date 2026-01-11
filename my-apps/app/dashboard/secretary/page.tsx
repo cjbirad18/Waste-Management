@@ -109,6 +109,20 @@ function generatePatternDates(
   return dates;
 }
 
+type ScheduleFormWithCalendarProps = {
+  barangays: Barangay[];
+  trucks: Truck[];
+  gcps: GcpUser[];
+};
+
+type ScheduleRecord = {
+  schedule_id: string;
+  barangay_id: string;
+  gcp_user_id: string;
+  days: string;
+  start_time: string;
+};
+
 // Schedule Input form with calendar visualization
 
 function ScheduleFormWithCalendar({
@@ -145,6 +159,7 @@ function ScheduleFormWithCalendar({
     setStartYear(year);
     setStartMonth(month);
   };
+
   const handleMonthPrev = () => {
     const { year, month } = getMonthOffset(startYear, startMonth, -2);
     setStartYear(year);
@@ -174,7 +189,7 @@ function ScheduleFormWithCalendar({
       if (error) {
         setError("Failed to load schedules: " + error.message);
       } else {
-        setSchedules(data || []);
+        setSchedules((data as ScheduleRecord[]) || []);
       }
     }
     fetchSchedules();
@@ -308,264 +323,342 @@ function ScheduleFormWithCalendar({
       // Refresh schedules for updated available barangays and calendar
       const { data: refreshedSchedules, error: refreshError } = await supabase
         .from("collection_schedules")
-        .select("barangay_id, gcp_user_id, schedule_pattern, start_time")
+        .select("barangay_id, gcp_user_id, days, start_time")
         .eq("status", "Active");
-      if (!refreshError) setSchedules(refreshedSchedules || []);
+
+      if (!refreshError) {
+        setSchedules((refreshedSchedules as ScheduleRecord[]) ?? []);
+      }
     } catch (err) {
       setError("Unexpected error: " + (err as Error).message);
     }
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-8 items-stretch">
+    <div className="flex flex-col md:flex-row gap-8 items-stretch min-h-[600px]">
       {/* Schedule Input Form */}
       <form
         onSubmit={handleSubmit}
-        className="flex-1 bg-white shadow rounded-xl p-6 space-y-4 h-full"
+        className="group relative flex-1 rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-8 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden"
         style={{ maxWidth: 450 }}
       >
-        <h2 className="text-3xl font-bold text-green-600 mb-2">
-          Input Schedule
-        </h2>
+        {/* Glow effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
 
-        <div>
-          <label className="font-semibold block mb-1 text-black">
-            Barangay
-          </label>
-          <select
-            name="barangay_id"
-            value={schedule.barangay_id}
-            onChange={handleChange}
-            className="w-full p-2 border rounded text-black"
-            required
-          >
-            <option value="">Select Barangay</option>
-            {availableBarangays.map((b) => (
-              <option key={b.barangay_id} value={b.barangay_id}>
-                {b.barangay_name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <div className="relative z-10 space-y-6">
+          <h2 className="text-3xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+            Create Schedules
+          </h2>
 
-        <div>
-          <label className="font-semibold block mb-1 text-black">Truck</label>
-          <select
-            name="truck_code"
-            value={schedule.truck_code}
-            onChange={handleChange}
-            className="w-full p-2 border rounded text-black"
-            required
-          >
-            <option value="">Select Truck</option>
-            {trucks.map((t) => (
-              <option key={t.truck_id} value={t.truck_code}>
-                {t.truck_code}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="font-semibold block mb-1 text-black">GCP</label>
-          <select
-            name="gcp_user_id"
-            value={schedule.gcp_user_id}
-            onChange={handleChange}
-            className="w-full p-2 border rounded text-black"
-            required
-          >
-            <option value="">Select GCP</option>
-            {gcps.map((g) => (
-              <option key={g.user_id} value={g.user_id}>
-                {g.first_name} {g.last_name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="font-semibold block mb-1 text-black">
-            Schedule Pattern
-          </label>
-          <select
-            name="schedule_pattern"
-            value={schedule.schedule_pattern}
-            onChange={handleChange}
-            className="w-full p-2 border rounded text-black"
-            required
-          >
-            <option value="">Select Pattern</option>
-            <option value="MWF">Monday-Wednesday-Friday (MWF)</option>
-            <option value="TTH">Tuesday-Thursday (TTH)</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="font-semibold block mb-1 text-black">
-            Time (for display/preview only)
-          </label>
-          <input
-            type="time"
-            name="start_time"
-            value={schedule.start_time}
-            onChange={handleChange}
-            className="w-full p-2 border rounded bg-white text-black"
-            required
-          />
-        </div>
-
-        {error && (
-          <div className="text-red-700 bg-red-100 rounded p-2">{error}</div>
-        )}
-        {success && (
-          <div className="text-green-600 bg-green-100 rounded p-2">
-            {success}
+          {/* Barangay */}
+          <div>
+            <label
+              htmlFor="barangay_id"
+              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+            >
+              Barangay
+            </label>
+            <select
+              id="barangay_id"
+              name="barangay_id"
+              value={schedule.barangay_id}
+              onChange={handleChange}
+              className="w-full rounded-2xl bg-slate-900/80 border border-green-800/50 px-5 py-4 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20 appearance-none bg-no-repeat bg-right pr-10"
+              required
+            >
+              <option value="">Select Barangay</option>
+              {availableBarangays.map((b) => (
+                <option key={b.barangay_id} value={b.barangay_id}>
+                  {b.barangay_name}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
 
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-bold "
-          >
-            Save Schedule
-          </button>
+          {/* Truck */}
+          <div>
+            <label
+              htmlFor="truck_code"
+              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+            >
+              Truck
+            </label>
+            <select
+              id="truck_code"
+              name="truck_code"
+              value={schedule.truck_code}
+              onChange={handleChange}
+              className="w-full rounded-2xl bg-slate-900/80 border border-green-800/50 px-5 py-4 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20 appearance-none bg-no-repeat bg-right pr-10"
+              required
+            >
+              <option value="">Select Truck</option>
+              {trucks.map((t) => (
+                <option key={t.truck_id} value={t.truck_code}>
+                  {t.truck_code}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* GCP */}
+          <div>
+            <label
+              htmlFor="gcp_user_id"
+              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+            >
+              GCP
+            </label>
+            <select
+              id="gcp_user_id"
+              name="gcp_user_id"
+              value={schedule.gcp_user_id}
+              onChange={handleChange}
+              className="w-full rounded-2xl bg-slate-900/80 border border-green-800/50 px-5 py-4 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20 appearance-none bg-no-repeat bg-right pr-10"
+              required
+            >
+              <option value="">Select GCP</option>
+              {gcps.map((g) => (
+                <option key={g.user_id} value={g.user_id}>
+                  {g.first_name} {g.last_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Schedule Pattern */}
+          <div>
+            <label
+              htmlFor="schedule_pattern"
+              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+            >
+              Schedule Pattern
+            </label>
+            <select
+              id="schedule_pattern"
+              name="schedule_pattern"
+              value={schedule.schedule_pattern}
+              onChange={handleChange}
+              className="w-full rounded-2xl bg-slate-900/80 border border-green-800/50 px-5 py-4 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20 appearance-none bg-no-repeat bg-right pr-10"
+              required
+            >
+              <option value="">Select Pattern</option>
+              <option value="MWF">Monday-Wednesday-Friday (MWF)</option>
+              <option value="TTH">Tuesday-Thursday (TTH)</option>
+            </select>
+          </div>
+
+          {/* Time */}
+          <div>
+            <label
+              htmlFor="start_time"
+              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+            >
+              Time (for display/preview only)
+            </label>
+            <input
+              id="start_time"
+              type="time"
+              name="start_time"
+              value={schedule.start_time}
+              onChange={handleChange}
+              className="w-full rounded-2xl bg-slate-900/80 border border-green-800/50 px-5 py-4 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20"
+              required
+            />
+          </div>
+
+          {error && (
+            <div className="rounded-2xl bg-gradient-to-r from-orange-500/15 to-red-500/15 border border-orange-500/40 p-4 text-orange-200 backdrop-blur-xl shadow-lg">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="rounded-2xl bg-gradient-to-r from-emerald-500/15 to-teal-500/15 border border-emerald-500/40 p-4 text-emerald-200 backdrop-blur-xl shadow-lg flex items-center gap-3">
+              <div className="w-5 h-5 bg-emerald-500 rounded-full animate-ping" />
+              {success}
+            </div>
+          )}
+
+          <div className="flex justify-end pt-4 border-t border-green-800/30">
+            <button
+              type="submit"
+              className="group relative inline-flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-lg font-black text-slate-100 shadow-xl shadow-emerald-500/30 hover:shadow-2xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 rounded-2xl overflow-hidden"
+            >
+              <span className="relative z-10 tracking-wide uppercase">
+                Save Schedule
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          </div>
         </div>
       </form>
 
       {/* Calendar View */}
-      <div className="flex-1 h-full bg-white shadow rounded-xl p-6 overflow-auto min-w-[350px]">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-bold text-green-600 text-3xl">Scheduled Days</h3>
-          <div className="flex gap-2">
-            <button
-              className="text-lg text-black"
-              onClick={handleMonthPrev}
-              title="Show previous 2 months"
-            >
-              &lt;
-            </button>
-            <button
-              className="text-lg text-black"
-              onClick={handleMonthNext}
-              title="Show next 2 months"
-            >
-              &gt;
-            </button>
+      <div className="group relative flex-1 rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-8 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden min-w-[350px]">
+        {/* Glow effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-3xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl">
+              Scheduled Days
+            </h3>
+            <div className="flex gap-3">
+              <button
+                className="group relative p-3 rounded-2xl bg-slate-700/50 border border-green-800/50 text-slate-200 hover:bg-green-500/20 hover:border-green-600/70 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-105"
+                onClick={handleMonthPrev}
+                title="Show previous 2 months"
+              >
+                <span className="text-xl">&lt;</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm" />
+              </button>
+              <button
+                className="group relative p-3 rounded-2xl bg-slate-700/50 border border-green-800/50 text-slate-200 hover:bg-green-500/20 hover:border-green-600/70 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-105"
+                onClick={handleMonthNext}
+                title="Show next 2 months"
+              >
+                <span className="text-xl">&gt;</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm" />
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-auto max-h-[500px]">
+            {monthsToShow.map(({ year, month }) => {
+              const patternDates = generatePatternDates(
+                schedule.schedule_pattern,
+                year,
+                month
+              );
+
+              const weeks: Date[][] = [];
+              {
+                const start = startOfWeek(startOfMonth(new Date(year, month)), {
+                  weekStartsOn: 1,
+                });
+                const end = endOfWeek(endOfMonth(new Date(year, month)), {
+                  weekStartsOn: 1,
+                });
+                let currentWeekStart = start;
+                while (currentWeekStart <= end) {
+                  const weekDays = [];
+                  for (let i = 0; i < 7; i++) {
+                    weekDays.push(addDays(currentWeekStart, i));
+                  }
+                  weeks.push(weekDays);
+                  currentWeekStart = addWeeks(currentWeekStart, 1);
+                }
+              }
+
+              return (
+                <div key={`${year}-${month}`} className="mb-8">
+                  <div className="mb-4 flex justify-center">
+                    <span className="text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                      {format(new Date(year, month), "LLLL yyyy")}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-2 text-center text-sm select-none min-w-[350px]">
+                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+                      (d) => (
+                        <div
+                          key={d}
+                          className="font-bold py-3 text-emerald-300 uppercase tracking-wide text-xs"
+                        >
+                          {d}
+                        </div>
+                      )
+                    )}
+                    {weeks.map((weekDays, weekIdx) =>
+                      weekDays.map((day) => {
+                        const isScheduled = patternDates.some(
+                          (d) => d.toDateString() === day.toDateString()
+                        );
+                        const dayText =
+                          day.getMonth() === month ? format(day, "d") : "";
+                        const isCurrentMonth = day.getMonth() === month;
+                        const isSatOrSun =
+                          isCurrentMonth &&
+                          (day.getDay() === 6 || day.getDay() === 0);
+
+                        return (
+                          <div
+                            key={day.toISOString() + weekIdx}
+                            className={`
+                            h-14 w-14 rounded-2xl cursor-default flex flex-col items-center justify-center mx-auto transition-all duration-300 group
+                            text-sm font-bold border-2
+                            ${
+                              isScheduled && isCurrentMonth
+                                ? "bg-gradient-to-br from-emerald-500/90 to-teal-500/90 text-slate-100 shadow-lg shadow-emerald-500/40 scale-105 border-emerald-400/70 hover:scale-110"
+                                : isSatOrSun && isCurrentMonth
+                                ? "bg-gradient-to-br from-slate-700/50 to-gray-700/50 text-slate-400 border-slate-600/50 hover:bg-slate-600/50"
+                                : !isCurrentMonth
+                                ? "bg-slate-800/30 text-slate-500 border-slate-700/50 hover:bg-slate-700/40"
+                                : "bg-slate-900/50 text-slate-300 border-green-800/50 hover:bg-green-500/10 hover:border-green-600/70 hover:text-slate-200"
+                            }
+                          `}
+                            title={
+                              isScheduled && isCurrentMonth
+                                ? `Scheduled: ${format(
+                                    day,
+                                    "EEE, MMM d, yyyy"
+                                  )} at ${schedule.start_time}`
+                                : isSatOrSun && isCurrentMonth
+                                ? "No working day"
+                                : ""
+                            }
+                          >
+                            <span>{dayText}</span>
+                            {isScheduled && isCurrentMonth && (
+                              <div className="w-2 h-2 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full mt-1 animate-ping shadow-md" />
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-
-        {monthsToShow.map(({ year, month }) => {
-          // Find schedules with this month and year for pattern and starttime display
-          // We'll just use current form.schedule pattern for demo, but better display real scheduled days per barangay if needed
-          const patternDates = generatePatternDates(
-            schedule.schedule_pattern,
-            year,
-            month
-          );
-
-          const weeks: Date[][] = [];
-          {
-            const start = startOfWeek(startOfMonth(new Date(year, month)), {
-              weekStartsOn: 1,
-            });
-            const end = endOfWeek(endOfMonth(new Date(year, month)), {
-              weekStartsOn: 1,
-            });
-            let currentWeekStart = start;
-            while (currentWeekStart <= end) {
-              const weekDays = [];
-              for (let i = 0; i < 7; i++) {
-                weekDays.push(addDays(currentWeekStart, i));
-              }
-              weeks.push(weekDays);
-              currentWeekStart = addWeeks(currentWeekStart, 1);
-            }
-          }
-
-          return (
-            <div key={`${year}-${month}`} className="mb-6 ">
-              <div className="mb-2 mt-2 flex justify-center">
-                <span className="font-semibold text-xl text-black">
-                  {format(new Date(year, month), "LLLL yyyy")}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-7 gap-2 text-center text-md text-gray-800 select-none min-w-[350px]">
-                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                  <div key={d} className="font-semibold py-1">
-                    {d}
-                  </div>
-                ))}
-                {weeks.map((weekDays, weekIdx) =>
-                  weekDays.map((day) => {
-                    const isScheduled = patternDates.some(
-                      (d) => d.toDateString() === day.toDateString()
-                    );
-                    const dayText =
-                      day.getMonth() === month ? format(day, "d") : "";
-                    const isCurrentMonth = day.getMonth() === month;
-                    const isSatOrSun =
-                      isCurrentMonth &&
-                      (day.getDay() === 6 || day.getDay() === 0);
-                    return (
-                      <div
-                        key={day.toISOString() + weekIdx}
-                        className={`
-                          h-10.5 w-10.5 px-0 py-0 rounded cursor-default flex flex-col items-center justify-center
-                          text-sm font-bold
-                          ${
-                            isScheduled && isCurrentMonth
-                              ? "bg-green-600 text-black font-bold"
-                              : ""
-                          }
-                          ${!isCurrentMonth ? "text-gray-300" : ""}
-                          border
-                          ${
-                            weekIdx % 2 === 0
-                              ? "border-green-300"
-                              : "border-green-600"
-                          }
-                        `}
-                        title={
-                          isScheduled && isCurrentMonth
-                            ? `Scheduled: ${format(
-                                day,
-                                "EEE, MMM d, yyyy"
-                              )} at ${schedule.start_time}`
-                            : isSatOrSun && isCurrentMonth
-                            ? "No working day"
-                            : ""
-                        }
-                      >
-                        <span>{dayText}</span>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
 }
 
-function SchedulesSidebarItem({ barangays }) {
+interface SchedulesSidebarItemProps {
+  barangays: Barangay[];
+}
+
+type SidebarSchedule = {
+  schedule_id: string;
+  days: string;
+  start_time: string;
+  barangay?: {
+    barangay_name: string;
+    barangay_id: string;
+  };
+};
+
+type CalendarSchedule = {
+  days: string;
+  start_time: string;
+};
+
+function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
   const [selectedBarangay, setSelectedBarangay] = useState("");
-  const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [editScheduleId, setEditScheduleId] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [editScheduleId, setEditScheduleId] = useState<string | null>(null);
   const [editPattern, setEditPattern] = useState("");
+  const [schedules, setSchedules] = useState<SidebarSchedule[]>([]);
 
   useEffect(() => {
     if (!selectedBarangay) {
       setSchedules([]);
       return;
     }
+
     async function fetchSchedules() {
       setLoading(true);
       setError(null);
@@ -599,18 +692,19 @@ function SchedulesSidebarItem({ barangays }) {
           .eq("barangay_id", selectedBarangay)
           .order("date_created", { ascending: false });
         if (error) throw error;
-        setSchedules(data || []);
+        setSchedules((data as any[]) || []);
       } catch (err) {
-        setError(err.message);
+        setError((err as Error).message);
       } finally {
         setLoading(false);
       }
     }
+
     fetchSchedules();
   }, [selectedBarangay]);
 
   // Remove schedule
-  const handleDelete = async (schedule_id) => {
+  const handleDelete = async (schedule_id: string) => {
     if (
       !window.confirm(
         "Are you sure? This will permanently delete the schedule."
@@ -623,28 +717,32 @@ function SchedulesSidebarItem({ barangays }) {
         .delete()
         .eq("schedule_id", schedule_id);
       if (error) throw error;
-      setSchedules((s) => s.filter((sc) => sc.schedule_id !== schedule_id));
+      setSchedules((s) =>
+        s.filter((sc: any) => sc.schedule_id !== schedule_id)
+      );
     } catch (err) {
       alert("Failed to delete schedule.");
     }
   };
 
   // Begin editing
-  const handleEdit = (schedule) => {
-    setEditScheduleId(schedule.schedule_id);
-    setEditPattern(schedule.days);
+  const handleEdit = (schedule: any) => {
+    setEditScheduleId(schedule.schedule_id as string);
+    setEditPattern(schedule.days as string);
   };
 
   // Save edit
-  const handleSaveEdit = async (schedule_id) => {
+  const handleSaveEdit = async (schedule_id: string) => {
     try {
       const { error } = await supabase
         .from("collection_schedules")
         .update({ days: editPattern })
         .eq("schedule_id", schedule_id);
+
       if (error) throw error;
+
       setSchedules((s) =>
-        s.map((sc) =>
+        s.map((sc: any) =>
           sc.schedule_id === schedule_id ? { ...sc, days: editPattern } : sc
         )
       );
@@ -654,8 +752,8 @@ function SchedulesSidebarItem({ barangays }) {
     }
   };
 
-  const renderCalendar = (schedule) => {
-    const weeks = [];
+  function renderCalendar(schedule: CalendarSchedule) {
+    const weeks: Date[][] = [];
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
@@ -727,65 +825,95 @@ function SchedulesSidebarItem({ barangays }) {
         </div>
       </div>
     );
-  };
+  }
 
   return (
-    <div>
-      <select
-        className="w-full p-2 mb-4 border rounded text-black"
-        value={selectedBarangay}
-        onChange={(e) => setSelectedBarangay(e.target.value)}
-      >
-        <option value="">Select Barangay</option>
-        {barangays.map((b) => (
-          <option key={b.barangay_id} value={b.barangay_id}>
-            {b.barangay_name}
-          </option>
-        ))}
-      </select>
+    <div className="space-y-4 h-fit max-h-[92vh]">
+      {/* Compact Barangay Select */}
+      <div>
+        <label
+          htmlFor="barangay_select"
+          className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text"
+        >
+          Barangay
+        </label>
+        <select
+          id="barangay_select"
+          className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 
+                   focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500 
+                   [&:invalid]:text-slate-400 [&:invalid]:bg-slate-900/95 appearance-none pr-8"
+          value={selectedBarangay}
+          onChange={(e) => setSelectedBarangay(e.target.value)}
+          required
+        >
+          <option value="">Select Barangay</option>
+          {barangays.map((b) => (
+            <option key={b.barangay_id} value={b.barangay_id}>
+              {b.barangay_name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      {loading && <div className="text-gray-600">Loading schedules...</div>}
-      {error && <div className="text-red-600">Error: {error}</div>}
+      {/* Loading/Error - Minimal */}
+      {loading && (
+        <div className="flex items-center justify-center py-4 rounded-lg bg-slate-900/50 border border-green-800/50 text-xs text-slate-400">
+          <span className="animate-spin mr-2">📅</span>Loading...
+        </div>
+      )}
+      {error && (
+        <div className="rounded-lg bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/50 p-2.5 text-orange-200 text-xs flex items-center gap-1.5">
+          ⚠️ {error}
+        </div>
+      )}
 
-      {selectedBarangay && schedules.length === 0 && !loading ? (
-        <div className="text-gray-500">No schedules found.</div>
-      ) : (
-        schedules.map((schedule) => (
+      {/* No schedules - Minimal */}
+      {selectedBarangay && schedules.length === 0 && !loading && (
+        <div className="text-center py-6 rounded-lg bg-slate-900/50 border border-green-800/50 text-slate-400 text-xs">
+          <div className="text-xl mb-1 opacity-50">📅</div>
+          No schedules
+        </div>
+      )}
+
+      {/* Full Month Calendar - Fixed height */}
+      <div className="max-h-[75vh] overflow-hidden rounded-xl bg-gradient-to-br from-slate-800/90 to-gray-800/90 border border-green-800/50 shadow-xl backdrop-blur-xl">
+        {schedules.map((schedule, index) => (
           <div
             key={schedule.schedule_id}
-            className="mb-6 p-4 rounded shadow bg-white"
+            className={`p-4 border-b border-green-800/30 last:border-b-0 ${
+              index > 0 ? "pt-0 mt-0" : ""
+            }`}
           >
-            <div className="text-2xl flex justify-between items-center mb-2">
-              <div>
-                <div className="font-bold">
+            {/* Compact Header */}
+            <div className="flex justify-between items-center mb-2 pb-2 border-b border-green-800/20">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-black text-slate-100 truncate">
                   {schedule.barangay?.barangay_name}
                 </div>
-                <div className="text-xl text-black">
-                  Pattern: {schedule.days}
-                </div>
-                <div className="text-xl text-black">
-                  Assigned GCP:{" "}
-                  {schedule.gcp_user
-                    ? `${schedule.gcp_user.first_name} ${schedule.gcp_user.last_name}`
-                    : "None"}
-                </div>
+                <div className="text-xs text-emerald-400">{schedule.days}</div>
               </div>
-              <div>
+              {/* Perfect Action Buttons - Text instead of X */}
+              <div className="flex-shrink-0 ml-3 flex gap-2">
                 {editScheduleId === schedule.schedule_id ? (
                   <>
                     <input
                       value={editPattern}
                       onChange={(e) => setEditPattern(e.target.value)}
-                      className="border rounded p-1 mr-2"
+                      className="w-20 h-8 rounded-lg bg-slate-900/80 border border-slate-600/50 px-2 py-1 text-xs text-slate-200 placeholder-slate-500 
+                   focus:outline-none focus:ring-1 focus:ring-emerald-400/50 focus:border-emerald-500/70 
+                   transition-all backdrop-blur-sm shadow-sm"
+                      placeholder="Pattern"
                     />
                     <button
-                      className="px-2 py-1 bg-green-600 text-white rounded mr-2"
+                      className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white rounded-lg shadow-md 
+                   hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
                       onClick={() => handleSaveEdit(schedule.schedule_id)}
                     >
                       Save
                     </button>
                     <button
-                      className="px-2 py-1 bg-gray-400 text-white rounded"
+                      className="h-8 px-3 bg-slate-600 hover:bg-slate-700 text-xs font-bold text-white rounded-lg shadow-md 
+                   hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
                       onClick={() => setEditScheduleId(null)}
                     >
                       Cancel
@@ -794,13 +922,15 @@ function SchedulesSidebarItem({ barangays }) {
                 ) : (
                   <>
                     <button
-                      className="px-2 py-1 bg-green-600 text-white rounded mr-2"
+                      className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white rounded-lg shadow-md 
+                   hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
                       onClick={() => handleEdit(schedule)}
                     >
                       Edit
                     </button>
                     <button
-                      className="px-2 py-1 bg-red-600 text-white rounded"
+                      className="h-8 px-3 bg-red-600 hover:bg-red-700 text-xs font-bold text-white rounded-lg shadow-md 
+                   hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
                       onClick={() => handleDelete(schedule.schedule_id)}
                     >
                       Delete
@@ -810,9 +940,17 @@ function SchedulesSidebarItem({ barangays }) {
               </div>
             </div>
 
-            {renderCalendar(schedule)}
+            {/* Full Calendar */}
+            <div className="w-full">{renderCalendar(schedule)}</div>
           </div>
-        ))
+        ))}
+      </div>
+
+      {/* Show more - Minimal */}
+      {schedules.length > 2 && (
+        <div className="text-center py-2 text-xs text-slate-400 border-t border-green-800/50 rounded-lg bg-slate-900/50">
+          +{schedules.length - 2} more
+        </div>
       )}
     </div>
   );
@@ -835,90 +973,182 @@ function ManageAccountSection({
 }) {
   if (loading) return <TruckLoader />;
   return (
-    <section className="max-w-2xl mx-auto bg-white rounded-xl shadow p-8 mt-1">
-      <h2 className="text-3xl font-bold mb-6 text-green-600">Manage Account</h2>
-      {error && (
-        <div
-          role="alert"
-          className="mb-4 px-4 py-2 rounded bg-red-100 text-red-700"
-        >
-          {error}
-        </div>
-      )}
-      {success && (
-        <div
-          role="status"
-          className="mb-4 px-4 py-2 rounded bg-green-100 text-green-700"
-        >
-          {success}
-        </div>
-      )}
-      <form onSubmit={onSubmit} noValidate>
-        <InputField
-          label="First Name"
-          name="first_name"
-          type="text"
-          value={form.first_name}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="Last Name"
-          name="last_name"
-          type="text"
-          value={form.last_name}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="Username"
-          name="username"
-          type="text"
-          value={form.username}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="Email"
-          name="email"
-          type="email"
-          value={form.email}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="Contact Number"
-          name="contact_number"
-          type="tel"
-          value={form.contact_number}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="New Password"
-          name="password"
-          type="password"
-          value={form.password}
-          onChange={onChange}
-          placeholder="Leave blank to keep current password"
-        />
-        <InputField
-          label="Confirm New Password"
-          name="confirm_password"
-          type="password"
-          value={form.confirm_password}
-          onChange={onChange}
-          placeholder="Confirm your new password"
-        />
-        <div className="flex justify-end mt-6">
-          <button
-            type="submit"
-            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-bold"
-          >
-            Update Account
-          </button>
-        </div>
-      </form>
+    <section className="group relative max-w-2xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-4 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-300 hover:border-green-600/70 h-fit max-h-[95vh] overflow-hidden">
+      {/* Glow effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+
+      <div className="relative z-10 space-y-4">
+        <h2 className="text-xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-xl tracking-tight">
+          Manage Account
+        </h2>
+
+        {/* Compact Error/Success alerts */}
+        {error && (
+          <div className="rounded-xl bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/50 p-3 text-orange-200 text-sm backdrop-blur-xl shadow-lg animate-pulse">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-orange-500 rounded-full animate-ping" />
+              {error}
+            </div>
+          </div>
+        )}
+        {success && (
+          <div className="rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/50 p-3 text-emerald-200 text-sm backdrop-blur-xl shadow-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-emerald-500 rounded-full animate-ping" />
+              {success}
+            </div>
+          </div>
+        )}
+
+        {/* Ultra-compact form */}
+        <form onSubmit={onSubmit} noValidate className="space-y-3">
+          {/* First Name */}
+          <div>
+            <label
+              htmlFor="first_name"
+              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+            >
+              First Name
+            </label>
+            <input
+              id="first_name"
+              name="first_name"
+              type="text"
+              value={form.first_name}
+              onChange={onChange}
+              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-200 backdrop-blur-sm shadow-sm hover:shadow-emerald-500/20"
+              required
+            />
+          </div>
+
+          {/* Last Name */}
+          <div>
+            <label
+              htmlFor="last_name"
+              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+            >
+              Last Name
+            </label>
+            <input
+              id="last_name"
+              name="last_name"
+              type="text"
+              value={form.last_name}
+              onChange={onChange}
+              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-200 backdrop-blur-sm shadow-sm hover:shadow-emerald-500/20"
+              required
+            />
+          </div>
+
+          {/* Username */}
+          <div>
+            <label
+              htmlFor="username"
+              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+            >
+              Username
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              value={form.username}
+              onChange={onChange}
+              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-200 backdrop-blur-sm shadow-sm hover:shadow-emerald-500/20"
+              required
+            />
+          </div>
+
+          {/* Email */}
+          <div>
+            <label
+              htmlFor="email"
+              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+            >
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={onChange}
+              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-200 backdrop-blur-sm shadow-sm hover:shadow-emerald-500/20"
+              required
+            />
+          </div>
+
+          {/* Contact Number */}
+          <div>
+            <label
+              htmlFor="contact_number"
+              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+            >
+              Contact Number
+            </label>
+            <input
+              id="contact_number"
+              name="contact_number"
+              type="tel"
+              value={form.contact_number}
+              onChange={onChange}
+              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-200 backdrop-blur-sm shadow-sm hover:shadow-emerald-500/20"
+              required
+            />
+          </div>
+
+          {/* New Password */}
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+            >
+              New Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={form.password}
+              onChange={onChange}
+              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-200 backdrop-blur-sm shadow-sm hover:shadow-emerald-500/20"
+              placeholder="Leave blank to keep current password"
+            />
+          </div>
+
+          {/* Confirm New Password */}
+          <div>
+            <label
+              htmlFor="confirm_password"
+              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+            >
+              Confirm New Password
+            </label>
+            <input
+              id="confirm_password"
+              name="confirm_password"
+              type="password"
+              value={form.confirm_password}
+              onChange={onChange}
+              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-200 backdrop-blur-sm shadow-sm hover:shadow-emerald-500/20"
+              placeholder="Confirm your new password"
+            />
+          </div>
+
+          {/* Compact Submit Button */}
+          <div className="flex justify-end pt-2 border-t border-green-800/40 -mx-1">
+            <button
+              type="submit"
+              className="group relative px-8 py-2.5 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-sm font-black text-slate-100 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 rounded-2xl overflow-hidden"
+            >
+              <span className="relative z-10 uppercase tracking-wide">
+                Update Account
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          </div>
+        </form>
+      </div>
     </section>
   );
 }
@@ -1100,120 +1330,188 @@ function SecretaryReportsSection() {
   if (error) return <div className="text-red-700">{error}</div>;
 
   return (
-    <section className="max-w-4xl mx-auto bg-white rounded-xl shadow p-8 mt-8">
-      <h2 className="text-2xl font-bold mb-4 text-green-700">
-        Passed Incident Reports (for Secretary)
-      </h2>
+    <section className="group relative max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+      {/* Glow effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
 
-      {reports.length === 0 ? (
-        <div className="text-black">
-          No passed incident reports at the moment.
-        </div>
-      ) : (
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="bg-green-50">
-              <th className="p-2 text-left">Location</th>
-              <th className="p-2 text-left">Landmark</th>
-              <th className="p-2 text-left">Date Submitted</th>
-              <th className="p-2 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reports.map((report) => (
-              <tr key={report.report_id} className="border-t align-middle h-16">
-                <td className="p-2">{report.location}</td>
-                <td className="p-2">{report.landmark}</td>
-                <td className="p-2">
-                  {new Date(report.date_submitted).toLocaleString()}
-                </td>
-                <td className="p-2">
-                  <button
-                    onClick={() => handleOpenAssign(report)}
-                    className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+      <div className="relative z-10">
+        <h2 className="text-2xl font-black mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+          Passed Incident Reports
+        </h2>
+
+        {/* Empty state */}
+        {reports.length === 0 ? (
+          <div className="text-center py-12 rounded-2xl bg-slate-900/50 border border-green-800/50 backdrop-blur-xl text-slate-400">
+            <div className="text-5xl mb-4 opacity-50">🚨</div>
+            <p className="text-lg font-semibold">No passed incident reports</p>
+            <p className="text-sm mt-1">at the moment.</p>
+          </div>
+        ) : (
+          /* Scrollable Table */
+          <div className="max-h-80 overflow-y-auto rounded-2xl border border-green-800/50 bg-slate-900/50 backdrop-blur-xl shadow-inner pr-2 scrollbar-thin scrollbar-thumb-emerald-500/50 scrollbar-track-slate-900/50">
+            <table className="w-full text-sm">
+              <thead className="bg-gradient-to-r from-slate-900/95 to-gray-900/95 sticky top-0 z-10 border-b border-green-800/50">
+                <tr>
+                  <th className="p-4 text-left font-bold text-slate-200">
+                    Location
+                  </th>
+                  <th className="p-4 text-left font-bold text-slate-200">
+                    Landmark
+                  </th>
+                  <th className="p-4 text-left font-bold text-slate-200">
+                    Date Submitted
+                  </th>
+                  <th className="p-4 text-left font-bold text-slate-200">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-green-800/30">
+                {reports.map((report) => (
+                  <tr
+                    key={report.report_id}
+                    className="hover:bg-slate-800/60 transition-all duration-200 group/item"
                   >
-                    Assign GCP & Task
+                    <td className="p-4 text-slate-300 font-medium">
+                      {report.location}
+                    </td>
+                    <td className="p-4 text-slate-400">{report.landmark}</td>
+                    <td className="p-4 text-slate-400">
+                      {new Date(report.date_submitted).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                    <td className="p-4">
+                      <button
+                        onClick={() => handleOpenAssign(report)}
+                        className="group relative inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-sm font-bold text-slate-100 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 rounded-xl overflow-hidden whitespace-nowrap"
+                      >
+                        <span className="relative z-10 uppercase tracking-wide">
+                          Assign GCP & Task
+                        </span>
+                        <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Dark Modal */}
+        {assignModalOpen && selectedReport && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+            <div
+              className="group relative bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 rounded-2xl shadow-2xl shadow-green-900/30 backdrop-blur-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl rounded-2xl" />
+
+              <div className="relative z-10">
+                {/* Close button */}
+                <button
+                  onClick={() => setAssignModalOpen(false)}
+                  className="group absolute -top-4 -right-4 w-10 h-10 bg-slate-900/90 border-2 border-slate-600/50 rounded-2xl shadow-xl hover:bg-red-600/90 hover:border-red-500/70 hover:shadow-2xl hover:shadow-red-500/40 hover:scale-110 transition-all duration-300 backdrop-blur-xl flex items-center justify-center text-slate-300 hover:text-white font-bold text-xl"
+                >
+                  <span className="relative z-10">✕</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm" />
+                </button>
+
+                <h3 className="font-black text-xl mb-4 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-xl tracking-tight">
+                  Assign GCP & Task
+                </h3>
+
+                <div className="space-y-4 mb-4">
+                  <div className="text-sm text-slate-300">
+                    <span className="font-bold text-slate-200">Location:</span>{" "}
+                    {selectedReport.location}
+                  </div>
+                  <div className="text-sm text-slate-300">
+                    <span className="font-bold text-slate-200">Landmark:</span>{" "}
+                    {selectedReport.landmark}
+                  </div>
+                </div>
+
+                {/* GCP Select */}
+                <div className="mb-4">
+                  <label className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm">
+                    Select GCP
+                  </label>
+                  <select
+                    value={selectedGcpId}
+                    onChange={(e) => setSelectedGcpId(e.target.value)}
+                    className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 
+                             focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 
+                             transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/20 
+                             appearance-none pr-10 [&:invalid]:text-slate-400"
+                  >
+                    <option value="">-- Choose GCP --</option>
+                    {gcpUsers.map((u) => (
+                      <option key={u.user_id} value={u.user_id}>
+                        {u.first_name} {u.last_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Task Details */}
+                <div className="mb-6">
+                  <label className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm">
+                    Task Details
+                  </label>
+                  <textarea
+                    className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 resize-vertical 
+                             focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 
+                             transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/20"
+                    rows={3}
+                    value={taskDetails}
+                    onChange={(e) => setTaskDetails(e.target.value)}
+                    placeholder="Describe what the GCP should do..."
+                  />
+                </div>
+
+                {assignError && (
+                  <div className="rounded-xl bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/50 p-3 text-orange-200 text-sm backdrop-blur-xl shadow-md animate-pulse mb-4">
+                    {assignError}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3 pt-2 border-t border-green-800/40">
+                  <button
+                    onClick={() => setAssignModalOpen(false)}
+                    className="px-6 py-2.5 bg-gradient-to-r from-slate-600/90 to-gray-600/90 text-sm font-bold text-slate-100 shadow-lg 
+                             hover:shadow-xl hover:shadow-slate-500/40 hover:scale-[1.02] transition-all duration-300 
+                             backdrop-blur-xl border border-slate-500/40 rounded-xl overflow-hidden"
+                  >
+                    <span className="relative z-10 uppercase tracking-wide">
+                      Cancel
+                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 opacity-0 hover:opacity-100 transition-opacity" />
                   </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {/* Assign GCP & Task modal */}
-      {assignModalOpen && selectedReport && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-center items-center"
-          onClick={() => setAssignModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setAssignModalOpen(false)}
-              className="absolute top-1 right-2 text-2xl text-gray-500 hover:text-red-600 font-bold"
-              aria-label="Close"
-            >
-              ×
-            </button>
-            <h3 className="font-bold text-lg mb-3 text-green-700">
-              Assign GCP & Task
-            </h3>
-            <p className="text-sm mb-2">
-              Location:{" "}
-              <span className="font-semibold">{selectedReport.location}</span>
-            </p>
-
-            <label className="block text-sm font-semibold mb-1">
-              Select GCP
-            </label>
-            <select
-              value={selectedGcpId}
-              onChange={(e) => setSelectedGcpId(e.target.value)}
-              className="w-full border rounded px-2 py-1 text-sm mb-3"
-            >
-              <option value="">-- Choose GCP --</option>
-              {gcpUsers.map((u) => (
-                <option key={u.user_id} value={u.user_id}>
-                  {u.first_name} {u.last_name}
-                </option>
-              ))}
-            </select>
-
-            <label className="block text-sm font-semibold mb-1">
-              Task details
-            </label>
-            <textarea
-              className="w-full border rounded px-2 py-1 text-sm mb-3"
-              rows={3}
-              value={taskDetails}
-              onChange={(e) => setTaskDetails(e.target.value)}
-              placeholder="Describe what the GCP should do..."
-            />
-
-            {assignError && (
-              <p className="text-xs text-red-600 mb-2">{assignError}</p>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setAssignModalOpen(false)}
-                className="px-3 py-1 text-sm rounded border border-gray-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitAssign}
-                className="px-4 py-1 text-sm rounded bg-green-600 text-white hover:bg-green-700"
-              >
-                Assign
-              </button>
+                  <button
+                    onClick={handleSubmitAssign}
+                    className="px-6 py-2.5 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-sm font-bold text-slate-100 shadow-lg shadow-emerald-500/30 
+                             hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 
+                             backdrop-blur-xl border border-emerald-500/40 rounded-xl overflow-hidden"
+                  >
+                    <span className="relative z-10 uppercase tracking-wide">
+                      Assign
+                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 opacity-0 hover:opacity-100 transition-opacity" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </section>
   );
 }
@@ -1293,108 +1591,187 @@ function SecretaryGcpResponsesSection() {
   if (error) return <div className="text-red-700">{error}</div>;
 
   return (
-    <section className="max-w-5xl mx-auto bg-white rounded-xl shadow p-8">
-      <h2 className="text-3xl font-bold mb-4 text-green-600">GCP Responses</h2>
-      {rows.length === 0 ? (
-        <div className="text-gray-500">No responses yet.</div>
-      ) : (
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="bg-green-300">
-              <th className="p-2 text-left text-black">Date</th>
-              <th className="p-2 text-left text-black">GCP</th>
-              <th className="p-2 text-left text-black">Location / Barangay</th>
-              <th className="p-2 text-left text-black">Response</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.gcp_assignment_id} className="border-t align-top">
-                <td className="p-2 text-black">
-                  {new Date(row.created_at).toLocaleString()}
-                </td>
-                <td className="p-2 text-black">
-                  {row.user
-                    ? `${row.user.first_name} ${row.user.last_name}`
-                    : "Unknown"}
-                </td>
-                <td className="p-2 text-black">
-                  {row.report
-                    ? `${row.report.location} (${row.report.landmark})`
-                    : row.collectiondetails?.schedule?.barangay?.barangayname ??
-                      "N/A"}
-                </td>
-                <td className="p-2">
-                  <button
-                    onClick={() => handleOpenModal(row)}
-                    className="px-3 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700"
+    <section className="group relative h-150 max-w-9xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+      {/* Glow effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+
+      <div className="relative z-10">
+        <h2 className="text-3xl font-black mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+          GCP Responses
+        </h2>
+
+        {/* Empty state */}
+        {rows.length === 0 ? (
+          <div className="text-center py-12 rounded-2xl bg-slate-900/50 border border-green-800/50 backdrop-blur-xl text-slate-400">
+            <div className="text-5xl mb-6 opacity-50">💬</div>
+            <p className="text-xl font-semibold">No responses yet</p>
+          </div>
+        ) : (
+          /* Scrollable Table */
+          <div className="max-h-96 overflow-y-auto rounded-2xl border border-green-800/50 bg-slate-900/50 backdrop-blur-xl shadow-inner pr-3 scrollbar-thin scrollbar-thumb-emerald-500/50 scrollbar-track-slate-900/50 scrollbar-thumb-rounded">
+            <table className="w-full text-sm">
+              <thead className="bg-gradient-to-r from-slate-900/95 to-gray-900/95 sticky top-0 z-10 border-b border-green-800/50">
+                <tr>
+                  <th className="p-4 text-left font-black text-slate-200 tracking-wide">
+                    Date
+                  </th>
+                  <th className="p-4 text-left font-black text-slate-200 tracking-wide">
+                    GCP
+                  </th>
+                  <th className="p-4 text-left font-black text-slate-200 tracking-wide">
+                    Location / Barangay
+                  </th>
+                  <th className="p-4 text-left font-black text-slate-200 tracking-wide">
+                    Response
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-green-800/30">
+                {rows.map((row) => (
+                  <tr
+                    key={row.gcp_assignment_id}
+                    className="hover:bg-slate-800/60 transition-all duration-200 group/item cursor-pointer"
                   >
-                    View response
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      {modalOpen && selectedRow && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center"
-          onClick={handleCloseModal}
-        >
-          <div
-            className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={handleCloseModal}
-              className="absolute top-2 right-3 text-2xl text-gray-500 hover:text-red-600 font-bold"
-              aria-label="Close"
+                    <td className="p-4 text-slate-300 font-medium">
+                      {new Date(row.created_at).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                    <td className="p-4 text-slate-200 font-semibold max-w-[150px] truncate">
+                      {row.user
+                        ? `${row.user.first_name} ${row.user.last_name}`
+                        : "Unknown"}
+                    </td>
+                    <td className="p-4 text-slate-300 max-w-[200px] truncate">
+                      {row.report
+                        ? `${row.report.location} (${row.report.landmark})`
+                        : row.collectiondetails?.schedule?.barangay
+                            ?.barangayname ?? "N/A"}
+                    </td>
+                    <td className="p-4">
+                      <button
+                        onClick={() => handleOpenModal(row)}
+                        className="group relative inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-xs font-bold text-slate-100 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 rounded-xl overflow-hidden whitespace-nowrap"
+                      >
+                        <span className="relative z-10 uppercase tracking-wide">
+                          View Response
+                        </span>
+                        <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Dark Modal */}
+        {modalOpen && selectedRow && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div
+              className="group relative bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 rounded-2xl shadow-2xl shadow-green-900/30 backdrop-blur-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-8"
+              onClick={(e) => e.stopPropagation()}
             >
-              ×
-            </button>
+              {/* Glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl rounded-2xl" />
 
-            <h3 className="font-bold text-lg mb-3 text-green-700">
-              GCP Response
-            </h3>
+              <div className="relative z-10">
+                {/* Close button */}
+                <button
+                  onClick={handleCloseModal}
+                  className="group absolute -top-4 -right-4 w-12 h-12 bg-slate-900/90 border-2 border-slate-600/50 rounded-2xl shadow-xl hover:bg-red-600/90 hover:border-red-500/70 hover:shadow-2xl hover:shadow-red-500/40 hover:scale-110 transition-all duration-300 backdrop-blur-xl flex items-center justify-center text-slate-300 hover:text-white font-bold text-2xl"
+                >
+                  <span className="relative z-10">✕</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm" />
+                </button>
 
-            <p className="text-sm mb-1">
-              <span className="font-semibold">GCP: </span>
-              {selectedRow.user
-                ? `${selectedRow.user.first_name} ${selectedRow.user.last_name}`
-                : "Unknown"}
-            </p>
+                <h3 className="font-black text-2xl mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+                  GCP Response
+                </h3>
 
-            <p className="text-sm mb-1">
-              <span className="font-semibold">Location: </span>
-              {selectedRow.report
-                ? `${selectedRow.report.location} (${selectedRow.report.landmark})`
-                : selectedRow.collectiondetails?.schedule?.barangay
-                    ?.barangay_name ?? "N/A"}
-            </p>
+                {/* Response Details */}
+                <div className="space-y-5 mb-6">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping"></span>
+                      <span className="text-sm font-bold text-emerald-300 uppercase tracking-wider">
+                        GCP
+                      </span>
+                    </div>
+                    <div className="text-lg font-semibold text-slate-200">
+                      {selectedRow.user
+                        ? `${selectedRow.user.first_name} ${selectedRow.user.last_name}`
+                        : "Unknown"}
+                    </div>
+                  </div>
 
-            <p className="text-xs text-gray-500 mb-3">
-              {selectedRow.created_at
-                ? new Date(selectedRow.created_at).toLocaleString()
-                : ""}
-            </p>
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="w-2 h-2 bg-blue-400 rounded-full animate-ping"></span>
+                      <span className="text-sm font-bold text-blue-300 uppercase tracking-wider">
+                        Location
+                      </span>
+                    </div>
+                    <div className="text-lg font-semibold text-slate-200">
+                      {selectedRow.report
+                        ? `${selectedRow.report.location} (${selectedRow.report.landmark})`
+                        : selectedRow.collectiondetails?.schedule?.barangay
+                            ?.barangay_name ?? "N/A"}
+                    </div>
+                  </div>
 
-            <div className="mb-3">
-              <p className="font-semibold text-sm mb-1">Task details</p>
-              <p className="text-sm whitespace-pre-wrap border rounded p-2 bg-gray-50">
-                {selectedRow.task_details || "—"}
-              </p>
-            </div>
+                  <div className="text-sm text-slate-400">
+                    <span className="font-bold text-slate-300">Date: </span>
+                    {selectedRow.created_at
+                      ? new Date(selectedRow.created_at).toLocaleString(
+                          "en-US",
+                          {
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        )
+                      : ""}
+                  </div>
+                </div>
 
-            <div>
-              <p className="font-semibold text-sm mb-1">GCP response</p>
-              <p className="text-sm whitespace-pre-wrap border rounded p-2 bg-gray-50">
-                {selectedRow.gcp_response || "No response yet"}
-              </p>
+                {/* Task Details */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="w-2 h-2 bg-orange-400 rounded-full animate-ping"></span>
+                    <span className="text-sm font-bold text-orange-300 uppercase tracking-wider">
+                      Task Details
+                    </span>
+                  </div>
+                  <div className="rounded-2xl bg-gradient-to-br from-slate-900/80 to-gray-900/80 border border-orange-500/30 p-5 backdrop-blur-xl shadow-lg text-slate-300 whitespace-pre-wrap leading-relaxed">
+                    {selectedRow.task_details || "—"}
+                  </div>
+                </div>
+
+                {/* GCP Response */}
+                <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping"></span>
+                    <span className="text-sm font-bold text-emerald-300 uppercase tracking-wider">
+                      GCP Response
+                    </span>
+                  </div>
+                  <div className="rounded-2xl bg-gradient-to-br from-emerald-900/50 to-teal-900/50 border border-emerald-500/40 p-5 backdrop-blur-xl shadow-xl shadow-emerald-500/20 text-slate-200 whitespace-pre-wrap leading-relaxed">
+                    {selectedRow.gcp_response || "No response yet"}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </section>
   );
 }
@@ -1479,82 +1856,114 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
   };
 
   return (
-    <section className="max-w-3xl mx-auto bg-white rounded-xl shadow p-6 space-y-6">
-      <h2 className="text-3xl font-bold text-green-600">Garbage Trucks</h2>
+    <section className="group relative max-w-2xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 space-y-6 h-fit">
+      {/* Glow effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
 
-      {/* Add Truck form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-black mb-1">
-              Plate number
-            </label>
-            <input
-              name="plate_number"
-              value={form.plate_number}
-              onChange={handleChange}
-              className="w-full border rounded p-2 text-black"
-              placeholder="e.g. NCA1234"
-              required
-            />
+      <div className="relative z-10">
+        <h2 className="text-2xl font-black mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+          Garbage Trucks
+        </h2>
+
+        {/* Compact Add Truck form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Plate number */}
+            <div>
+              <label
+                htmlFor="plate_number"
+                className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+              >
+                Plate Number
+              </label>
+              <input
+                id="plate_number"
+                name="plate_number"
+                value={form.plate_number}
+                onChange={handleChange}
+                className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/20"
+                placeholder="NCA1234"
+                required
+              />
+            </div>
+
+            {/* Capacity */}
+            <div>
+              <label
+                htmlFor="capacity"
+                className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+              >
+                Capacity
+              </label>
+              <input
+                id="capacity"
+                type="number"
+                min="0"
+                step="0.25"
+                name="capacity"
+                value={form.capacity}
+                onChange={handleChange}
+                className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/20"
+                placeholder="6.50"
+                required
+              />
+            </div>
+
+            {/* Status */}
+            <div>
+              <label
+                htmlFor="status"
+                className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+              >
+                Status
+              </label>
+              <select
+                id="status"
+                name="status"
+                value={form.status}
+                onChange={handleChange}
+                className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/20 appearance-none bg-no-repeat pr-8"
+              >
+                <option value="Available">Available</option>
+                <option value="Under maintenance">Under maintenance</option>
+                <option value="Retired">Retired</option>
+              </select>
+            </div>
+
+            {/* Truck code */}
+            <div>
+              <label
+                htmlFor="truck_code"
+                className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+              >
+                Truck Code
+              </label>
+              <input
+                id="truck_code"
+                name="truck_code"
+                value={form.truck_code}
+                onChange={handleChange}
+                className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/20"
+                placeholder="Bool_NCA1234"
+                required
+              />
+            </div>
           </div>
 
+          {/* GCP - Full width */}
           <div>
-            <label className="block text-sm font-semibold text-black mb-1">
-              Capacity (tons)
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.25"
-              name="capacity"
-              value={form.capacity}
-              onChange={handleChange}
-              className="w-full border rounded p-2 text-black"
-              placeholder="e.g. 6.50"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-black mb-1">
-              Status
-            </label>
-            <select
-              name="status"
-              value={form.status}
-              onChange={handleChange}
-              className="w-full border rounded p-2 text-black"
+            <label
+              htmlFor="gcp_user_id"
+              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
             >
-              <option value="Available">Available</option>
-              <option value="Under maintenance">Under maintenance</option>
-              <option value="Retired">Retired</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-black mb-1">
-              Truck code
-            </label>
-            <input
-              name="truck_code"
-              value={form.truck_code}
-              onChange={handleChange}
-              className="w-full border rounded p-2 text-black"
-              placeholder="e.g. Bool_NCA1234"
-              required
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-semibold text-black mb-1">
               Assigned GCP (optional)
             </label>
             <select
+              id="gcp_user_id"
               name="gcp_user_id"
               value={form.gcp_user_id}
               onChange={handleChange}
-              className="w-full border rounded p-2 text-black"
+              className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/20 appearance-none bg-no-repeat pr-8"
             >
               <option value="">No default GCP</option>
               {gcps.map((g) => (
@@ -1564,55 +1973,88 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
               ))}
             </select>
           </div>
-        </div>
 
-        {error && (
-          <div className="text-red-700 bg-red-100 rounded p-2">{error}</div>
-        )}
-        {success && (
-          <div className="text-green-700 bg-green-100 rounded p-2">
-            {success}
+          {/* Compact error/success */}
+          {error && (
+            <div className="rounded-xl bg-gradient-to-r from-orange-500/15 to-red-500/15 border border-orange-500/40 p-3 text-orange-200 text-sm backdrop-blur-xl shadow-lg animate-pulse">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="rounded-xl bg-gradient-to-r from-emerald-500/15 to-teal-500/15 border border-emerald-500/40 p-3 text-emerald-200 text-sm backdrop-blur-xl shadow-lg flex items-center gap-2">
+              <div className="w-4 h-4 bg-emerald-500 rounded-full animate-ping" />
+              {success}
+            </div>
+          )}
+
+          {/* Compact button */}
+          <div className="flex justify-end pt-2 border-t border-green-800/30">
+            <button
+              type="submit"
+              className="group relative inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-sm font-black text-slate-100 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 rounded-2xl overflow-hidden"
+            >
+              <span className="relative z-10 uppercase tracking-wide">
+                ＋ Add Truck
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
           </div>
-        )}
+        </form>
 
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-bold"
-          >
-            Add Truck
-          </button>
-        </div>
-      </form>
-
-      {/* Existing trucks list */}
-      <div>
-        <h3 className="text-xl font-semibold mb-2 text-black">
-          Existing trucks
-        </h3>
-        {loading ? (
-          <p className="text-gray-500 text-sm">Loading...</p>
-        ) : trucks.length === 0 ? (
-          <p className="text-gray-500 text-sm">No trucks added yet.</p>
-        ) : (
-          <div className="space-y-2">
-            {trucks.map((t) => (
-              <div
-                key={t.truck_id}
-                className="flex justify-between items-center border rounded px-3 py-2 text-sm bg-gray-50"
-              >
-                <div>
-                  <div className="font-semibold text-black">
-                    {t.truck_code} ({t.plate_number})
+        {/* ✅ SCROLLABLE Truck List */}
+        <div className="space-y-2">
+          <h3 className="text-xl font-bold mb-4 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+            Existing Trucks
+          </h3>
+          {loading ? (
+            <div className="flex items-center justify-center py-6 text-slate-400">
+              <span className="text-lg animate-spin mr-2">🚛</span>
+              Loading...
+            </div>
+          ) : trucks.length === 0 ? (
+            <div className="text-center py-6 text-slate-400">
+              <div className="text-3xl mb-2 opacity-50">🚛</div>
+              <p className="text-sm">No trucks added yet</p>
+            </div>
+          ) : (
+            <div className="max-h-64 overflow-y-auto rounded-xl border border-green-800/50 bg-slate-900/50 backdrop-blur-xl shadow-inner pr-2 scrollbar-thin scrollbar-thumb-emerald-500/50 scrollbar-track-slate-900/50 scrollbar-thumb-rounded">
+              {trucks.map((t) => (
+                <div
+                  key={t.truck_id}
+                  className="group flex items-center gap-3 p-3 first:pt-4 last:pb-4 rounded-xl border border-green-800/30 hover:bg-slate-800/60 hover:border-green-600/50 transition-all duration-300 backdrop-blur-xl hover:shadow-md mb-2 last:mb-0"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800/50 to-gray-800/50 flex items-center justify-center shadow-md group-hover:scale-105 transition-all">
+                    <span className="text-lg">🚛</span>
                   </div>
-                  <div className="text-gray-600">
-                    Capacity: {t.capacity} tons · Status: {t.status}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm text-slate-100 truncate">
+                      {t.truck_code}
+                    </div>
+                    <div className="text-xs text-slate-400 truncate">
+                      ({t.plate_number})
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-xs font-semibold text-emerald-400">
+                      {t.capacity} tons
+                    </div>
+                    <span
+                      className={`ml-2 inline-flex px-2 py-1 rounded-full text-xs font-bold ${
+                        t.status === "Available"
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                          : t.status === "Under maintenance"
+                          ? "bg-orange-500/20 text-orange-300 border border-orange-500/40"
+                          : "bg-slate-500/20 text-slate-300 border border-slate-500/40"
+                      }`}
+                    >
+                      {t.status}
+                    </span>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -2051,7 +2493,6 @@ export default function SecretaryDashboard() {
         gcp_user_id: "",
         schedule_pattern: "",
         start_time: "05:00",
-        user_id: "",
       });
       setScheduleError(null);
     } catch (err) {
@@ -2073,143 +2514,147 @@ export default function SecretaryDashboard() {
   };
 
   return (
-    <div className="flex bg-gray-50 min-h-screen">
-      {/* sidebar toggle and sidebar same as your existing code, plus Passed Incidents item */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex relative overflow-hidden">
+      {/* Subtle background animation */}
+      <div className="fixed inset-0 opacity-30 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 animate-pulse" />
+      </div>
+
+      {/* Mobile hamburger */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="md:hidden fixed top-4 left-4 z-[70] p-2 bg-white shadow rounded"
+        className="md:hidden fixed top-6 left-6 z-[70] p-3 bg-gradient-to-r from-green-500/90 to-emerald-600/90 shadow-2xl shadow-green-500/30 rounded-2xl text-slate-100 hover:shadow-3xl hover:shadow-green-500/40 hover:scale-110 transition-all duration-300 backdrop-blur-xl border border-green-500/50"
         aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
       >
         {sidebarOpen ? "✖" : "☰"}
       </button>
 
+      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-opacity-30 z-40 md:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
       )}
 
+      {/* Sidebar */}
       <aside
-        className={`bg-white/95 backdrop-blur border-r border-emerald-100 shadow-lg flex flex-col pt-6 px-5 md:px-4 fixed top-0 left-0 h-full transition-all duration-300 z-50 ${
+        className={`bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-2xl border-r border-green-800/40 shadow-2xl shadow-green-900/20 flex flex-col fixed inset-y-0 left-0 w-72 h-screen transition-all duration-500 z-50 md:flex md:w-72 md:translate-x-0 ${
           sidebarOpen
-            ? "w-4/5 max-w-xs opacity-100"
-            : "w-0 opacity-0 overflow-hidden"
-        } md:w-64 md:max-w-none md:opacity-100 md:overflow-visible`}
+            ? "opacity-100 translate-x-0"
+            : "w-[80vw] max-w-sm opacity-100 translate-x-0 md:w-72"
+        }`}
       >
-        <div>
-          <h1 className="text-xl font-extrabold text-emerald-700 mb-1 tracking-tight">
+        {/* Header - Fixed height */}
+        <div className="flex-shrink-0 pt-4 pb-6 px-6 border-b border-green-800/30">
+          <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 mx-auto mb-4 hover:scale-110 transition-all duration-300">
+            🚛
+          </div>
+          <h1 className="text-xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl mb-1 text-center tracking-tight leading-tight">
             Secretary Dashboard
           </h1>
-          <p className="text-xs font-semibold text-gray-600 leading-snug">
+          <p className="text-xs font-semibold text-emerald-400 leading-snug text-center tracking-wide">
             SWMO/TCEMO
           </p>
         </div>
+
+        {/* Scrollable Navigation */}
         <nav
-          className="flex-1 mt-6 text-sm font-semibold text-gray-700 space-y-1"
+          className="flex-1 px-4 py-4 space-y-2 text-sm font-bold text-emerald-300 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-900"
+          style={{ scrollbarWidth: "thin" }}
           aria-label="Main Navigation"
         >
-          {" "}
-          <SidebarItem
-            label="Dashboard"
-            icon="📊"
-            selected={activeTab === "dashboard"}
-            onClick={() => {
-              setActiveTab("dashboard");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="Input Schedule"
-            icon="📝"
-            selected={activeTab === "inputSchedule"}
-            onClick={() => {
-              setActiveTab("inputSchedule");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="Garbage Trucks"
-            icon="🚚"
-            selected={activeTab === "garbageTrucks"}
-            onClick={() => {
-              setActiveTab("garbageTrucks");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="Schedules"
-            icon="📅"
-            selected={activeTab === "schedules"}
-            onClick={() => {
-              setActiveTab("schedules");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="Passed Incidents"
-            icon="🚨"
-            selected={activeTab === "passedIncidents"}
-            onClick={() => {
-              setActiveTab("passedIncidents");
-              setSidebarOpen(false);
-            }}
-          />
-          {/* NEW: GCP responses */}
-          <SidebarItem
-            label="GCP Responses"
-            icon="💬"
-            selected={activeTab === "gcpResponses"}
-            onClick={() => {
-              setActiveTab("gcpResponses");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="Manage Account"
-            icon="👤"
-            selected={activeTab === "manageAccount"}
-            onClick={() => {
-              setActiveTab("manageAccount");
-              setSidebarOpen(false);
-            }}
-          />
+          {[
+            { label: "Dashboard", icon: "📊", tab: "dashboard" },
+            { label: "Create Schedules", icon: "📝", tab: "inputSchedule" },
+            { label: "Garbage Trucks", icon: "🚚", tab: "garbageTrucks" },
+            { label: "View Schedules", icon: "📅", tab: "schedules" },
+            { label: "Passed Incidents", icon: "🚨", tab: "passedIncidents" },
+            { label: "GCP Responses", icon: "💬", tab: "gcpResponses" },
+            { label: "Manage Account", icon: "👤", tab: "manageAccount" },
+          ].map((item) => (
+            <button
+              key={item.tab}
+              onClick={() => {
+                setActiveTab(item.tab as typeof activeTab);
+                setSidebarOpen(false);
+              }}
+              className={`group relative w-full flex items-center gap-4 rounded-2xl border px-4 py-3 text-left transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-[1.02] ${
+                activeTab === item.tab
+                  ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-xl shadow-green-500/30 border-green-500/50 !text-emerald-100"
+                  : "border-green-800/50 bg-slate-800/80 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25"
+              }`}
+            >
+              <span className="text-xl flex-shrink-0">{item.icon}</span>
+              <span className="font-bold flex-1 text-left truncate">
+                {item.label}
+              </span>
+              {activeTab === item.tab && (
+                <div className="w-2 h-6 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full animate-pulse shadow-lg ml-auto" />
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Logout - 🎯 GUARANTEED VISIBLE: Fixed bottom position */}
+        <div className="flex-shrink-0 p-6 border-t border-green-800/40 bg-slate-950/50 backdrop-blur-xl">
           <button
             onClick={handleLogout}
-            className="mt-8 mb-4 px-6 py-2 text-red-600 flex items-center gap-2 hover:bg-red-100 rounded"
+            className="group relative w-full rounded-2xl bg-gradient-to-r from-red-600/95 to-orange-600/95 px-6 py-4 text-sm font-black text-slate-100 border border-red-500/50 shadow-xl shadow-red-500/30 hover:shadow-2xl hover:shadow-red-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl overflow-hidden"
           >
-            Logout
+            <span className="relative z-10 flex items-center justify-center gap-2 tracking-wide">
+              ⎋ Logout
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-white/30 via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           </button>
-        </nav>
+        </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 p-6 md:p-8 transition-all duration-300 md:ml-64 overflow-auto">
+      <main className="flex-1 p-6 md:p-8 transition-all duration-500 md:ml-72 relative z-10 overflow-y-auto">
         {activeTab === "dashboard" && (
           <>
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <section className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               {summaryCards.map((card, idx) => (
                 <div
                   key={idx}
-                  className={`rounded-xl shadow p-6 flex flex-col items-center ${card.bg}`}
+                  className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 hover:border-green-600/70 transition-all duration-500 text-center"
                   role="region"
                   aria-label={card.label}
                 >
-                  <div className="text-4xl mb-3" aria-hidden="true">
-                    {card.icon}
+                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
+                  <div className="relative z-10 space-y-3 h-full flex flex-col justify-center">
+                    <div className="text-4xl mx-auto group-hover:scale-110 transition-all duration-300">
+                      {card.icon}
+                    </div>
+                    <div>
+                      <p className="text-3xl lg:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl">
+                        {card.count}
+                      </p>
+                      <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold mt-1">
+                        {card.label}
+                      </p>
+                    </div>
                   </div>
-                  <div className={`text-3xl font-bold ${card.color}`}>
-                    {card.count}
-                  </div>
-                  <div className="text-black mt-1">{card.label}</div>
                 </div>
               ))}
-            </div>
-            <br />
-            <section aria-label="Map of collection area and vehicles">
-              <LeafletMap />
+            </section>
+
+            <section
+              className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden"
+              aria-label="Map of collection area and vehicles"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+              <div className="relative z-10">
+                <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-2xl">
+                  Live Collection Map
+                </h2>
+                <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[500px] md:h-[600px]">
+                  <LeafletMap />
+                </div>
+              </div>
             </section>
           </>
         )}
@@ -2226,28 +2671,58 @@ export default function SecretaryDashboard() {
         )}
 
         {activeTab === "inputSchedule" && (
-          <ScheduleFormWithCalendar
-            barangays={barangays}
-            trucks={trucks}
-            gcps={gcps}
-            onSave={handleScheduleSubmit}
-          />
+          <div className="group relative rounded-3xl ...">
+            <div className="absolute inset-0 ..." />
+            <div className="relative z-10">
+              <ScheduleFormWithCalendar
+                barangays={barangays}
+                trucks={trucks}
+                gcps={gcps}
+              />
+            </div>
+          </div>
         )}
-        {activeTab === "garbageTrucks" && <GarbageTrucksSection gcps={gcps} />}
+
+        {activeTab === "garbageTrucks" && (
+          <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+            <div className="relative z-10">
+              <GarbageTrucksSection gcps={gcps} />
+            </div>
+          </div>
+        )}
 
         {activeTab === "schedules" && (
-          <section className="max-w-4xl mx-auto bg-white rounded-xl shadow p-8">
-            <h2 className="text-3xl font-bold mb-4 text-green-600 ">
-              Schedules Overview
-            </h2>
-            <SchedulesSidebarItem barangays={barangays} />
-          </section>
+          <div className="group relative max-w-6xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+            <div className="relative z-10">
+              <h2 className="text-3xl font-black mb-8 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-2xl">
+                Schedules Overview
+              </h2>
+              <SchedulesSidebarItem barangays={barangays} />
+            </div>
+          </div>
         )}
 
-        {/* NEW: Passed Incidents tab – secretary feature */}
-        {activeTab === "passedIncidents" && <SecretaryReportsSection />}
+        {/* Passed Incidents */}
+        {activeTab === "passedIncidents" && (
+          <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+            <div className="relative z-10">
+              <SecretaryReportsSection />
+            </div>
+          </div>
+        )}
 
-        {activeTab === "gcpResponses" && <SecretaryGcpResponsesSection />}
+        {/* GCP Responses */}
+        {activeTab === "gcpResponses" && (
+          <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+            <div className="relative z-10">
+              <SecretaryGcpResponsesSection />
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

@@ -71,7 +71,7 @@ function SidebarItem({
   badgeCount,
 }: {
   label: string;
-  icon: string;
+  icon: React.ReactNode;
   selected?: boolean;
   onClick?: () => void;
   badgeCount?: number;
@@ -103,68 +103,53 @@ function SidebarItem({
   );
 }
 
-function generatePatternDates(pattern: string, year: number, month: number) {
+interface Schedule {
+  schedule_id: string;
+  days: string;
+}
+
+function generatePatternDates(
+  pattern: string,
+  year: number,
+  month: number
+): Date[] {
   if (!pattern) return [];
+
   const validDays =
     pattern === "MWF" ? [1, 3, 5] : pattern === "TTH" ? [2, 4] : [];
-  let dates = [];
+
+  const dates: Date[] = [];
   let date = startOfMonth(new Date(year, month));
   const end = endOfMonth(date);
+
   while (date <= end) {
     if (validDays.includes(date.getDay())) {
       dates.push(new Date(date));
     }
     date = addDays(date, 1);
   }
+
   return dates;
 }
-
-type BarangayRef = {
-  barangay_name: string | null;
-  barangay_id: string | number | null;
-};
-
-type Schedule = {
-  schedule_id: any;
-  barangay: { barangay_name: any; barangay_id: any }[]; // or your real types
-  days: string;
-  date_created: any;
-  start_time: any;
-  end_time: any;
-  status: any;
-};
 
 function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
 
-  function generatePatternDates(pattern: string, year: number, month: number) {
-    if (!pattern) return [];
-    const validDays =
-      pattern === "MWF" ? [1, 3, 5] : pattern === "TTH" ? [2, 4] : [];
-    let dates = [];
-    let date = startOfMonth(new Date(year, month));
-    const end = endOfMonth(date);
-    while (date <= end) {
-      if (validDays.includes(date.getDay())) {
-        dates.push(new Date(date));
-      }
-      date = addDays(date, 1);
-    }
-    return dates;
-  }
+  const patternDates: Date[] = generatePatternDates(schedule.days, year, month);
 
-  const patternDates = generatePatternDates(schedule.days, year, month);
-
-  const weeks = [];
+  const weeks: Date[][] = [];
   const start = startOfWeek(startOfMonth(new Date(year, month)), {
     weekStartsOn: 1,
   });
-  const end = endOfWeek(endOfMonth(new Date(year, month)), { weekStartsOn: 1 });
+  const end = endOfWeek(endOfMonth(new Date(year, month)), {
+    weekStartsOn: 1,
+  });
+
   let currentWeekStart = start;
   while (currentWeekStart <= end) {
-    const weekDays = [];
+    const weekDays: Date[] = [];
     for (let i = 0; i < 7; i++) {
       weekDays.push(addDays(currentWeekStart, i));
     }
@@ -253,87 +238,104 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
   );
 }
 
-type ResidentSchedule = {
-  schedule_id: any;
-  barangay: { barangay_name: any; barangay_id: any }[]; // array from Supabase relation
-  days: any;
-  date_created: any;
-  gcp_user: { first_name: any; last_name: any }[];
-  collection_details: {
-    collectiondetails_id: any;
-    truck: { plate_number: any; truck_code: any }[];
-    collection_date: any;
-    status: any;
-  }[];
-};
+interface ResidentSchedulesFeatureProps {
+  residentBarangayId: string;
+  barangays: Barangay[];
+}
 
-type ResidentSchedulesProps = {
-  residentBarangayId: string | number | null;
-  barangays: { barangay_id: string | number; barangay_name: string }[];
-};
+interface ResidentScheduleRow {
+  schedule_id: string;
+  days: string;
+  barangay?: Barangay | null;
+  gcp_user?: {
+    first_name: string;
+    last_name: string;
+  } | null;
+  collection_details?:
+    | {
+        collectiondetails_id: string;
+        truck?: {
+          plate_number: string;
+          truck_code: string;
+        } | null;
+        collection_date: string;
+        status: string;
+        gcp_assignment?: {
+          user?: {
+            first_name: string;
+            last_name: string;
+          } | null;
+        } | null;
+      }[]
+    | null;
+}
 
 function ResidentSchedulesFeature({
   residentBarangayId,
   barangays,
-}: ResidentSchedulesProps) {
+}: ResidentSchedulesFeatureProps) {
   const [selectedBarangayId, setSelectedBarangayId] =
-    useState(residentBarangayId);
-
-  const [schedules, setSchedules] = useState<ResidentSchedule[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+    useState<string>(residentBarangayId);
 
   useEffect(() => {
     setSelectedBarangayId(residentBarangayId);
   }, [residentBarangayId]);
 
+  const [schedules, setSchedules] = useState<ResidentScheduleRow[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     async function fetchSchedules() {
       setLoading(true);
       setError(null);
-      try {
-        const { data, error } = await supabase
-          .from("collection_schedules")
-          .select(
-            `
-            schedule_id,
-            barangay:barangay_id (
-              barangay_name,
-              barangay_id
-            ),
-            days,
-            date_created,
-            gcp_user:gcp_user_id (
-              first_name,
-              last_name
-            ),
-            collection_details:collection_details (
-              collectiondetails_id,
-              truck:truck_id (
-                plate_number,
-                truck_code
-              ),
-              collection_date,
-              status
-            )
-          `
-          )
-          .order("date_created", { ascending: false });
 
-        if (error) throw error;
-        setSchedules((data as ResidentSchedule[]) || []);
-      } catch (err: any) {
-        setError(err.message ?? "Failed to load schedules.");
-      } finally {
+      const { data, error } = await supabase
+        .from("collection_schedules")
+        .select(
+          `
+     schedule_id,
+     barangay:barangay_id (
+       barangay_name,
+       barangay_id
+     ),
+     days,
+     date_created,
+     gcp_user:gcp_user_id (
+       first_name,
+       last_name
+     ),
+     collection_details:collection_details (
+       collectiondetails_id,
+       truck:truck_id (
+         plate_number,
+         truck_code
+       ),
+       collection_date,
+       status
+     )
+  `
+        )
+        .order("date_created", { ascending: false });
+
+      if (error) {
+        setError(error.message);
+        setSchedules([]);
         setLoading(false);
+        return;
       }
+
+      const raw = (data ?? []) as unknown;
+      const rows = raw as ResidentScheduleRow[];
+      setSchedules(rows);
+      setLoading(false);
     }
 
     fetchSchedules();
   }, []);
 
   const schedule = schedules.find(
-    (s) => String(s.barangay?.[0]?.barangay_id) === String(selectedBarangayId)
+    (s) => String(s.barangay?.barangay_id) === String(selectedBarangayId)
   );
 
   return (
@@ -347,7 +349,7 @@ function ResidentSchedulesFeature({
         </label>
         <select
           id="barangay-select"
-          value={selectedBarangayId ?? ""} // coerce null to ""
+          value={selectedBarangayId}
           onChange={(e) => setSelectedBarangayId(e.target.value)}
           className="p-2 border border-gray-400 rounded w-full max-w-xs"
         >
@@ -454,30 +456,46 @@ function SubmitReportSection({
     if (!canvasRef.current || !videoRef.current) return;
     const ctx = canvasRef.current.getContext("2d");
     if (!ctx) return;
+
     ctx.drawImage(videoRef.current, 0, 0, 320, 240);
-    canvasRef.current.toBlob(async (blob) => {
-      if (blob) {
-        const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
-        setForm((prev) => ({ ...prev, photoFile: file }));
-        const url = await uploadPhotoToSupabase(file);
-        if (url) setPhotoUrl(url);
-        stopCamera();
+    canvasRef.current.toBlob((blob) => {
+      if (!blob) {
+        console.error("capturePhoto: blob is null");
+        return;
       }
+
+      const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
+      console.log("capturePhoto: created file", file);
+
+      // Only keep the File in state; no upload yet
+      setForm((prev) => ({ ...prev, photoFile: file }));
+      setPhotoUrl(""); // clear any previous preview
+      stopCamera();
     }, "image/jpeg");
   };
 
   const uploadPhotoToSupabase = async (file: File): Promise<string> => {
+    console.log("uploadPhotoToSupabase: uploading file", file);
+
     const fileName = `reports/${Date.now()}_${file.name}`;
-    const { error } = await supabase.storage
+
+    const { error: uploadError } = await supabase.storage
       .from("report-photos-bucket")
       .upload(fileName, file);
-    if (error) {
-      setFieldError("Photo upload failed.");
+
+    if (uploadError) {
+      console.error("Storage upload error:", uploadError);
+      setFieldError(`Photo upload failed: ${uploadError.message}`);
       return "";
     }
-    const { publicUrl } = supabase.storage
+
+    const { data } = supabase.storage
       .from("report-photos-bucket")
       .getPublicUrl(fileName);
+
+    const publicUrl = data?.publicUrl ?? "";
+    console.log("uploadPhotoToSupabase: publicUrl", publicUrl);
+
     return publicUrl;
   };
 
@@ -532,17 +550,28 @@ function SubmitReportSection({
         return;
       }
 
-      if (form.photoFile && photoUrl) {
-        const { error: photoError } = await supabase
-          .from("report_photos")
-          .insert({
-            report_id: reportData.report_id,
-            photo_path: photoUrl,
-          });
-        if (photoError) {
-          setFieldError("Photo record failed, but report saved!");
-          setLoading(false);
-          return;
+      // Only now, after report exists, upload photo (if any) and insert row
+      if (form.photoFile) {
+        const url = await uploadPhotoToSupabase(form.photoFile);
+        console.log("handleSubmit uploaded photoUrl:", url);
+
+        if (url) {
+          const { error: photoError } = await supabase
+            .from("report_photos")
+            .insert({
+              report_id: reportData.report_id,
+              photo_path: url,
+            });
+
+          console.log("photo insert error:", photoError);
+
+          if (photoError) {
+            setFieldError("Photo record failed, but report saved!");
+            setLoading(false);
+            return;
+          }
+
+          setPhotoUrl(url);
         }
       }
 
@@ -553,6 +582,7 @@ function SubmitReportSection({
         landmark: "",
         photoFile: null,
       });
+      // keep photoUrl if you want to show last submitted preview, else clear:
       setPhotoUrl("");
       if (onReportSubmit) onReportSubmit();
     } catch (err) {
@@ -686,6 +716,7 @@ function SubmitReportSection({
             />
           </div>
         )}
+
         {photoUrl && (
           <div className="mt-3 mb-2">
             <img
@@ -1263,10 +1294,10 @@ export default function ResidentDashboard() {
           />
           <SidebarItem
             label="Submit Incident Report"
-            icon="📝"
-            selected={activeTab === "submitReport"}
+            icon="📷"
+            selected={activeTab === "submitIncidentReport"}
             onClick={() => {
-              setActiveTab("submitReport");
+              setActiveTab("submitIncidentReport");
               setSidebarOpen(false);
             }}
           />
@@ -1348,7 +1379,7 @@ export default function ResidentDashboard() {
           </>
         )}
 
-        {activeTab === "submitReport" && (
+        {activeTab === "submitIncidentReport" && (
           <SubmitReportSection
             barangays={barangays}
             onReportSubmit={handleReportSubmit}

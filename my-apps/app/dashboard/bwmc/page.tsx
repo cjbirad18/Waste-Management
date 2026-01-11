@@ -6,12 +6,24 @@ import React, {
   useCallback,
   ChangeEvent,
   FormEvent,
+  useMemo,
 } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import dynamic from "next/dynamic";
 import TruckLoader from "../../loading/TruckLoader";
 import { sendSMS } from "@/lib/sms";
+import {
+  startOfMonth,
+  endOfMonth,
+  addDays,
+  startOfWeek,
+  endOfWeek,
+  addWeeks,
+  format,
+} from "date-fns";
+
+import ReportsAnalytics from "../../generatereport/barangayconcern";
 
 const LeafletMap = dynamic(() => import("../../leafletmap"), { ssr: false });
 
@@ -66,6 +78,10 @@ const summaryCards = [
     count: 3,
   },
 ];
+
+type UserWithBarangay = User & {
+  barangay?: { barangay_id: number; barangay_name: string } | null;
+};
 
 // Erase after testing SMS functionality
 
@@ -123,11 +139,16 @@ export default function BWMCdashboard() {
   const [rejectAccountReason, setRejectAccountReason] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
+  // BWMC user with barangay
+  const [currentUser, setCurrentUser] = useState<UserWithBarangay | null>(null);
+
   const [activeTab, setActiveTab] = useState<
     | "dashboard"
     | "viewReports"
+    | "schedules"
     | "pendingAccounts"
     | "processedAccounts"
+    | "reports"
     | "manageAccount"
   >("dashboard");
 
@@ -150,32 +171,81 @@ export default function BWMCdashboard() {
     string | null
   >(null);
 
+  // ---------- LOAD CURRENT BWMC USER WITH BARANGAY ----------
+  useEffect(() => {
+    async function fetchCurrentUserForBarangay() {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData.session;
+      if (!session) return;
+
+      const { data, error } = await supabase
+        .from("users")
+        .select(
+          `
+        user_id,
+        username,
+        first_name,
+        last_name,
+        email,
+        contact_number,
+        role,
+        status,
+        barangay:barangay_id (
+          barangay_id,
+          barangay_name
+        )
+      `
+        )
+        .eq("user_id", session.user.id)
+        .single<UserWithBarangay>(); // <-- generic here
+
+      if (error || !data) return;
+
+      setCurrentUser(data); // <-- no cast needed
+    }
+
+    fetchCurrentUserForBarangay();
+  }, []);
+
+  // ---------------------------------------------------------
+
+  // Cogon (or whatever barangay the BWMC is) will appear here
+  const defaultBarangayId = currentUser?.barangay?.barangay_id ?? null;
+
   // Fetch pending resident requests
   const fetchPendingRequests = useCallback(async () => {
+    if (!currentUser?.barangay?.barangay_id) return;
+
     setLoadingPending(true);
     const { data, error } = await supabase
       .from("users")
       .select("*")
       .eq("role", "Resident")
-      .eq("status", "pending");
+      .eq("status", "pending")
+      .eq("barangay_id", currentUser.barangay.barangay_id); // filter by barangay
+
     if (!error) setPendingRequests(data || []);
     setLoadingPending(false);
-  }, []);
+  }, [currentUser?.barangay?.barangay_id]);
 
   // Fetch processed accounts separated by approved and rejected
   const fetchProcessedAccounts = useCallback(async () => {
+    if (!currentUser?.barangay?.barangay_id) return;
+
     setLoadingProcessed(true);
     const { data, error } = await supabase
       .from("users")
       .select("*")
       .eq("role", "Resident")
+      .eq("barangay_id", currentUser.barangay.barangay_id) // filter by barangay
       .in("status", ["approved", "rejected"]);
+
     if (!error && data) {
       setApprovedAccounts(data.filter((u) => u.status === "approved"));
       setRejectedAccounts(data.filter((u) => u.status === "rejected"));
     }
     setLoadingProcessed(false);
-  }, []);
+  }, [currentUser?.barangay?.barangay_id]);
 
   // Fetch all users for dashboard context
   const fetchUsers = useCallback(async () => {
@@ -194,9 +264,18 @@ export default function BWMCdashboard() {
 
   useEffect(() => {
     fetchUsers();
-    fetchPendingRequests();
-    fetchProcessedAccounts();
-  }, [fetchUsers, fetchPendingRequests, fetchProcessedAccounts]);
+  }, [fetchUsers]);
+
+  useEffect(() => {
+    if (currentUser?.barangay?.barangay_id) {
+      fetchPendingRequests();
+      fetchProcessedAccounts();
+    }
+  }, [
+    currentUser?.barangay?.barangay_id,
+    fetchPendingRequests,
+    fetchProcessedAccounts,
+  ]);
 
   // Approve or Reject handler
   const handleApproveReject = async (
@@ -218,10 +297,8 @@ export default function BWMCdashboard() {
         return;
       }
 
-      // remove from pending list
       setPendingRequests((prev) => prev.filter((u) => u.user_id !== userId));
 
-      // fetch updated user and move to processed list
       const { data: updatedUser } = await supabase
         .from("users")
         .select("*")
@@ -236,7 +313,6 @@ export default function BWMCdashboard() {
         setRejectedAccounts((prev) => [...prev, updatedUser as User]);
       }
 
-      // send SMS via API route
       if (updatedUser.contact_number) {
         const message =
           newStatus === "approved"
@@ -416,6 +492,378 @@ export default function BWMCdashboard() {
       setManageAccountError(`Unexpected error: ${(err as Error).message}`);
     }
   };
+
+  type Schedule = {
+    schedule_id: string;
+    days: string;
+    start_time: string | null;
+    end_time: string | null;
+    status: string | null;
+    barangay?: {
+      barangay_id: number;
+      barangay_name: string;
+    } | null;
+  };
+
+  function generatePatternDates(
+    pattern: string,
+    year: number,
+    month: number
+  ): Date[] {
+    if (!pattern) return [];
+
+    const validDays =
+      pattern === "MWF" ? [1, 3, 5] : pattern === "TTH" ? [2, 4] : [];
+
+    const dates: Date[] = [];
+    let date = startOfMonth(new Date(year, month));
+    const end = endOfMonth(date);
+
+    while (date <= end) {
+      if (validDays.includes(date.getDay())) {
+        dates.push(new Date(date));
+      }
+      date = addDays(date, 1);
+    }
+
+    return dates;
+  }
+
+  function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+
+    const patternDates = generatePatternDates(schedule.days, year, month);
+
+    const weeks: Date[][] = [];
+    const start = startOfWeek(startOfMonth(new Date(year, month)), {
+      weekStartsOn: 1,
+    });
+    const end = endOfWeek(endOfMonth(new Date(year, month)), {
+      weekStartsOn: 1,
+    });
+
+    let currentWeekStart = start;
+    while (currentWeekStart <= end) {
+      const weekDays: Date[] = [];
+      for (let i = 0; i < 7; i++) {
+        weekDays.push(addDays(currentWeekStart, i));
+      }
+      weeks.push(weekDays);
+      currentWeekStart = addWeeks(currentWeekStart, 1);
+    }
+    return (
+      <div className="my-1">
+        <div className="mb-2 mt-2 flex justify-center">
+          <span className="font-semibold text-xl">
+            {format(new Date(year, month), "LLLL yyyy")}
+          </span>
+        </div>
+        <div className="mt-6 flex flex-row gap-6 justify-center max-w-[450px] mx-auto">
+          <div className="flex items-center gap-2">
+            <div className="h-5 w-5 rounded bg-green-600 border border-green-600"></div>
+            <span className="text-white text-sm">Scheduled</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-5 w-5 rounded bg-red-100 border border-red-400"></div>
+            <span className="text-white text-sm">Today</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-5 w-5 rounded bg-white border border-green-300"></div>
+            <span className="text-white text-sm">No schedule</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-5 w-5 rounded bg-gray-50 border border-gray-100"></div>
+            <span className="text-white text-sm">Other month</span>
+          </div>
+        </div>
+
+        <br />
+
+        <div className="grid grid-cols-7 gap-2 text-center text-md text-gray-800 select-none min-w-[350px]">
+          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+            <div key={d} className="font-semibold py-1 text-center text-white">
+              {d}
+            </div>
+          ))}
+          {weeks.map((weekDays, weekIdx) =>
+            weekDays.map((day, dayIdx) => {
+              const isScheduled = patternDates.some(
+                (d) => d.toDateString() === day.toDateString()
+              );
+              const isCurrentMonth = day.getMonth() === month;
+              const isToday =
+                day.getDate() === now.getDate() &&
+                day.getMonth() === now.getMonth() &&
+                day.getFullYear() === now.getFullYear();
+              const dayText = isCurrentMonth ? format(day, "d") : "";
+
+              let cellClass =
+                "h-10 w-10 flex flex-col items-center justify-center text-lg rounded border transition";
+              if (!isCurrentMonth) {
+                cellClass += " bg-gray-50 text-gray-300 border-gray-400";
+              } else if (isToday) {
+                cellClass +=
+                  " bg-red-200 text-red-700 font-bold border-red-400";
+              } else if (isScheduled) {
+                cellClass +=
+                  " bg-green-600 text-black font-bold border-green-600";
+              } else {
+                cellClass += " bg-white border-green-300 text-black font-bold";
+              }
+
+              return (
+                <div
+                  key={day.toISOString() + weekIdx}
+                  className={cellClass}
+                  title={
+                    isScheduled && isCurrentMonth
+                      ? `Scheduled: ${format(day, "EEE, MMM d, yyyy")}`
+                      : isToday
+                      ? "Today"
+                      : ""
+                  }
+                >
+                  <span>{dayText}</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function BWMCCollectionSchedulesFeature({
+    defaultBarangayId,
+  }: {
+    defaultBarangayId: number | string | null;
+  }) {
+    const [barangays, setBarangays] = useState<
+      { barangay_id: number | string; barangay_name: string }[]
+    >([]);
+    const [selectedBarangayId, setSelectedBarangayId] = useState<string>(
+      defaultBarangayId ? String(defaultBarangayId) : ""
+    );
+    const [schedules, setSchedules] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    // keep in sync with BWMC barangay
+    useEffect(() => {
+      if (defaultBarangayId) {
+        setSelectedBarangayId(String(defaultBarangayId));
+      }
+    }, [defaultBarangayId]);
+
+    // load barangays
+    useEffect(() => {
+      async function fetchBarangays() {
+        try {
+          const { data, error } = await supabase
+            .from("barangay")
+            .select("barangay_id, barangay_name")
+            .order("barangay_name", { ascending: true });
+
+          if (error) throw error;
+          const list = data || [];
+          setBarangays(list);
+
+          // only fallback to first barangay if we truly have no default
+          if (!defaultBarangayId && !selectedBarangayId && list.length > 0) {
+            setSelectedBarangayId(String(list[0].barangay_id));
+          }
+        } catch (err: any) {
+          setError(err.message || "Failed to load barangays.");
+        }
+      }
+      fetchBarangays();
+      // include selectedBarangayId so fallback only runs when still empty
+    }, [defaultBarangayId, selectedBarangayId]);
+
+    // load schedules
+    useEffect(() => {
+      async function fetchSchedules() {
+        setLoading(true);
+        setError(null);
+        try {
+          const { data, error } = await supabase
+            .from("collection_schedules")
+            .select(
+              `
+            schedule_id,
+            barangay:barangay_id (
+              barangay_name,
+              barangay_id
+            ),
+            days,
+            date_created,
+            gcp_user:gcp_user_id (
+              first_name,
+              last_name
+            ),
+            collection_details:collection_details (
+              collectiondetails_id,
+              truck:truck_id (
+                plate_number,
+                truck_code
+              ),
+              collection_date,
+              status
+            )
+          `
+            )
+            .order("date_created", { ascending: false });
+
+          if (error) throw error;
+          setSchedules(data || []);
+        } catch (err: any) {
+          setError(err.message || "Failed to load schedules.");
+        } finally {
+          setLoading(false);
+        }
+      }
+      fetchSchedules();
+    }, []);
+
+    const orderedSchedules = [...schedules].sort((a, b) => {
+      const aIsBarangay = !!a.barangay?.barangay_id;
+      const bIsBarangay = !!b.barangay?.barangay_id;
+      if (aIsBarangay === bIsBarangay) return 0;
+      return aIsBarangay ? -1 : 1;
+    });
+
+    const activeSchedule = orderedSchedules.find(
+      (s) => String(s.barangay?.barangay_id) === String(selectedBarangayId)
+    );
+
+    return (
+      <section className="max-w-5xl mx-auto mt-10 rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 p-6 md:p-8 backdrop-blur-xl space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <p className="text-sm text-slate-300">
+            View barangay collection schedules assigned to GCPs.
+          </p>
+
+          <div className="w-full md:w-64">
+            <label
+              htmlFor="bwmc-barangay-select"
+              className="block text-[11px] font-semibold uppercase tracking-wide text-emerald-300 mb-1"
+            >
+              Barangay
+            </label>
+            <select
+              id="bwmc-barangay-select"
+              value={selectedBarangayId}
+              onChange={(e) => setSelectedBarangayId(e.target.value)}
+              className="w-full rounded-lg bg-slate-900/80 border border-emerald-700/60 px-3 py-2 text-sm text-slate-100 
+                       focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500
+                       [&:invalid]:text-slate-400 [&:invalid]:bg-slate-900/95 appearance-none"
+            >
+              {barangays.map((b) => (
+                <option key={b.barangay_id} value={b.barangay_id}>
+                  {b.barangay_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="mt-4 rounded-2xl border border-emerald-800/60 bg-slate-900/80 p-6 flex justify-center">
+            <TruckLoader />
+          </div>
+        ) : error ? (
+          <div className="mt-4 rounded-2xl border border-red-700/70 bg-red-900/40 p-4 text-sm text-red-100">
+            Error: {error}
+          </div>
+        ) : activeSchedule ? (
+          <div className="mt-2 space-y-4">
+            <div className="rounded-2xl border border-emerald-800/60 bg-slate-900/80 p-4 md:p-5 shadow-lg shadow-emerald-900/40">
+              <h3 className="font-semibold text-lg text-emerald-300 mb-1">
+                Barangay:{" "}
+                <span className="text-slate-100">
+                  {activeSchedule.barangay?.barangay_name || "N/A"}
+                </span>
+              </h3>
+              <p className="text-sm text-slate-300">
+                Days:{" "}
+                <span className="font-medium text-emerald-200">
+                  {activeSchedule.days || "N/A"}
+                </span>
+              </p>
+              <p className="text-sm text-slate-300 mt-1">
+                Assigned GCP:{" "}
+                <span className="font-medium text-slate-100">
+                  {activeSchedule.gcp_user
+                    ? `${activeSchedule.gcp_user.first_name} ${activeSchedule.gcp_user.last_name}`
+                    : "None"}
+                </span>
+              </p>
+
+              <div className="mt-4 rounded-xl border border-emerald-800/60 bg-slate-900/80 p-3">
+                <ScheduleCalendar schedule={activeSchedule} />
+              </div>
+            </div>
+
+            {Array.isArray(activeSchedule.collection_details) &&
+            activeSchedule.collection_details.length > 0 ? (
+              <div className="rounded-2xl border border-emerald-800/60 bg-slate-900/80 p-4 md:p-5 shadow-lg shadow-emerald-900/40">
+                <h4 className="text-sm font-semibold text-emerald-300 mb-3">
+                  Upcoming Collections
+                </h4>
+                <ul className="space-y-3 text-xs md:text-sm text-slate-200">
+                  {activeSchedule.collection_details.map((detail: any) => (
+                    <li
+                      key={detail.collectiondetails_id}
+                      className="border border-slate-700/70 rounded-xl px-3 py-2 bg-slate-900/80 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+                    >
+                      <div>
+                        <div>
+                          <span className="font-semibold text-slate-100">
+                            Truck:
+                          </span>{" "}
+                          {detail.truck?.plate_number ||
+                            detail.truck?.truck_code ||
+                            "N/A"}
+                        </div>
+                        <div>
+                          <span className="font-semibold text-slate-100">
+                            Collection Date:
+                          </span>{" "}
+                          {detail.collection_date
+                            ? new Date(
+                                detail.collection_date
+                              ).toLocaleDateString()
+                            : "N/A"}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div>
+                          <span className="font-semibold text-slate-100">
+                            Status:
+                          </span>{" "}
+                          {detail.status || "N/A"}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">
+                No collection details for this barangay.
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-slate-400">
+            No schedule found for this barangay.
+          </p>
+        )}
+      </section>
+    );
+  }
 
   function ViewReportsSection() {
     const [reports, setReports] = useState<any[]>([]);
@@ -699,7 +1147,7 @@ export default function BWMCdashboard() {
 
     if (loading) {
       return (
-        <section className="max-w-4xl mx-auto bg-white rounded-xl shadow p-8 mt-8">
+        <section>
           <TruckLoader />
         </section>
       );
@@ -708,41 +1156,51 @@ export default function BWMCdashboard() {
     if (error) return <div className="text-red-700">{error}</div>;
 
     return (
-      <section className="max-w-5xl mx-auto mt-8 space-y-4">
-        {/* Header + small stats */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <section className="max-w-6xl mx-auto mt-10 space-y-5">
+        {/* Header + stats */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold text-green-700">
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent drop-shadow-2xl">
               Incident Reports ({barangayName || "Your Barangay"})
             </h2>
-            <p className="text-lg text-gray-700">
+            <p className="text-base md:text-lg text-slate-300">
               Monitor reported incidents and coordinate actions with BWMC and
               SWMO.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2 text-xs">
-            <span className="px-3 py-1 rounded-full bg-gray-50 text-gray-700 border border-gray-200">
-              Total: <span className="font-bold text-lg">{reports.length}</span>
+          <div className="flex flex-wrap gap-2 text-[11px] sm:text-xs">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-2xl bg-slate-800/80 text-slate-200 border border-emerald-700/50 shadow-md backdrop-blur-xl">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+              <span className="font-medium">Total:</span>
+              <span className="font-bold text-base text-emerald-300">
+                {reports.length}
+              </span>
             </span>
-            <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
-              Ongoing:{" "}
-              <span className="font-bold text-lg">
+
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-2xl bg-slate-800/80 text-blue-200 border border-blue-700/60 shadow-md backdrop-blur-xl">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+              <span className="font-medium">Ongoing:</span>
+              <span className="font-bold text-base text-blue-300">
                 {reports.filter((r) => r.current_status === "Ongoing").length}
               </span>
             </span>
-            <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
-              Needs action:{" "}
-              <span className="font-bold text-lg">
+
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-2xl bg-slate-800/80 text-amber-200 border border-amber-700/60 shadow-md backdrop-blur-xl">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+              <span className="font-medium">Needs action:</span>
+              <span className="font-bold text-base text-amber-300">
                 {
                   reports.filter((r) => r.current_status === "Needs Action")
                     .length
                 }
               </span>
             </span>
-            <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
-              Resolved:{" "}
-              <span className="font-bold text-lg">
+
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-2xl bg-slate-800/80 text-emerald-200 border border-emerald-700/60 shadow-md backdrop-blur-xl">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              <span className="font-medium">Resolved:</span>
+              <span className="font-bold text-base text-emerald-300">
                 {reports.filter((r) => r.current_status === "Resolved").length}
               </span>
             </span>
@@ -750,45 +1208,47 @@ export default function BWMCdashboard() {
         </div>
 
         {/* List wrapper */}
-        <div className="bg-white rounded-2xl shadow border border-green-100">
-          <div className="px-6 py-3 bg-green-50 border-b border-green-100 flex items-center justify-between">
-            <span className="text-2xl font-semibold text-green-700">
+        <div className="relative bg-gradient-to-br from-slate-800/95 to-gray-900/95 border border-emerald-800/40 rounded-3xl shadow-2xl shadow-emerald-900/30 backdrop-blur-2xl overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/8 via-transparent to-teal-500/8 pointer-events-none" />
+
+          <div className="relative px-6 py-4 border-b border-emerald-800/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-slate-900/90">
+            <span className="text-lg md:text-xl font-semibold text-emerald-200">
               Latest incident reports
             </span>
-            <span className="text-md font-bold text-gray-800">
+            <span className="text-xs md:text-sm font-medium text-slate-300">
               Sorted by most recent submission
             </span>
           </div>
 
           {reports.length === 0 ? (
-            <div className="px-6 py-10 text-center text-gray-500 text-sm">
+            <div className="relative px-6 py-10 text-center text-slate-400 text-sm">
               No reports found for this barangay.
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="relative divide-y divide-slate-700/70">
               {reports.map((report) => (
                 <div
                   key={report.report_id}
-                  className="px-6 py-4 grid grid-cols-[minmax(0,2.2fr)_auto_auto] gap-4 items-center hover:bg-green-50/60 transition-colors"
+                  className="px-6 py-4 grid grid-cols-[minmax(0,2.2fr)_auto_auto] gap-4 items-center hover:bg-emerald-500/5 transition-colors"
                 >
                   {/* Col 1: Location + date + landmark */}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-lg font-semibold text-gray-900">
+                      <span className="text-base md:text-lg font-semibold text-slate-50">
                         {report.location}
                       </span>
-                      <span className="text-xs font-bold text-gray-800">
+                      <span className="text-[11px] font-semibold text-slate-300 bg-slate-800/80 border border-slate-700 px-2 py-0.5 rounded-full">
                         {new Date(report.date_submitted).toLocaleString()}
                       </span>
                     </div>
-                    <div className="mt-1 text-xs text-gray-600">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-50 border border-gray-200">
-                        <span className="text-md font-bold text-black">
+                    <div className="mt-1 text-[11px] md:text-xs text-slate-300">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800/80 border border-slate-700">
+                        <span className="text-xs font-semibold text-emerald-300">
                           Landmark:
                         </span>
-                        <span className="text-black">
+                        <span className="text-slate-100">
                           {report.landmark || (
-                            <span className="text-gray-400">No landmark</span>
+                            <span className="text-slate-500">No landmark</span>
                           )}
                         </span>
                       </span>
@@ -798,18 +1258,18 @@ export default function BWMCdashboard() {
                   {/* Col 2: Status pill */}
                   <div className="flex items-center justify-center">
                     <span
-                      className={
-                        "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold " +
-                        (report.current_status === "Needs Action"
-                          ? "bg-amber-50 text-amber-700 border border-amber-200"
+                      className={[
+                        "inline-flex items-center gap-1 px-3 py-1 rounded-2xl text-[11px] font-semibold border shadow-md backdrop-blur-xl",
+                        report.current_status === "Needs Action"
+                          ? "bg-amber-500/15 text-amber-200 border-amber-500/60"
                           : report.current_status === "Ongoing"
-                          ? "bg-blue-50 text-blue-700 border border-blue-200"
+                          ? "bg-sky-500/15 text-sky-200 border-sky-500/60"
                           : report.current_status === "Rejected"
-                          ? "bg-red-50 text-red-700 border border-red-200"
+                          ? "bg-red-500/15 text-red-200 border-red-500/60"
                           : report.current_status === "Resolved"
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          : "bg-gray-50 text-gray-700 border border-gray-200")
-                      }
+                          ? "bg-emerald-500/15 text-emerald-200 border-emerald-500/60"
+                          : "bg-slate-800/80 text-slate-200 border-slate-600/70",
+                      ].join(" ")}
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-current" />
                       {report.current_status || "Submitted"}
@@ -823,10 +1283,11 @@ export default function BWMCdashboard() {
                         setDescText(report.description);
                         setDescModalOpen(true);
                       }}
-                      className="px-3 py-1 bg-emerald-600 text-white text-xs rounded-full hover:bg-emerald-700 transition border border-emerald-700 shadow-sm"
+                      className="px-3 py-1 text-[11px] md:text-xs rounded-2xl bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-slate-50 border border-emerald-500/80 shadow-lg shadow-emerald-600/30 hover:shadow-emerald-400/50 hover:scale-[1.03] transition-all duration-200"
                     >
                       View description
                     </button>
+
                     {report.current_status === "Needs Action" ||
                     report.current_status === "Ongoing" ||
                     report.current_status === "Rejected" ||
@@ -843,7 +1304,7 @@ export default function BWMCdashboard() {
                           );
                           setViewRemarkModalOpen(true);
                         }}
-                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded-full hover:bg-blue-700 shadow-sm"
+                        className="px-3 py-1 text-[11px] md:text-xs rounded-2xl bg-sky-600/90 text-slate-50 border border-sky-500/80 shadow-lg shadow-sky-600/30 hover:shadow-sky-400/50 hover:scale-[1.03] transition-all duration-200"
                       >
                         View{" "}
                         {report.current_status === "Rejected"
@@ -855,13 +1316,13 @@ export default function BWMCdashboard() {
                       <>
                         <button
                           onClick={() => handleOpenResponse(report)}
-                          className="px-1 py-1 bg-emerald-600 text-white text-xs rounded-full hover:bg-emerald-700 shadow-sm"
+                          className="px-2 py-1 text-[11px] md:text-xs rounded-2xl bg-emerald-600/90 text-slate-50 border border-emerald-500/80 shadow-md shadow-emerald-600/30 hover:shadow-emerald-400/50 hover:scale-[1.03] transition-all duration-200"
                         >
                           Response
                         </button>
                         <button
                           onClick={() => handleOpenReject(report)}
-                          className="px-3 py-1 bg-red-600 text-white text-xs rounded-full hover:bg-red-700 shadow-sm"
+                          className="px-3 py-1 text-[11px] md:text-xs rounded-2xl bg-red-600/90 text-slate-50 border border-red-500/80 shadow-md shadow-red-600/30 hover:shadow-red-400/50 hover:scale-[1.03] transition-all duration-200"
                         >
                           Reject
                         </button>
@@ -877,30 +1338,30 @@ export default function BWMCdashboard() {
         {/* Description modal */}
         {descModalOpen && (
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-center items-center"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => setDescModalOpen(false)}
           >
             <div
-              className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative"
+              className="relative w-full max-w-md bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl border border-emerald-700/70 p-6 text-slate-100"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => setDescModalOpen(false)}
-                className="absolute top-1 right-2 text-2xl text-gray-500 hover:text-red-600 font-bold"
+                className="absolute top-2 right-3 text-2xl text-slate-400 hover:text-red-400 font-bold leading-none"
                 aria-label="Close"
               >
                 ×
               </button>
-              <h3 className="font-bold text-lg mb-3 text-green-700">
+              <h3 className="font-bold text-lg mb-3 text-emerald-300">
                 Report Description
               </h3>
-              <p className="text-sm text-gray-800 whitespace-pre-line">
+              <p className="text-sm text-slate-200 whitespace-pre-line">
                 {descText}
               </p>
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={() => setDescModalOpen(false)}
-                  className="px-4 py-1 text-sm rounded bg-green-600 text-white hover:bg-green-700"
+                  className="px-4 py-1.5 text-sm rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/40"
                 >
                   Close
                 </button>
@@ -912,27 +1373,30 @@ export default function BWMCdashboard() {
         {/* Response modal */}
         {selectedReport && !rejectModalOpen && !actionModalOpen && (
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-center items-center"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => setSelectedReport(null)}
           >
             <div
-              className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative"
+              className="relative w-full max-w-md bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl border border-emerald-700/70 p-6 text-slate-100"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => setSelectedReport(null)}
-                className="absolute top-1 right-2 text-2xl text-gray-500 hover:text-red-600 font-bold"
+                className="absolute top-2 right-3 text-2xl text-slate-400 hover:text-red-400 font-bold leading-none"
                 aria-label="Close"
               >
                 ×
               </button>
-              <h3 className="font-bold text-lg mb-3 text-green-700">
+              <h3 className="font-bold text-lg mb-3 text-emerald-300">
                 Response for {selectedReport.location}
               </h3>
-              <p className="text-sm mb-2 font-semibold">Choose action:</p>
+              <p className="text-sm mb-2 font-semibold text-slate-200">
+                Choose action:
+              </p>
               <div className="flex flex-col gap-2 mb-3">
-                <label className="flex items-center gap-2 text-sm">
+                <label className="flex items-center gap-2 text-sm text-slate-200">
                   <input
+                    className="text-emerald-500 focus:ring-emerald-500"
                     type="radio"
                     name="responseType"
                     value="NEED_ACTION"
@@ -941,8 +1405,9 @@ export default function BWMCdashboard() {
                   />
                   <span>Need action by SWMO</span>
                 </label>
-                <label className="flex items-center gap-2 text-sm">
+                <label className="flex items-center gap-2 text-sm text-slate-200">
                   <input
+                    className="text-emerald-500 focus:ring-emerald-500"
                     type="radio"
                     name="responseType"
                     value="ONGOING"
@@ -952,11 +1417,11 @@ export default function BWMCdashboard() {
                   <span>BWMC can resolve (Ongoing)</span>
                 </label>
               </div>
-              <label className="block text-sm font-semibold mb-1">
+              <label className="block text-sm font-semibold mb-1 text-slate-200">
                 Remarks
               </label>
               <textarea
-                className="w-full border rounded px-2 py-1 text-sm mb-4"
+                className="w-full border border-slate-700 rounded-xl px-2 py-1.5 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 rows={3}
                 value={responseRemarks}
                 onChange={(e) => setResponseRemarks(e.target.value)}
@@ -966,14 +1431,14 @@ export default function BWMCdashboard() {
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setSelectedReport(null)}
-                  className="px-3 py-1 text-sm rounded border border-gray-300"
+                  className="px-3 py-1.5 text-sm rounded-xl border border-slate-600 text-slate-200 hover:bg-slate-800"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSubmitResponse}
                   disabled={!responseType}
-                  className="px-4 py-1 text-sm rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                  className="px-4 py-1.5 text-sm rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/40 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Submit
                 </button>
@@ -985,14 +1450,14 @@ export default function BWMCdashboard() {
         {/* Reject modal */}
         {rejectModalOpen && selectedReport && (
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-center items-center"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => {
               setRejectModalOpen(false);
               setSelectedReport(null);
             }}
           >
             <div
-              className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative"
+              className="relative w-full max-w-md bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl border border-red-700/70 p-6 text-slate-100"
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -1000,19 +1465,19 @@ export default function BWMCdashboard() {
                   setRejectModalOpen(false);
                   setSelectedReport(null);
                 }}
-                className="absolute top-1 right-2 text-2xl text-gray-500 hover:text-red-600 font-bold"
+                className="absolute top-2 right-3 text-2xl text-slate-400 hover:text-red-400 font-bold leading-none"
                 aria-label="Close"
               >
                 ×
               </button>
-              <h3 className="font-bold text-lg mb-3 text-red-700">
+              <h3 className="font-bold text-lg mb-3 text-red-300">
                 Reject Report
               </h3>
-              <p className="text-sm mb-2">
+              <p className="text-sm mb-2 text-slate-200">
                 Please provide the reason for rejecting this report.
               </p>
               <textarea
-                className="w-full border rounded px-2 py-1 text-sm mb-4"
+                className="w-full border border-slate-700 rounded-xl px-2 py-1.5 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 rows={3}
                 value={rejectRemarks}
                 onChange={(e) => setRejectRemarks(e.target.value)}
@@ -1025,13 +1490,13 @@ export default function BWMCdashboard() {
                     setRejectModalOpen(false);
                     setSelectedReport(null);
                   }}
-                  className="px-3 py-1 text-sm rounded border border-gray-300"
+                  className="px-3 py-1.5 text-sm rounded-xl border border-slate-600 text-slate-200 hover:bg-slate-800"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSubmitReject}
-                  className="px-4 py-1 text-sm rounded bg-red-600 text-white hover:bg-red-700"
+                  className="px-4 py-1.5 text-sm rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 hover:from-red-500 hover:to-rose-500 shadow-md shadow-red-600/40"
                 >
                   Submit
                 </button>
@@ -1043,14 +1508,14 @@ export default function BWMCdashboard() {
         {/* Action Report modal */}
         {actionModalOpen && selectedReport && (
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-center items-center"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => {
               setActionModalOpen(false);
               setSelectedReport(null);
             }}
           >
             <div
-              className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative"
+              className="relative w-full max-w-md bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl border border-emerald-700/70 p-6 text-slate-100"
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -1058,19 +1523,19 @@ export default function BWMCdashboard() {
                   setActionModalOpen(false);
                   setSelectedReport(null);
                 }}
-                className="absolute top-1 right-2 text-2xl text-gray-500 hover:text-red-600 font-bold"
+                className="absolute top-2 right-3 text-2xl text-slate-400 hover:text-red-400 font-bold leading-none"
                 aria-label="Close"
               >
                 ×
               </button>
-              <h3 className="font-bold text-lg mb-3 text-green-700">
+              <h3 className="font-bold text-lg mb-3 text-emerald-300">
                 Create Action Report
               </h3>
-              <p className="text-sm mb-2">
+              <p className="text-sm mb-2 text-slate-200">
                 Describe the action taken by the BWMC to resolve this incident.
               </p>
               <textarea
-                className="w-full border rounded px-2 py-1 text-sm mb-4"
+                className="w-full border border-slate-700 rounded-xl px-2 py-1.5 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 rows={3}
                 value={actionRemarks}
                 onChange={(e) => setActionRemarks(e.target.value)}
@@ -1083,13 +1548,13 @@ export default function BWMCdashboard() {
                     setActionModalOpen(false);
                     setSelectedReport(null);
                   }}
-                  className="px-3 py-1 text-sm rounded border border-gray-300"
+                  className="px-3 py-1.5 text-sm rounded-xl border border-slate-600 text-slate-200 hover:bg-slate-800"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSubmitActionReport}
-                  className="px-4 py-1 text-sm rounded bg-green-600 text-white hover:bg-green-700"
+                  className="px-4 py-1.5 text-sm rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/40"
                 >
                   Submit
                 </button>
@@ -1101,30 +1566,30 @@ export default function BWMCdashboard() {
         {/* View remark modal */}
         {viewRemarkModalOpen && (
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-center items-center"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => setViewRemarkModalOpen(false)}
           >
             <div
-              className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative"
+              className="relative w-full max-w-md bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl border border-emerald-700/70 p-6 text-slate-100"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => setViewRemarkModalOpen(false)}
-                className="absolute top-1 right-2 text-2xl text-gray-500 hover:text-red-600 font-bold"
+                className="absolute top-2 right-3 text-2xl text-slate-400 hover:text-red-400 font-bold leading-none"
                 aria-label="Close"
               >
                 ×
               </button>
-              <h3 className="font-bold text-lg mb-3 text-green-700">
+              <h3 className="font-bold text-lg mb-3 text-emerald-300">
                 {viewRemarkTitle}
               </h3>
-              <p className="text-sm text-gray-800 whitespace-pre-line">
+              <p className="text-sm text-slate-200 whitespace-pre-line">
                 {viewRemarkText}
               </p>
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={() => setViewRemarkModalOpen(false)}
-                  className="px-4 py-1 text-sm rounded bg-green-600 text-white hover:bg-green-700"
+                  className="px-4 py-1.5 text-sm rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/40"
                 >
                   Close
                 </button>
@@ -1137,215 +1602,257 @@ export default function BWMCdashboard() {
   }
 
   return (
-    <div className="flex bg-gray-50 min-h-screen">
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="md:hidden fixed top-4 left-4 z-[70] p-2 bg-white shadow rounded"
-        aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-      >
-        {sidebarOpen ? "✖" : "☰"}
-      </button>
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-opacity-30 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
+    <div className="min-h-screen flex bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-900 text-slate-100">
+      {/* Sidebar */}
+      {/* Sidebar */}
       <aside
-        className={`bg-white/95 backdrop-blur border-r border-emerald-100 shadow-lg flex flex-col pt-6 px-5 md:px-4 fixed top-0 left-0 h-full transition-all duration-300 z-50 ${
+        className={`bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-2xl border-r border-green-800/40 shadow-2xl shadow-green-900/20 flex flex-col pt-8 px-6 md:px-5 fixed top-0 left-0 h-full transition-all duration-500 z-50 ${
           sidebarOpen
-            ? "w-4/5 max-w-xs opacity-100"
-            : "w-0 opacity-0 overflow-hidden"
-        } md:w-64 md:max-w-none md:opacity-100 md:overflow-visible`}
+            ? "w-4/5 max-w-sm opacity-100 translate-x-0"
+            : "w-0 opacity-0 -translate-x-full overflow-hidden"
+        } md:w-72 md:max-w-none md:opacity-100 md:translate-x-0 md:overflow-visible`}
       >
-        <div>
-          <h1 className="text-xl font-extrabold text-emerald-700 mb-1 tracking-tight">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 mx-auto mb-4 hover:scale-110 transition-all duration-300">
+            🚛
+          </div>
+          <h1 className="text-2xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl mb-2 text-center tracking-tight">
             BWMC Dashboard
           </h1>
-          <p className="text-xs font-semibold text-gray-600 leading-snug">
+          <p className="text-xs font-semibold text-emerald-400 leading-snug text-center tracking-wide">
             Barangay Waste Management Committee
           </p>
         </div>
+
+        {/* Navigation */}
         <nav
-          className="flex-1 mt-6 text-sm font-semibold text-gray-700 space-y-1"
+          className="flex-1 space-y-2 text-sm font-bold text-emerald-300"
           aria-label="Main Navigation"
         >
-          {" "}
-          <SidebarItem
-            label="Dashboard"
-            icon="🏠"
-            selected={activeTab === "dashboard"}
-            onClick={() => {
-              setActiveTab("dashboard");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="Pending Accounts"
-            icon="📝"
-            badge={pendingRequests.length}
-            selected={activeTab === "pendingAccounts"}
-            onClick={() => {
-              setActiveTab("pendingAccounts");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="Processed Accounts"
-            icon="📋"
-            selected={activeTab === "processedAccounts"}
-            onClick={() => {
-              setActiveTab("processedAccounts");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="View Reports"
-            icon="🗒️"
-            selected={activeTab === "viewReports"}
-            onClick={() => {
-              setActiveTab("viewReports");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="Manage Account"
-            icon="🛠️"
-            selected={activeTab === "manageAccount"}
-            onClick={() => {
-              setActiveTab("manageAccount");
-              setSidebarOpen(false);
-            }}
-          />
-          <button
-            onClick={handleLogout}
-            className="mt-8 mb-4 px-6 py-2 text-red-600 flex items-center gap-2 hover:bg-red-100 rounded"
-          >
-            Logout
-          </button>
+          {[
+            { label: "Dashboard", icon: "🏠", tab: "dashboard" },
+            { label: "Pending Accounts", icon: "⏳", tab: "pendingAccounts" },
+            {
+              label: "Processed Accounts",
+              icon: "✅",
+              tab: "processedAccounts",
+            },
+            { label: "View Reports", icon: "📄", tab: "viewReports" },
+            { label: "Schedules", icon: "📅", tab: "schedules" },
+            { label: "Generate Reports", icon: "📈", tab: "reports" },
+
+            { label: "Manage Account", icon: "🛠️", tab: "manageAccount" },
+          ].map((item) => (
+            <button
+              key={item.tab}
+              onClick={() => {
+                setActiveTab(item.tab as any);
+                setSidebarOpen(false);
+              }}
+              className={`group relative w-full flex items-center gap-4 rounded-3xl border ${
+                activeTab === item.tab
+                  ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-xl shadow-green-500/30 border-green-500/50"
+                  : "border-green-800/50 bg-slate-800/80 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25"
+              } px-5 py-4 text-left transition-all duration-500 backdrop-blur-xl shadow-md hover:scale-[1.02] ${
+                activeTab === item.tab ? "!text-emerald-100" : ""
+              }`}
+            >
+              <span className="text-2xl flex-shrink-0">{item.icon}</span>
+              <span className="font-black">{item.label}</span>
+              {activeTab === item.tab && (
+                <div className="absolute right-4 w-2 h-8 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full animate-pulse shadow-lg" />
+              )}
+            </button>
+          ))}
+
+          {/* Logout */}
+          <div className="pt-8 mt-8 border-t border-green-800/40">
+            <button
+              onClick={handleLogout}
+              className="group relative w-full rounded-3xl bg-gradient-to-r from-red-600/90 to-orange-600/90 px-5 py-4 text-sm font-black text-slate-100 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg overflow-hidden"
+            >
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                ⎋ Logout
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            </button>
+          </div>
         </nav>
       </aside>
-      <main className="flex-1 p-6 md:p-8 transition-all duration-300 md:ml-64">
+
+      {/* Main content */}
+      <main className="flex-1 p-6 md:p-12 md:ml-64 relative z-10">
         {activeTab === "dashboard" && (
           <>
-            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 ">
               {summaryCards.map((sc, i) => (
                 <div
                   key={i}
-                  className={`rounded-xl shadow flex flex-col items-center py-6 ${sc.bg}`}
+                  className={`relative rounded-3xl border border-emerald-800/50 bg-gradient-to-br from-slate-800/90 to-gray-800/90 
+                            shadow-2xl shadow-emerald-900/40 flex flex-col items-center py-6 px-4
+                            backdrop-blur-xl overflow-hidden`}
                   role="region"
                   aria-label={sc.label}
                 >
-                  <span className="text-4xl mb-2" aria-hidden="true">
-                    {sc.icon}
-                  </span>
-                  <span className={`text-xl font-bold ${sc.color}`}>
-                    {sc.count}
-                  </span>
-                  <span className="text-gray-600 text-sm">{sc.label}</span>
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 opacity-60" />
+                  <div className="relative z-10 flex flex-col items-center">
+                    <span
+                      className="text-4xl mb-2 drop-shadow-lg"
+                      aria-hidden="true"
+                    >
+                      {sc.icon}
+                    </span>
+                    <span className={`text-2xl font-black text-emerald-300`}>
+                      {sc.count}
+                    </span>
+                    <span className="text-slate-300 text-sm mt-1">
+                      {sc.label}
+                    </span>
+                  </div>
                 </div>
               ))}
             </section>
-            <section aria-label="Map of collection area and vehicles">
+
+            <section
+              aria-label="Map of collection area and vehicles"
+              className=" rounded-3xl border border-emerald-800/60 bg-slate-900/80 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl p-6"
+            >
               <LeafletMap />
             </section>
           </>
         )}
-
         {activeTab === "pendingAccounts" && (
-          <section className="my-6">
-            <h2 className="text-3xl font-bold mb-2 text-green-600 ">
-              Pending Resident Accounts
-            </h2>
-            <br />
+          <section className="my-8 space-y-4 px-2 md:px-10">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent">
+                  Pending Resident Accounts
+                </h2>
+                <p className="text-sm md:text-base text-slate-300">
+                  Review and approve or reject new resident registrations.
+                </p>
+              </div>
+            </div>
+
             {loadingPending ? (
-              <TruckLoader />
+              <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/80 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl p-6">
+                <TruckLoader />
+              </div>
             ) : pendingRequests.length === 0 ? (
-              <div className="mt-4 p-6 bg-gray-50 border border-dashed border-gray-300 rounded text-center text-gray-600">
+              <div className="mt-4 p-6 rounded-3xl border border-slate-700/80 bg-slate-900/80 text-center text-slate-300 shadow-xl shadow-slate-900/40">
                 No pending accounts.
               </div>
             ) : (
-              <table className="min-w-full text-sm border bg-white rounded-xl shadow border-emerald-100 overflow-hidden">
-                <thead className="bg-emerald-600 text-white">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Name</th>
-                    <th className="px-3 py-2 text-left">Email</th>
-                    <th className="px-3 py-2 text-left">Contact</th>
-                    <th className="px-3 py-2 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingRequests.map((user) => (
-                    <tr key={user.user_id} className="border-t even:bg-gray-50">
-                      <td className="px-3 py-2 text-black">
-                        {user.first_name} {user.last_name}
-                      </td>
-                      <td className="px-3 py-2 text-black">{user.email}</td>
-                      <td className="px-3 py-2 text-black">
-                        {user.contact_number}
-                      </td>
-                      <td className="px-3 py-2 text-black">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              const confirmed = window.confirm(
-                                "Are you sure you want to APPROVE this account?"
-                              );
-                              if (!confirmed) return;
-                              handleApproveReject(user.user_id, "approved");
-                            }}
-                            className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs"
-                          >
-                            Approve
-                          </button>
+              <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl overflow-hidden">
+                <div className="px-5 py-3 border-b border-emerald-700/60 bg-slate-900/95 flex items-center justify-between">
+                  <span className="text-emerald-200 font-semibold text-lg">
+                    Pending Accounts
+                  </span>
+                  <span className="text-sm text-emerald-300">
+                    Total {pendingRequests.length}
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-emerald-900/80 text-emerald-100">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-semibold">
+                          Name
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold">
+                          Email
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold">
+                          Contact
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingRequests.map((user, idx) => (
+                        <tr
+                          key={user.user_id}
+                          className={
+                            idx % 2 === 0
+                              ? "bg-slate-900/80"
+                              : "bg-slate-800/80"
+                          }
+                        >
+                          <td className="px-3 py-2 text-slate-100">
+                            {user.first_name} {user.last_name}
+                          </td>
+                          <td className="px-3 py-2 text-slate-200">
+                            {user.email}
+                          </td>
+                          <td className="px-3 py-2 text-slate-200">
+                            {user.contact_number}
+                          </td>
+                          <td className="px-3 py-2 text-slate-100">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  const confirmed = window.confirm(
+                                    "Are you sure you want to APPROVE this account?"
+                                  );
+                                  if (!confirmed) return;
+                                  handleApproveReject(user.user_id, "approved");
+                                }}
+                                className="px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 text-xs font-semibold shadow-md shadow-emerald-600/40 hover:from-emerald-500 hover:to-teal-500"
+                              >
+                                Approve
+                              </button>
 
-                          <button
-                            onClick={() => {
-                              // open reason modal, but only if user confirms
-                              const confirmed = window.confirm(
-                                "Are you sure you want to REJECT this account?"
-                              );
-                              if (!confirmed) return;
-                              setSelectedUserId(user.user_id);
-                              setRejectAccountReason("");
-                              setRejectAccountModalOpen(true);
-                            }}
-                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                              <button
+                                onClick={() => {
+                                  const confirmed = window.confirm(
+                                    "Are you sure you want to REJECT this account?"
+                                  );
+                                  if (!confirmed) return;
+                                  setSelectedUserId(user.user_id);
+                                  setRejectAccountReason("");
+                                  setRejectAccountModalOpen(true);
+                                }}
+                                className="px-3 py-1 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 text-xs font-semibold shadow-md shadow-red-600/40 hover:from-red-500 hover:to-rose-500"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
+
             {rejectAccountModalOpen && selectedUserId && (
               <div
-                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-center items-center"
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center"
                 onClick={() => setRejectAccountModalOpen(false)}
               >
                 <div
-                  className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative"
+                  className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl border border-red-700/70 max-w-md w-full p-6 relative text-slate-100"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
                     onClick={() => setRejectAccountModalOpen(false)}
-                    className="absolute top-1 right-2 text-2xl text-gray-500 hover:text-red-600 font-bold"
+                    className="absolute top-2 right-3 text-2xl text-slate-400 hover:text-red-400 font-bold leading-none"
                     aria-label="Close"
                   >
                     ×
                   </button>
-                  <h3 className="font-bold text-lg mb-3 text-red-700">
+                  <h3 className="font-bold text-lg mb-3 text-red-300">
                     Reject Resident Account
                   </h3>
-                  <p className="text-sm mb-2">
+                  <p className="text-sm mb-2 text-slate-200">
                     Please provide the reason for rejecting this account.
                   </p>
                   <textarea
-                    className="w-full border rounded px-2 py-1 text-sm mb-4"
+                    className="w-full border border-slate-700 rounded-xl px-2 py-1.5 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                     rows={3}
                     value={rejectAccountReason}
                     onChange={(e) => setRejectAccountReason(e.target.value)}
@@ -1355,7 +1862,7 @@ export default function BWMCdashboard() {
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={() => setRejectAccountModalOpen(false)}
-                      className="px-3 py-1 text-sm rounded border border-gray-300"
+                      className="px-3 py-1.5 text-sm rounded-xl border border-slate-600 text-slate-200 hover:bg-slate-800"
                     >
                       Cancel
                     </button>
@@ -1375,7 +1882,7 @@ export default function BWMCdashboard() {
                         setSelectedUserId(null);
                         setRejectAccountReason("");
                       }}
-                      className="px-4 py-1 text-sm rounded bg-red-600 text-white hover:bg-red-700"
+                      className="px-4 py-1.5 text-sm rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 hover:from-red-500 hover:to-rose-500 shadow-md shadow-red-600/40"
                     >
                       Submit
                     </button>
@@ -1385,31 +1892,29 @@ export default function BWMCdashboard() {
             )}
           </section>
         )}
-
         {activeTab === "viewReports" && <ViewReportsSection />}
-
         {activeTab === "processedAccounts" && (
-          <section className="my-8">
-            <div className="flex items-center justify-between mb-4">
+          <section className="my-8 space-y-4 px-2 md:px-10">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
-                <h2 className="text-3xl font-bold text-green-700">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent">
                   Processed Resident Accounts
                 </h2>
-                <p className="text-lg text-gray-700">
+                <p className="text-sm md:text-base text-slate-300">
                   Review residents whose registrations have already been
                   approved or rejected.
                 </p>
               </div>
-              <div className="flex gap-3 text-sm">
-                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 font-extrabold">
+              <div className="flex gap-3 text-xs md:text-sm">
+                <span className="px-3 py-1 rounded-2xl bg-slate-800/90 text-emerald-200 border border-emerald-700/60 font-extrabold shadow-md shadow-emerald-900/40">
                   Approved:{" "}
-                  <span className="font-extrabold">
+                  <span className="font-extrabold text-emerald-300">
                     {approvedAccounts.length}
                   </span>
                 </span>
-                <span className="px-3 py-1 rounded-full bg-red-50 text-red-700 border border-red-100 font-extrabold">
+                <span className="px-3 py-1 rounded-2xl bg-slate-800/90 text-red-200 border border-red-700/60 font-extrabold shadow-md shadow-red-900/40">
                   Rejected:{" "}
-                  <span className="font-extrabold">
+                  <span className="font-extrabold text-red-300">
                     {rejectedAccounts.length}
                   </span>
                 </span>
@@ -1417,38 +1922,38 @@ export default function BWMCdashboard() {
             </div>
 
             {loadingProcessed ? (
-              <div className="bg-white rounded-xl shadow p-6">
+              <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/80 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl p-6">
                 <TruckLoader />
               </div>
             ) : (
               <div className="space-y-8">
                 {/* Approved */}
-                <div className="bg-white rounded-xl shadow border border-emerald-100 overflow-hidden">
-                  <div className="flex items-center justify-between px-5 py-3 bg-emerald-50 border-b border-emerald-100">
-                    <h3 className="text-2xl font-semibold text-emerald-700">
+                <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 overflow-hidden backdrop-blur-xl">
+                  <div className="flex items-center justify-between px-5 py-3 bg-slate-900/95 border-b border-emerald-800/60">
+                    <h3 className="text-2xl font-semibold text-emerald-200">
                       Approved Accounts
                     </h3>
-                    <span className="text-lg font-bold uppercase tracking-wide text-emerald-600">
+                    <span className="text-sm md:text-lg font-bold uppercase tracking-wide text-emerald-300">
                       Total {approvedAccounts.length}
                     </span>
                   </div>
 
                   {approvedAccounts.length === 0 ? (
-                    <p className="px-5 py-6 text-2xl text-gray-700">
+                    <p className="px-5 py-6 text-base md:text-xl text-slate-300">
                       No approved accounts yet.
                     </p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="min-w-full text-sm">
                         <thead>
-                          <tr className="bg-emerald-600 text-white">
-                            <th className="px-4 py-2 text-left font-semibold text-lg">
+                          <tr className="bg-emerald-900/80 text-emerald-100">
+                            <th className="px-4 py-2 text-left font-semibold text-base md:text-lg">
                               Name
                             </th>
-                            <th className="px-4 py-2 text-left font-semibold text-lg">
+                            <th className="px-4 py-2 text-left font-semibold text-base md:text-lg">
                               Email
                             </th>
-                            <th className="px-4 py-2 text-left font-semibold text-lg">
+                            <th className="px-4 py-2 text-left font-semibold text-base md:text-lg">
                               Contact
                             </th>
                           </tr>
@@ -1458,18 +1963,20 @@ export default function BWMCdashboard() {
                             <tr
                               key={user.user_id}
                               className={
-                                idx % 2 === 0 ? "bg-white" : "bg-emerald-50/40"
+                                idx % 2 === 0
+                                  ? "bg-slate-900/80"
+                                  : "bg-emerald-900/40"
                               }
                             >
-                              <td className="px-4 py-2 whitespace-nowrap text-lg">
-                                <span className="font-medium text-gray-900 ">
+                              <td className="px-4 py-2 whitespace-nowrap text-base md:text-lg">
+                                <span className="font-medium text-slate-50">
                                   {user.first_name} {user.last_name}
                                 </span>
                               </td>
-                              <td className="px-4 py-2 text-gray-900 text-lg">
+                              <td className="px-4 py-2 text-slate-200 text-base md:text-lg">
                                 {user.email}
                               </td>
-                              <td className="px-4 py-2 text-gray-900 text-lg">
+                              <td className="px-4 py-2 text-slate-200 text-base md:text-lg">
                                 {user.contact_number}
                               </td>
                             </tr>
@@ -1481,32 +1988,32 @@ export default function BWMCdashboard() {
                 </div>
 
                 {/* Rejected */}
-                <div className="bg-white rounded-xl shadow border border-red-100 overflow-hidden">
-                  <div className="flex items-center justify-between px-5 py-3 bg-red-50 border-b border-red-100">
-                    <h3 className="text-2xl font-semibold text-red-700">
+                <div className="rounded-3xl border border-red-800/60 bg-slate-900/90 shadow-2xl shadow-red-900/40 overflow-hidden backdrop-blur-xl">
+                  <div className="flex items-center justify-between px-5 py-3 bg-slate-900/95 border-b border-red-800/60">
+                    <h3 className="text-2xl font-semibold text-red-200">
                       Rejected Accounts
                     </h3>
-                    <span className="text-lg font-bold uppercase tracking-wide text-red-600">
+                    <span className="text-sm md:text-lg font-bold uppercase tracking-wide text-red-300">
                       Total {rejectedAccounts.length}
                     </span>
                   </div>
 
                   {rejectedAccounts.length === 0 ? (
-                    <p className="px-5 py-6 text-xl text-gray-700">
+                    <p className="px-5 py-6 text-base md:text-xl text-slate-300">
                       No rejected accounts yet.
                     </p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="min-w-full text-sm">
                         <thead>
-                          <tr className="bg-red-600 text-white">
-                            <th className="px-4 py-2 text-left font-semibold text-lg">
+                          <tr className="bg-red-900/80 text-red-100">
+                            <th className="px-4 py-2 text-left font-semibold text-base md:text-lg">
                               Name
                             </th>
-                            <th className="px-4 py-2 text-left font-semibold text-lg">
+                            <th className="px-4 py-2 text-left font-semibold text-base md:text-lg">
                               Email
                             </th>
-                            <th className="px-4 py-2 text-left font-semibold text-lg">
+                            <th className="px-4 py-2 text-left font-semibold text-base md:text-lg">
                               Contact
                             </th>
                           </tr>
@@ -1516,18 +2023,20 @@ export default function BWMCdashboard() {
                             <tr
                               key={user.user_id}
                               className={
-                                idx % 2 === 0 ? "bg-white" : "bg-red-50/40"
+                                idx % 2 === 0
+                                  ? "bg-slate-900/80"
+                                  : "bg-red-900/40"
                               }
                             >
                               <td className="px-4 py-2 whitespace-nowrap">
-                                <span className="font-medium text-gray-900 text-lg">
+                                <span className="font-medium text-slate-50 text-base md:text-lg">
                                   {user.first_name} {user.last_name}
                                 </span>
                               </td>
-                              <td className="px-4 py-2 text-gray-900 text-lg">
+                              <td className="px-4 py-2 text-slate-200 text-base md:text-lg">
                                 {user.email}
                               </td>
-                              <td className="px-4 py-2 text-gray-900 text-lg">
+                              <td className="px-4 py-2 text-slate-200 text-base md:text-lg">
                                 {user.contact_number}
                               </td>
                             </tr>
@@ -1542,15 +2051,30 @@ export default function BWMCdashboard() {
           </section>
         )}
 
+        {activeTab === "schedules" && (
+          <section className="my-6">
+            <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent ">
+              Collection Schedules
+            </h2>
+            <BWMCCollectionSchedulesFeature
+              defaultBarangayId={defaultBarangayId}
+            />
+          </section>
+        )}
+
+        {activeTab === "reports" && currentUser?.barangay?.barangay_id && (
+          <ReportsAnalytics barangayId={currentUser.barangay.barangay_id} />
+        )}
+
         {activeTab === "manageAccount" && (
-          <section className="max-w-2xl mx-auto bg-white rounded-xl shadow p-8 mt-1">
-            <h2 className="text-2xl font-bold mb-6 text-green-600">
+          <section className="max-w-2xl mx-auto mt-2 rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 p-8 backdrop-blur-xl">
+            <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent">
               Manage Account
             </h2>
             {manageAccountError && (
               <div
                 role="alert"
-                className="mb-4 px-4 py-2 rounded bg-red-100 text-red-700"
+                className="mb-4 px-4 py-2 rounded-xl bg-red-900/40 text-red-200 border border-red-700/70"
               >
                 {manageAccountError}
               </div>
@@ -1558,7 +2082,7 @@ export default function BWMCdashboard() {
             {manageAccountSuccess && (
               <div
                 role="status"
-                className="mb-4 px-4 py-2 rounded bg-green-100 text-green-700"
+                className="mb-4 px-4 py-2 rounded-xl bg-emerald-900/40 text-emerald-200 border border-emerald-700/70"
               >
                 {manageAccountSuccess}
               </div>
@@ -1626,7 +2150,7 @@ export default function BWMCdashboard() {
                 <div className="flex justify-end mt-6">
                   <button
                     type="submit"
-                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-bold"
+                    className="px-6 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 font-bold hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/40"
                   >
                     Update Account
                   </button>
@@ -1659,7 +2183,10 @@ function InputField({
 }) {
   return (
     <div className="mb-4">
-      <label htmlFor={name} className="block mb-1 font-semibold text-gray-900">
+      <label
+        htmlFor={name}
+        className="block mb-1 text-sm font-semibold text-slate-100"
+      >
         {label}
       </label>
       <input
@@ -1670,7 +2197,9 @@ function InputField({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-gray-400 rounded bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full px-3 py-2 rounded-lg border border-slate-700
+                   bg-slate-900/80 text-slate-100 placeholder:text-slate-400
+                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
         autoComplete="off"
       />
     </div>

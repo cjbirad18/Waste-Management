@@ -108,6 +108,13 @@ export default function LeafletMap() {
   const animStatesRef = useRef<Record<number, TruckAnimState>>({});
   const frameRef = useRef<number | null>(null);
 
+  // map theme: "day" | "night"
+  const [theme, setTheme] = useState<"day" | "night">("night");
+
+  const dayTileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  const nightTileUrl =
+    "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png";
+
   // Load barangay GeoJSON
   useEffect(() => {
     const load = async () => {
@@ -118,14 +125,13 @@ export default function LeafletMap() {
     load();
   }, []);
 
-  // Load and subscribe to live truck locations (all trucks)
+  // Load and subscribe to live truck locations
   useEffect(() => {
     async function loadTrucks() {
       const { data, error } = await supabase
         .from("truck_live_location")
         .select("id, truck_id, latitude, longitude, updated_at");
 
-      console.log("truck_live_location data", { data, error });
       if (!error && data) {
         setTrucks(data as TruckRow[]);
       }
@@ -139,7 +145,6 @@ export default function LeafletMap() {
         "postgres_changes",
         { event: "*", schema: "public", table: "truck_live_location" },
         (payload) => {
-          // Handle delete (truck logs out)
           if (payload.eventType === "DELETE") {
             const oldRow = payload.old as TruckRow | undefined;
             if (oldRow?.truck_id != null) {
@@ -165,7 +170,6 @@ export default function LeafletMap() {
             return next;
           });
 
-          // Smooth animation state
           const s = animStatesRef.current[row.truck_id];
           const from: [number, number] = s
             ? s.to
@@ -173,7 +177,7 @@ export default function LeafletMap() {
           const to: [number, number] = [row.latitude, row.longitude];
 
           const dist = Math.abs(from[0] - to[0]) + Math.abs(from[1] - to[1]);
-          const duration = dist > 0.01 ? 0 : 1500; // snap if jump is huge
+          const duration = dist > 0.01 ? 0 : 1500;
 
           animStatesRef.current[row.truck_id] = {
             from,
@@ -190,7 +194,7 @@ export default function LeafletMap() {
     };
   }, []);
 
-  // Animation loop for smooth movement
+  // Animation loop
   useEffect(() => {
     const animate = () => {
       const now = performance.now();
@@ -223,104 +227,117 @@ export default function LeafletMap() {
     };
   }, []);
 
-  console.log("trucks in render", trucks);
-
   return (
-    <div className="w-full max-w-6xl mx-auto">
-      <div className="w-full rounded-xl border border-gray-200 shadow overflow-hidden relative z-10">
-        <MapContainer
-          center={mapCenter}
-          zoom={13}
-          className="w-full h-[460px] relative"
+    <div className="w-full mx-auto my-6">
+      {/* Header row with theme toggle */}
+      <div className="mb-1 flex items-center justify-between gap-1 px-6">
+        <h3 className="text-sm font-semibold text-emerald-200">
+          Collection Map
+        </h3>
+        <button
+          type="button"
+          onClick={() => setTheme((prev) => (prev === "day" ? "night" : "day"))}
+          className="inline-flex items-center gap-2 rounded-2xl border border-emerald-700/70 bg-slate-900/90 px-3 py-1 text-xs font-semibold text-emerald-200 shadow-md shadow-emerald-900/40 hover:bg-emerald-600/20 transition"
         >
-          <TileLayer
-            attribution="© OpenStreetMap contributors"
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-
-          {geojson && (
-            <GeoJSON
-              data={geojson}
-              style={(feature) => {
-                const name3 = (feature.properties as any)?.NAME_3;
-                const fillColor = getBarangayColor(name3);
-
-                if (feature.geometry.type === "Polygon") {
-                  return {
-                    color: "#333",
-                    weight: 1.5,
-                    fillColor,
-                    fillOpacity: 0.6,
-                  };
-                }
-                return {};
-              }}
-              pointToLayer={(feature: Feature<Point>, latlng) =>
-                // barangay hall icon for Point features
-                L.marker(latlng, { icon: barangayHallIcon })
-              }
-              onEachFeature={(feature, layer) => {
-                const props: any = feature.properties || {};
-                const name3 = props.NAME_3;
-                const name = name3 || props.name;
-
-                // Always-visible label at polygon center
-                if (feature.geometry.type === "Polygon" && name3) {
-                  const center = (layer as any).getBounds().getCenter();
-                  layer.bindTooltip(name3, {
-                    permanent: true,
-                    direction: "center",
-                    className: "barangay-label",
-                  });
-                  (layer as any).openTooltip(center);
-                }
-
-                // Optional popup on click
-                if (name && feature.geometry.type === "Polygon") {
-                  layer.bindPopup(String(name));
-                }
-              }}
-            />
-          )}
-
-          {/* Truck markers with blinking shadow */}
-          {trucks.map((t) => {
-            if (t.latitude == null || t.longitude == null) return null;
-            const pos: [number, number] = [t.latitude, t.longitude];
-
-            const key = t.id ?? `truck-${t.truck_id}`;
-
-            return (
-              <React.Fragment key={key}>
-                <Marker
-                  position={pos}
-                  icon={truckShadowIcon}
-                  interactive={false}
-                />
-                <Marker position={pos} icon={truckIcon}>
-                  <Popup>
-                    <div className="text-sm">
-                      <div className="font-semibold">{`Truck ${t.truck_id}`}</div>
-                      {t.updated_at && (
-                        <div className="text-xs text-gray-600">
-                          Last update:{" "}
-                          {new Date(t.updated_at).toLocaleTimeString()}
-                        </div>
-                      )}
-                    </div>
-                  </Popup>
-                </Marker>
-              </React.Fragment>
-            );
-          })}
-        </MapContainer>
+          <span className="text-base">{theme === "day" ? "🌙" : "☀️"}</span>
+          <span>{theme === "day" ? "Night mode" : "Day mode"}</span>
+        </button>
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-2 text-xs">
+      {/* Map card – full width, fixed height */}
+      <div className="mx-1 rounded-3xl border border-emerald-800/50 shadow-xl shadow-emerald-900/30 overflow-hidden bg-slate-800/80 backdrop-blur">
+        <div className="w-full h-[460px]">
+          <MapContainer center={mapCenter} zoom={13} className="w-full h-full">
+            <TileLayer
+              attribution={
+                theme === "day"
+                  ? "© OpenStreetMap contributors"
+                  : "© OpenStreetMap contributors, © CARTO"
+              }
+              url={theme === "day" ? dayTileUrl : nightTileUrl}
+            />
+
+            {geojson && (
+              <GeoJSON
+                data={geojson}
+                style={(feature?: Feature) => {
+                  if (!feature) return {};
+                  const name3 = (feature.properties as any)?.NAME_3;
+                  const fillColor = getBarangayColor(name3);
+
+                  if (feature.geometry.type === "Polygon") {
+                    return {
+                      color: "#555",
+                      weight: 1.2,
+                      fillColor,
+                      fillOpacity: theme === "day" ? 0.5 : 0.4,
+                    };
+                  }
+                  return {};
+                }}
+                pointToLayer={(feature: Feature<Point>, latlng) =>
+                  L.marker(latlng, { icon: barangayHallIcon })
+                }
+                onEachFeature={(feature, layer) => {
+                  const props: any = feature.properties || {};
+                  const name3 = props.NAME_3;
+                  const name = name3 || props.name;
+
+                  if (feature.geometry.type === "Polygon" && name3) {
+                    const center = (layer as any).getBounds().getCenter();
+                    layer.bindTooltip(name3, {
+                      permanent: true,
+                      direction: "center",
+                      className: "barangay-label",
+                    });
+                    (layer as any).openTooltip(center);
+                  }
+
+                  if (name && feature.geometry.type === "Polygon") {
+                    layer.bindPopup(String(name));
+                  }
+                }}
+              />
+            )}
+
+            {trucks.map((t) => {
+              if (t.latitude == null || t.longitude == null) return null;
+              const pos: [number, number] = [t.latitude, t.longitude];
+              const key = t.id ?? `truck-${t.truck_id}`;
+
+              return (
+                <React.Fragment key={key}>
+                  <Marker
+                    position={pos}
+                    icon={truckShadowIcon}
+                    interactive={false}
+                  />
+                  <Marker position={pos} icon={truckIcon}>
+                    <Popup>
+                      <div className="text-sm">
+                        <div className="font-semibold">{`Truck ${t.truck_id}`}</div>
+                        {t.updated_at && (
+                          <div className="text-xs text-gray-600">
+                            Last update:{" "}
+                            {new Date(t.updated_at).toLocaleTimeString()}
+                          </div>
+                        )}
+                      </div>
+                    </Popup>
+                  </Marker>
+                </React.Fragment>
+              );
+            })}
+          </MapContainer>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="mt-3 flex flex-wrap gap-2 text-xs px-6 pb-2">
         {barangayNames.map((bgy) => (
           <div
             key={bgy}
-            className="flex items-center gap-1 px-2 py-1 rounded border border-gray-200 bg-white text-black"
+            className="flex items-center gap-1 px-2 py-1 rounded-xl border border-slate-700 bg-slate-900/90 text-slate-100 shadow-sm shadow-slate-900/60"
           >
             <span
               style={{
@@ -329,7 +346,7 @@ export default function LeafletMap() {
                 height: 12,
                 borderRadius: 2,
                 backgroundColor: getBarangayColor(bgy),
-                border: "1px solid #333",
+                border: "1px solid #111",
               }}
             />
             <span>{bgy}</span>

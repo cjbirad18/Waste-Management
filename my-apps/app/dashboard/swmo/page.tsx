@@ -39,31 +39,37 @@ interface User {
   barangay_id?: string;
 }
 
+type SidebarItemProps = {
+  label: string;
+  icon: string;
+  selected?: boolean;
+  onClick?: () => void;
+  textClassName?: string;
+  className?: string;
+};
+
 function SidebarItem({
   label,
   icon,
   selected,
   onClick,
-}: {
-  label: string;
-  icon: string;
-  selected?: boolean;
-  onClick?: () => void;
-}) {
+  textClassName,
+}: SidebarItemProps) {
   return (
     <button
       onClick={onClick}
-      className={`flex gap-2 items-center w-full px-4 py-3 mb-2 text-left rounded transition ${
-        selected
-          ? "bg-blue-100 text-blue-700 font-semibold"
-          : "hover:bg-gray-100 text-gray-600"
-      }`}
+      className={`flex gap-2 items-center w-full px-4 py-3 mb-2 text-left rounded-lg transition
+        ${
+          selected
+            ? "bg-slate-100 text-slate-900 font-semibold" // ✅ dark text on light bg
+            : "text-slate-200 hover:bg-slate-900/60"
+        }`}
       aria-current={selected ? "page" : undefined}
     >
       <span className="text-xl" aria-hidden="true">
         {icon}
       </span>
-      <span>{label}</span>
+      <span className={textClassName}>{label}</span>
     </button>
   );
 }
@@ -87,7 +93,10 @@ function InputField({
 }) {
   return (
     <div className="mb-4">
-      <label htmlFor={name} className="block mb-1 font-semibold text-gray-900">
+      <label
+        htmlFor={name}
+        className="block mb-1 text-md font-semibold text-slate-100"
+      >
         {label}
       </label>
       <input
@@ -98,8 +107,7 @@ function InputField({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-gray-400 rounded bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        autoComplete="off"
+        className="w-full rounded-lg bg-slate-900/90 border border-slate-700 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
       />
     </div>
   );
@@ -124,7 +132,10 @@ function SelectField({
 }) {
   return (
     <div className="mb-4">
-      <label htmlFor={name} className="block mb-1 font-semibold text-gray-900">
+      <label
+        htmlFor={name}
+        className="block mb-1 text-md font-semibold text-slate-100"
+      >
         {label}
       </label>
       <select
@@ -133,7 +144,7 @@ function SelectField({
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full px-3 py-2 border border-gray-400 rounded bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full rounded-lg bg-slate-900/90 border border-slate-700 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
       >
         <option value="" disabled>
           {placeholder}
@@ -150,14 +161,15 @@ function SelectField({
 
 export default function AdminDashboard() {
   const router = useRouter();
-
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const isDark = theme === "dark";
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [errorUsers, setErrorUsers] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "userAdmin" | "manageAccount" | "reports"
+    "dashboard" | "userAdmin" | "manageAccount" | "reports" | "collection"
   >("dashboard");
 
   const [hasLoadedManageAccount, setHasLoadedManageAccount] = useState(false);
@@ -230,6 +242,7 @@ export default function AdminDashboard() {
 
   const filteredRoleOptions = [
     { value: "", label: "Select role..." },
+
     ...allRoles.filter(
       (role) =>
         !singleAccountRoles.includes(role.value) ||
@@ -776,87 +789,98 @@ export default function AdminDashboard() {
     onSubmit: (e: FormEvent) => void;
   }) {
     return (
-      <section className="max-w-2xl mx-auto bg-white rounded-xl shadow p-8 mt-1">
-        <h2 className="text-2xl font-bold mb-4 text-green-700">
+      <section className="max-w-2xl mx-auto rounded-2xl bg-slate-900/90 border border-slate-800/70 p-6 md:p-8 shadow-xl backdrop-blur-sm">
+        <h2 className="text-2xl font-bold mb-2 text-emerald-400">
           Manage Account
         </h2>
+        <p className="text-[11px] text-slate-400 mb-4">
+          Update your profile details and sign‑in credentials.
+        </p>
+
         {loading && <TruckLoader />}
+
         {error && (
           <div
-            className="px-4 py-2 bg-red-100 text-red-700 rounded mb-2"
+            className="px-4 py-2 mb-3 rounded-lg bg-red-500/10 border border-red-500/50 text-xs text-red-200"
             role="alert"
           >
             {error}
           </div>
         )}
+
         {success && (
           <div
-            className="px-4 py-2 bg-green-100 text-green-700 rounded mb-2"
+            className="px-4 py-2 mb-3 rounded-lg bg-emerald-500/10 border border-emerald-500/50 text-xs text-emerald-200"
             role="status"
           >
             {success}
           </div>
         )}
+
         {!loading && (
-          <form onSubmit={onSubmit} className="space-y-4" noValidate>
-            <InputField
-              label="Username"
-              name="username"
-              type="text"
-              value={form.username}
-              onChange={onChange}
-              required
-            />
-            <InputField
-              label="First Name"
-              name="first_name"
-              type="text"
-              value={form.first_name}
-              onChange={onChange}
-              required
-            />
-            <InputField
-              label="Last Name"
-              name="last_name"
-              type="text"
-              value={form.last_name}
-              onChange={onChange}
-              required
-            />
-            <InputField
-              label="Contact Number"
-              name="contact_number"
-              type="tel"
-              value={form.contact_number}
-              onChange={onChange}
-              required
-            />
-            <InputField
-              label="Email"
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={onChange}
-              required
-            />
-            <InputField
-              label="Password"
-              name="password"
-              type="password"
-              value={form.password}
-              onChange={onChange}
-            />
-            <InputField
-              label="Confirm Password"
-              name="confirm_password"
-              type="password"
-              value={form.confirm_password}
-              onChange={onChange}
-            />
-            <div className="flex justify-end">
+          <form onSubmit={onSubmit} className="space-y-3" noValidate>
+            {/* make all labels white via utility */}
+            <div className="[&_label]:text-slate-100 [&_label]:text-xs [&_label]:font-semibold space-y-3">
+              <InputField
+                label="Username"
+                name="username"
+                type="text"
+                value={form.username}
+                onChange={onChange}
+                required
+              />
+              <InputField
+                label="First Name"
+                name="first_name"
+                type="text"
+                value={form.first_name}
+                onChange={onChange}
+                required
+              />
+              <InputField
+                label="Last Name"
+                name="last_name"
+                type="text"
+                value={form.last_name}
+                onChange={onChange}
+                required
+              />
+              <InputField
+                label="Contact Number"
+                name="contact_number"
+                type="tel"
+                value={form.contact_number}
+                onChange={onChange}
+                required
+              />
+              <InputField
+                label="Email"
+                name="email"
+                type="email"
+                value={form.email}
+                onChange={onChange}
+                required
+              />
+              <InputField
+                label="Password"
+                name="password"
+                type="password"
+                value={form.password}
+                onChange={onChange}
+              />
+              <InputField
+                label="Confirm Password"
+                name="confirm_password"
+                type="password"
+                value={form.confirm_password}
+                onChange={onChange}
+              />
+            </div>
+
+            <div className="flex justify-end pt-2">
               <button
                 type="submit"
-                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-bold"
+                className="inline-flex items-center rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
               >
                 Update Account
               </button>
@@ -867,440 +891,617 @@ export default function AdminDashboard() {
     );
   }
 
+  const sidebarItems = [
+    { label: "Dashboard", icon: "📊", tab: "dashboard" },
+    { label: "Collection Panel", icon: "🗺️", tab: "collection" },
+    { label: "Manage Users", icon: "👥", tab: "userAdmin" },
+    { label: "Reports", icon: "📈", tab: "reports" },
+    { label: "Account", icon: "⚙️", tab: "manageAccount" },
+  ] as const;
+
   return (
-    <div className="flex bg-gray-50 min-h-screen">
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="md:hidden fixed top-4 left-4 z-[70] p-2 bg-white shadow rounded"
-        aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-      >
-        {sidebarOpen ? "✖" : "☰"}
-      </button>
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-opacity-30 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-      <aside
-        className={`bg-white/95 backdrop-blur border-r border-emerald-100 shadow-lg flex flex-col pt-6 px-5 md:px-4 fixed top-0 left-0 h-full transition-all duration-300 z-50 ${
-          sidebarOpen
-            ? "w-4/5 max-w-xs opacity-100"
-            : "w-0 opacity-0 overflow-hidden"
-        } md:w-64 md:max-w-none md:opacity-100 md:overflow-visible`}
-      >
-        <div>
-          <h1 className="text-xl font-extrabold text-emerald-700 mb-1 tracking-tight">
-            SWMO Admin
-          </h1>
-          <p className="text-xs font-semibold text-gray-600 leading-snug">
-            Solid Waste Management
-          </p>
-        </div>
-        <nav
-          className="flex-1 mt-6 text-sm font-semibold text-gray-700 space-y-1"
-          aria-label="Main Navigation"
-        >
-          {" "}
-          <SidebarItem
-            label="Dashboard"
-            icon="🏠"
-            selected={activeTab === "dashboard"}
-            onClick={() => {
-              setActiveTab("dashboard");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="Collection Panel"
-            icon="🗑️"
-            onClick={() => setSidebarOpen(false)}
-          />
-          <SidebarItem
-            label="Manage Users"
-            icon="👥"
-            selected={activeTab === "userAdmin"}
-            onClick={() => {
-              setActiveTab("userAdmin");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="Generate Report"
-            icon="📄"
-            selected={activeTab === "reports"}
-            onClick={() => {
-              setActiveTab("reports");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="Manage Account"
-            icon="🛠️"
-            selected={activeTab === "manageAccount"}
-            onClick={() => {
-              setActiveTab("manageAccount");
-              setSidebarOpen(false);
-            }}
-          />
-          <button
-            onClick={handleLogout}
-            className="mt-8 mb-4 px-6 py-2 text-red-600 flex items-center gap-2 hover:bg-red-100 rounded"
-          >
-            Logout
-          </button>
-        </nav>
-      </aside>
-      <main
-        className={`flex-1 p-6 md:p-8 transition-all duration-300 ${
-          sidebarOpen ? "ml-64" : "ml-0"
-        } md:ml-64`}
-      >
-        {/* Dashboard */}
-        {activeTab === "dashboard" && (
-          <>
-            {/* Summary Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {summaryCards.map((card, idx) => (
-                <div
-                  key={idx}
-                  className={`rounded-xl shadow p-6 flex flex-col items-center ${card.bg}`}
-                  role="region"
-                  aria-label={card.label}
-                >
-                  <div className="text-4xl mb-3" aria-hidden="true">
-                    {card.icon}
-                  </div>
-                  <div className={`text-3xl font-bold ${card.color}`}>
-                    {card.count}
-                  </div>
-                  <div className="text-black mt-1">{card.label}</div>
-                </div>
-              ))}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
+      {/* Subtle background animation */}
+      <div className="fixed inset-0 opacity-30 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 animate-pulse" />
+      </div>
+
+      {/* Top navigation */}
+      <header className="sticky top-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
+        <div className="flex items-center justify-between px-4 md:px-8 py-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="md:hidden inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
+              aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            >
+              {sidebarOpen ? "✖" : "☰"}
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 hover:scale-110 transition-all duration-300">
+                🚛
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-bold">
+                  Track-the-Truck
+                </p>
+                <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                  SWMO Admin
+                </h1>
+              </div>
             </div>
-            <br />
-            <section aria-label="Map of collection area and vehicles">
-              <LeafletMap />
-            </section>
-          </>
+          </div>
+        </div>
+      </header>
+
+      {/* Shell layout */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Overlay for mobile */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
         )}
-        {/* User Admin */}
-        {activeTab === "userAdmin" && (
-          <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Add User Form */}
-            <div className="bg-white rounded-xl shadow p-6 max-w-xl w-full mx-auto md:mx-0">
-              <h2 className="text-2xl font-bold mb-4 text-green-700">
-                Add User
-              </h2>
-              <form onSubmit={handleAddUser} className="space-y-4" noValidate>
-                {formError && (
+
+        {/* Sidebar */}
+        <aside
+          className={`
+          fixed z-40 inset-y-0 left-0 w-72 ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }
+          md:static md:translate-x-0 md:w-64
+          bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-green-800/40
+          flex flex-col py-6 px-4 transition-all duration-300 backdrop-blur-2xl shadow-2xl shadow-green-900/20
+        `}
+        >
+          <nav
+            className="flex-1 space-y-2 text-sm font-semibold text-slate-200"
+            aria-label="Main Navigation"
+          >
+            {/* You'll need to replace SidebarItem with this inline version */}
+            {[
+              { label: "Dashboard", icon: "📊", tab: "dashboard" },
+              { label: "Collection Panel", icon: "🗺️", tab: "collection" },
+              { label: "Manage Users", icon: "👥", tab: "userAdmin" },
+              { label: "Reports", icon: "📈", tab: "reports" },
+              { label: "Account", icon: "⚙️", tab: "manageAccount" },
+            ].map((item) => (
+              <button
+                key={item.tab}
+                onClick={() => {
+                  setActiveTab(
+                    item.tab as
+                      | "dashboard"
+                      | "collection"
+                      | "userAdmin"
+                      | "reports"
+                      | "manageAccount"
+                  );
+                  setSidebarOpen(false);
+                }}
+                className={`group relative w-full flex items-center gap-3 rounded-2xl border ${
+                  activeTab === item.tab
+                    ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-xl shadow-green-500/30 border-green-500/50"
+                    : "border-green-800/50 bg-slate-800/80 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25"
+                } px-4 py-3 text-left transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-[1.02] ${
+                  activeTab === item.tab ? "!text-emerald-100" : ""
+                }`}
+              >
+                <span className="text-xl">{item.icon}</span>
+                <span className="font-bold">{item.label}</span>
+                {activeTab === item.tab && (
+                  <div className="absolute right-3 w-2 h-6 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full animate-pulse" />
+                )}
+              </button>
+            ))}
+
+            <div className="pt-6 mt-6 border-t border-green-800/40">
+              <button
+                onClick={handleLogout}
+                className="group relative w-full rounded-2xl bg-gradient-to-r from-red-600/90 to-orange-600/90 px-4 py-3 text-sm font-bold text-slate-100 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg overflow-hidden"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  ⎋ Logout
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              </button>
+            </div>
+          </nav>
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10">
+          {/* DASHBOARD */}
+          {activeTab === "dashboard" && (
+            <>
+              {/* Responsive metrics grid */}
+              <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {summaryCards.map((card, idx) => (
                   <div
-                    className="px-4 py-2 bg-red-100 text-red-700 rounded mb-2"
-                    role="alert"
+                    key={idx}
+                    className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70"
+                    role="region"
+                    aria-label={card.label}
                   >
-                    {formError}
+                    <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
+                    <div className="flex items-start justify-between gap-4 relative z-10 h-full flex-col">
+                      <div className="flex items-start justify-between w-full gap-3">
+                        <div className="space-y-2">
+                          <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold">
+                            {card.label}
+                          </p>
+                          <p className="text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg">
+                            {card.count}
+                          </p>
+                        </div>
+                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-2xl border border-green-800/50 shadow-lg group-hover:scale-110 transition-all duration-300 relative z-10 flex-shrink-0">
+                          {card.icon}
+                        </div>
+                      </div>
+                      <div className="w-full">
+                        <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50 relative z-10">
+                          <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
+                        </div>
+                        <p className="mt-3 text-xs text-slate-400 text-center relative z-10">
+                          Auto-updated from collection data
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                )}
-                {formSuccess && (
-                  <div
-                    className="px-4 py-2 bg-green-100 text-green-700 rounded mb-2"
-                    role="status"
-                  >
-                    {formSuccess}
+                ))}
+              </section>
+
+              {/* Map + small stats layout */}
+              <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
+                <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                        Collection Coverage Map
+                      </h2>
+                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                        Live vehicles
+                      </span>
+                    </div>
+                    <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[500px] md:h-[600px] relative z-10">
+                      <LeafletMap />
+                    </div>
                   </div>
-                )}
-                <SelectField
-                  label="Role"
-                  name="role"
-                  value={userForm.role}
-                  onChange={handleUserFormChange}
-                  required
-                  options={filteredRoleOptions.slice(1)}
-                  placeholder={filteredRoleOptions[0].label}
-                />
-                <InputField
-                  label="First Name"
-                  name="first_name"
-                  type="text"
-                  value={userForm.first_name}
-                  onChange={handleUserFormChange}
-                  placeholder="First Name"
-                  required
-                />
-                <InputField
-                  label="Last Name"
-                  name="last_name"
-                  type="text"
-                  value={userForm.last_name}
-                  onChange={handleUserFormChange}
-                  placeholder="Last Name"
-                  required
-                />
-                <InputField
-                  label="Username"
-                  name="username"
-                  type="text"
-                  value={userForm.username}
-                  onChange={handleUserFormChange}
-                  placeholder="Username"
-                  required
-                />
-                <InputField
-                  label="Contact Number"
-                  name="contact_number"
-                  type="tel"
-                  value={userForm.contact_number}
-                  onChange={handleUserFormChange}
-                  placeholder="Contact Number"
-                  required
-                />
-                <InputField
-                  label="Email"
-                  name="email"
-                  type="email"
-                  value={userForm.email}
-                  onChange={handleUserFormChange}
-                  placeholder="Email"
-                  required
-                />
-                {userForm.role === "BWMC" && (
-                  <SelectField
-                    label="Barangay"
-                    name="barangay_id"
-                    value={userForm.barangay_id}
-                    onChange={handleUserFormChange}
-                    required
-                    options={barangayOptions}
-                    placeholder="Select barangay..."
-                  />
-                )}
-                <div>
-                  <label
-                    className="block mb-1 font-semibold text-gray-900"
-                    htmlFor="password"
+                </div>
+              </section>
+            </>
+          )}
+
+          {/* USER ADMIN */}
+          {activeTab === "userAdmin" && (
+            <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {/* Add user */}
+              <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                <div className="relative z-10">
+                  <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                    Add User
+                  </h2>
+                  <p className="text-sm text-slate-400 mb-6">
+                    Create accounts for collectors, BWMC officers, and admins.
+                  </p>
+                  <form
+                    onSubmit={handleAddUser}
+                    className="space-y-4"
+                    noValidate
                   >
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="password"
-                      className="w-full px-3 py-2 border border-gray-400 rounded bg-white text-gray-900"
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      value={userForm.password}
+                    {formError && (
+                      <div className="rounded-2xl bg-gradient-to-r from-orange-500/15 to-red-500/15 border border-orange-500/40 p-4 text-orange-200 text-sm backdrop-blur-xl shadow-lg">
+                        {formError}
+                      </div>
+                    )}
+                    {formSuccess && (
+                      <div className="rounded-2xl bg-gradient-to-r from-emerald-500/15 to-teal-500/15 border border-emerald-500/40 p-4 text-emerald-200 text-sm backdrop-blur-xl shadow-lg">
+                        {formSuccess}
+                      </div>
+                    )}
+
+                    <SelectField
+                      label="Role"
+                      name="role"
+                      value={userForm.role}
                       onChange={handleUserFormChange}
-                      placeholder="Password"
                       required
-                      aria-describedby="passwordToggle"
+                      options={filteredRoleOptions.slice(1)}
+                      placeholder={filteredRoleOptions[0].label}
                     />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <InputField
+                        label="First Name"
+                        name="first_name"
+                        type="text"
+                        value={userForm.first_name}
+                        onChange={handleUserFormChange}
+                        required
+                      />
+                      <InputField
+                        label="Last Name"
+                        name="last_name"
+                        type="text"
+                        value={userForm.last_name}
+                        onChange={handleUserFormChange}
+                        required
+                      />
+                    </div>
+
+                    <InputField
+                      label="Username"
+                      name="username"
+                      type="text"
+                      value={userForm.username}
+                      onChange={handleUserFormChange}
+                      required
+                    />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <InputField
+                        label="Contact Number"
+                        name="contact_number"
+                        type="tel"
+                        value={userForm.contact_number}
+                        onChange={handleUserFormChange}
+                        required
+                      />
+                      <InputField
+                        label="Email"
+                        name="email"
+                        type="email"
+                        value={userForm.email}
+                        onChange={handleUserFormChange}
+                        required
+                      />
+                    </div>
+
+                    {userForm.role === "BWMC" && (
+                      <SelectField
+                        label="Barangay"
+                        name="barangay_id"
+                        value={userForm.barangay_id}
+                        onChange={handleUserFormChange}
+                        required
+                        options={barangayOptions}
+                        placeholder="Select barangay..."
+                      />
+                    )}
+
+                    <div>
+                      <label
+                        className="block mb-2 text-xs font-semibold text-emerald-300 uppercase tracking-wide"
+                        htmlFor="password"
+                      >
+                        Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="password"
+                          className="w-full rounded-2xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 text-slate-200 placeholder:text-slate-400 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20"
+                          type={showPassword ? "text" : "password"}
+                          name="password"
+                          value={userForm.password}
+                          onChange={handleUserFormChange}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-3 flex items-center text-slate-400 text-sm hover:text-emerald-300 transition-colors"
+                          onClick={() => setShowPassword(!showPassword)}
+                          aria-label={
+                            showPassword ? "Hide password" : "Show password"
+                          }
+                        >
+                          {showPassword ? "🙈" : "👁️"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="submit"
+                        className="group relative inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600/95 to-teal-600/95 px-6 py-3 text-sm font-bold text-slate-100 shadow-xl shadow-emerald-500/30 hover:shadow-2xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 overflow-hidden"
+                      >
+                        <span className="relative z-10">＋ Add User</span>
+                        <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              {/* User list */}
+              <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden max-h-[600px]">
+                <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                      User List (Realtime)
+                    </h3>
+                    <span className="text-sm bg-emerald-500/20 text-emerald-300 px-4 py-2 rounded-2xl border border-emerald-500/40 font-semibold backdrop-blur-sm">
+                      {users.length} users
+                    </span>
+                  </div>
+                  {loadingUsers && <TruckLoader />}
+                  {!loadingUsers && (
+                    <div className="overflow-x-auto rounded-2xl border border-green-800/50 max-h-[480px] bg-slate-900/50 backdrop-blur-xl shadow-inner">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-gradient-to-r from-slate-900/95 to-gray-900/95 text-slate-300 border-b border-green-800/50">
+                          <tr>
+                            <th className="px-6 py-4 text-left font-semibold">
+                              Name
+                            </th>
+                            <th className="px-6 py-4 text-left font-semibold">
+                              Email
+                            </th>
+                            <th className="px-6 py-4 text-left font-semibold">
+                              Role
+                            </th>
+                            <th className="px-6 py-4 text-left font-semibold">
+                              Barangay
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {users.map((user) => (
+                            <tr
+                              key={user.id || user.user_id || user.email}
+                              className="border-t border-green-800/30 hover:bg-slate-800/60 transition-all duration-200"
+                            >
+                              <td className="px-6 py-4 font-semibold text-slate-200">
+                                {user.first_name} {user.last_name}
+                              </td>
+                              <td className="px-6 py-4 text-slate-300">
+                                {user.email}
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-semibold">
+                                  {user.role}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-slate-400">
+                                {user.role === "BWMC" ? user.barangay_id : "-"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* REPORTS */}
+          {activeTab === "reports" && (
+            <section className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+              <div className="relative z-10">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+                  <div>
+                    <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                      Reports & Analytics
+                    </h2>
+                    <p className="text-sm text-slate-400 mt-1">
+                      Visualize waste collection trends and barangay concerns.
+                    </p>
+                  </div>
+                  <div className="inline-flex rounded-2xl bg-slate-900/90 border border-green-800/50 p-1 text-sm backdrop-blur-sm shadow-lg">
                     <button
-                      type="button"
-                      id="passwordToggle"
-                      className="absolute right-2 top-2 text-gray-600"
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={
-                        showPassword ? "Hide password" : "Show password"
-                      }
+                      onClick={() => setActiveReportOption("wasteCollection")}
+                      className={`group/seg px-4 py-2.5 rounded-xl font-semibold transition-all duration-300 ${
+                        activeReportOption === "wasteCollection"
+                          ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-lg shadow-green-500/30"
+                          : "text-emerald-300 hover:bg-green-500/10 hover:shadow-md hover:shadow-green-500/20"
+                      }`}
                     >
-                      {showPassword ? "🙈" : "👁️"}
+                      Waste Collection
+                    </button>
+                    <button
+                      onClick={() => setActiveReportOption("barangayConcerns")}
+                      className={`group/seg px-4 py-2.5 rounded-xl font-semibold transition-all duration-300 ${
+                        activeReportOption === "barangayConcerns"
+                          ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-lg shadow-green-500/30"
+                          : "text-emerald-300 hover:bg-green-500/10 hover:shadow-md hover:shadow-green-500/20"
+                      }`}
+                    >
+                      Barangay Concerns
                     </button>
                   </div>
                 </div>
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-bold"
-                  >
-                    Add User
-                  </button>
-                </div>
-              </form>
-            </div>
-            {/* User list table */}
-            <div className="bg-white rounded-xl shadow p-6 max-w-xl w-full mx-auto md:mx-0">
-              <h3 className="text-lg font-bold mb-2 text-green-600">
-                User List (Realtime)
-              </h3>
-              {loadingUsers && <TruckLoader />}
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm border border-gray-200 rounded bg-white">
-                  <thead className="bg-green-100">
-                    <tr>
-                      <th className="px-3 py-2 text-left border-b text-gray-900">
-                        Name
-                      </th>
-                      <th className="px-3 py-2 text-left border-b text-gray-900">
-                        Email
-                      </th>
-                      <th className="px-3 py-2 text-left border-b text-gray-900">
-                        Role
-                      </th>
-                      <th className="px-3 py-2 text-left border-b text-gray-900">
-                        Barangay
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((user) => (
-                      <tr
-                        key={user.id || user.user_id || user.email}
-                        className="border-t even:bg-gray-50"
-                      >
-                        <td className="px-3 py-2 text-gray-800">
-                          {user.first_name} {user.last_name}
-                        </td>
-                        <td className="px-3 py-2 text-gray-800 break-all">
-                          {user.email}
-                        </td>
-                        <td className="px-3 py-2 text-gray-800">{user.role}</td>
-                        <td className="px-3 py-2 text-gray-800">
-                          {user.role === "BWMC" ? user.barangay_id : "-"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-        )}
-        {/* REPORTS */}
-        {activeTab === "reports" && (
-          <section className="max-w-4xl mx-auto bg-white rounded-xl shadow p-6">
-            <h2 className="text-2xl font-bold mb-4 text-green-600">
-              Generate Report
-            </h2>
-            <div className="mb-4 flex gap-4">
-              <button
-                onClick={() => setActiveReportOption("wasteCollection")}
-                className={`px-4 py-2 rounded font-semibold ${
-                  activeReportOption === "wasteCollection"
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-200 text-gray-700"
-                }`}
-              >
-                Waste Collection Reports
-              </button>
-              <button
-                onClick={() => setActiveReportOption("barangayConcerns")}
-                className={`px-4 py-2 rounded font-semibold ${
-                  activeReportOption === "barangayConcerns"
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-200 text-gray-700"
-                }`}
-              >
-                Barangay Concerns & Actions
-              </button>
-            </div>
-            {activeReportOption === "wasteCollection" && (
-              <>
-                {loadingReportData ? (
-                  <TruckLoader />
-                ) : errorReportData ? (
-                  <p className="text-red-600">{errorReportData}</p>
-                ) : (
+
+                {activeReportOption === "wasteCollection" && (
                   <>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={wasteCollectionData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="tons" fill="#3182ce" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={performanceData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis domain={[0, 100]} />
-                        <Tooltip />
-                        <Line
-                          type="monotone"
-                          dataKey="efficiency"
-                          stroke="#2c7a7b"
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    {loadingReportData ? (
+                      <TruckLoader />
+                    ) : errorReportData ? (
+                      <div className="rounded-2xl bg-gradient-to-r from-red-500/15 to-orange-500/15 border border-red-500/40 p-6 text-red-200 text-center text-sm backdrop-blur-xl shadow-lg">
+                        {errorReportData}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="group relative rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 border border-green-800/50 p-6 backdrop-blur-xl shadow-xl hover:shadow-2xl hover:shadow-green-500/30 transition-all duration-300 overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 blur-sm transition-opacity" />
+                          <h3 className="text-lg font-bold mb-4 relative z-10 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent">
+                            Monthly waste collected (tons)
+                          </h3>
+                          <div className="h-80 relative z-10">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={wasteCollectionData}>
+                                <CartesianGrid
+                                  strokeDasharray="3 3"
+                                  stroke="#334155"
+                                />
+                                <XAxis dataKey="month" stroke="#9ca3af" />
+                                <YAxis stroke="#9ca3af" />
+                                <Tooltip
+                                  contentStyle={{
+                                    backgroundColor: "#0f172a",
+                                    borderColor: "#1e293b",
+                                    color: "#e2e8f0",
+                                    fontSize: 12,
+                                  }}
+                                />
+                                <Bar
+                                  dataKey="tons"
+                                  fill="#10b981"
+                                  radius={[8, 8, 0, 0]}
+                                />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                        <div className="group relative rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 border border-green-800/50 p-6 backdrop-blur-xl shadow-xl hover:shadow-2xl hover:shadow-green-500/30 transition-all duration-300 overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-r from-sky-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 blur-sm transition-opacity" />
+                          <h3 className="text-lg font-bold mb-4 relative z-10 bg-gradient-to-r from-slate-100 to-sky-300 bg-clip-text text-transparent">
+                            Collection efficiency (%)
+                          </h3>
+                          <div className="h-80 relative z-10">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={performanceData}>
+                                <CartesianGrid
+                                  strokeDasharray="3 3"
+                                  stroke="#334155"
+                                />
+                                <XAxis dataKey="month" stroke="#9ca3af" />
+                                <YAxis stroke="#9ca3af" domain={[0, 100]} />
+                                <Tooltip
+                                  contentStyle={{
+                                    backgroundColor: "#0f172a",
+                                    borderColor: "#1e293b",
+                                    color: "#e2e8f0",
+                                    fontSize: 12,
+                                  }}
+                                />
+                                <Line
+                                  type="monotone"
+                                  dataKey="efficiency"
+                                  stroke="#0ea5e9"
+                                  strokeWidth={3}
+                                  dot={{
+                                    r: 4,
+                                    strokeWidth: 2,
+                                    stroke: "#0f172a",
+                                  }}
+                                />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
-              </>
-            )}
-            {activeReportOption === "barangayConcerns" && (
-              <>
-                {loadingReportData ? (
-                  <TruckLoader />
-                ) : errorReportData ? (
-                  <p className="text-red-600">{errorReportData}</p>
-                ) : (
+
+                {activeReportOption === "barangayConcerns" && (
                   <>
-                    <table className="min-w-full text-sm border mt-4">
-                      <thead className="bg-green-200 text-black">
-                        <tr>
-                          <th className="px-3 py-2 text-left border-b">
-                            Barangay
-                          </th>
-                          <th className="px-3 py-2 text-left border-b">
-                            Issue
-                          </th>
-                          <th className="px-3 py-2 text-left border-b">
-                            Status
-                          </th>
-                          <th className="px-3 py-2 text-left border-b">
-                            Action
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {barangayConcerns.map((issue: any) => (
-                          <tr
-                            key={issue.report_id}
-                            className="border-t even:bg-gray-50"
-                          >
-                            <td className="px-3 py-2">{issue.barangay_name}</td>
-                            <td className="px-3 py-2">{issue.description}</td>
-                            <td className="px-3 py-2">
-                              {issue.current_status}
-                            </td>
-                            <td className="px-3 py-2">
-                              <button
-                                className="px-4 py-1 bg-blue-600 text-white rounded"
-                                onClick={() =>
-                                  handleShowResponse(issue.report_id)
-                                }
+                    {loadingReportData ? (
+                      <TruckLoader />
+                    ) : errorReportData ? (
+                      <div className="rounded-2xl bg-gradient-to-r from-red-500/15 to-orange-500/15 border border-red-500/40 p-6 text-red-200 text-center text-sm backdrop-blur-xl shadow-lg">
+                        {errorReportData}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-green-800/50 overflow-x-auto backdrop-blur-xl shadow-inner bg-slate-900/50">
+                        <table className="min-w-full text-sm">
+                          <thead className="bg-gradient-to-r from-slate-900/95 to-gray-900/95 text-slate-300 border-b border-green-800/50">
+                            <tr>
+                              <th className="px-6 py-4 text-left font-semibold">
+                                Barangay
+                              </th>
+                              <th className="px-6 py-4 text-left font-semibold">
+                                Issue
+                              </th>
+                              <th className="px-6 py-4 text-left font-semibold">
+                                Status
+                              </th>
+                              <th className="px-6 py-4 text-left font-semibold">
+                                Action
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {barangayConcerns.map((issue: any) => (
+                              <tr
+                                key={issue.report_id}
+                                className="border-t border-green-800/30 hover:bg-slate-800/60 transition-all duration-200"
                               >
-                                View Response
-                              </button>
-                              {showResponse[issue.report_id] && (
-                                <div className="mt-2 p-2 bg-gray-100 border rounded text-xs whitespace-pre">
-                                  {responseDetails[issue.report_id] ||
-                                    "Loading..."}
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                                <td className="px-6 py-4 font-semibold text-slate-200">
+                                  {issue.barangay_name}
+                                </td>
+                                <td className="px-6 py-4 max-w-md">
+                                  <p className="line-clamp-2 text-slate-300">
+                                    {issue.description}
+                                  </p>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span
+                                    className={`inline-flex px-3 py-1.5 rounded-2xl text-xs font-semibold border ${
+                                      issue.current_status === "Resolved"
+                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                        : issue.current_status === "In Progress"
+                                        ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                                        : "bg-slate-500/20 text-slate-300 border-slate-500/40"
+                                    }`}
+                                  >
+                                    {issue.current_status}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <button
+                                    className="group inline-flex items-center rounded-xl bg-gradient-to-r from-slate-100/90 to-slate-200/90 text-slate-900 px-4 py-2 text-xs font-semibold hover:from-emerald-500/90 hover:to-teal-500/90 hover:text-slate-100 hover:shadow-lg hover:shadow-emerald-500/30 transition-all duration-300 backdrop-blur-sm"
+                                    onClick={() =>
+                                      handleShowResponse(issue.report_id)
+                                    }
+                                  >
+                                    View response
+                                    <div className="ml-1 w-4 h-4 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full group-hover:animate-ping opacity-0 group-hover:opacity-100 transition-all ml-1" />
+                                  </button>
+                                  {showResponse[issue.report_id] && (
+                                    <div className="mt-3 rounded-xl border border-green-800/50 bg-slate-900/90 p-3 text-xs whitespace-pre-wrap text-slate-200 backdrop-blur-sm shadow-lg">
+                                      {responseDetails[issue.report_id] ||
+                                        "Loading..."}
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </>
                 )}
-              </>
-            )}
-          </section>
-        )}
-        {/* Manage Account */}
-        {activeTab === "manageAccount" && (
-          <ManageAccountSection
-            form={manageAccountForm}
-            loading={manageAccountLoading}
-            error={manageAccountError}
-            success={manageAccountSuccess}
-            onChange={handleManageAccountFormChange}
-            onSubmit={handleManageAccountSubmit}
-          />
-        )}
-      </main>
+              </div>
+            </section>
+          )}
+
+          {/* MANAGE ACCOUNT */}
+          {activeTab === "manageAccount" && (
+            <section className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+              <div className="relative z-10">
+                <ManageAccountSection
+                  form={manageAccountForm}
+                  loading={manageAccountLoading}
+                  error={manageAccountError}
+                  success={manageAccountSuccess}
+                  onChange={handleManageAccountFormChange}
+                  onSubmit={handleManageAccountSubmit}
+                />
+              </div>
+            </section>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

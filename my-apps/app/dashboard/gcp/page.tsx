@@ -168,47 +168,22 @@ function generatePatternDates(pattern: string, year: number, month: number) {
   return dates;
 }
 
-type BarangayRef = {
-  barangay_name: string | null;
-  barangay_id: string | number | null;
-};
-
 type Schedule = {
-  schedule_id: any;
-  barangay: { barangay_name: any; barangay_id: any }[]; // or your real types
+  schedule_id: string;
   days: string;
-  date_created: any;
-  start_time: any;
-  end_time: any;
-  status: any;
+  start_time: string | null;
+  end_time: string | null;
+  status: string | null;
+  barangay?: {
+    barangay_name: string;
+    barangay_id: string;
+  } | null;
 };
-
-const [schedules, setSchedules] = useState<Schedule[]>([]);
 
 function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
-
-  function generatePatternDates(pattern: string, year: number, month: number) {
-    if (!pattern) return [];
-
-    const validDays =
-      pattern === "MWF" ? [1, 3, 5] : pattern === "TTH" ? [2, 4] : [];
-
-    const dates: Date[] = [];
-    let date = startOfMonth(new Date(year, month));
-    const end = endOfMonth(date);
-
-    while (date <= end) {
-      if (validDays.includes(date.getDay())) {
-        dates.push(new Date(date));
-      }
-      date = addDays(date, 1);
-    }
-
-    return dates;
-  }
 
   const patternDates = generatePatternDates(schedule.days, year, month);
 
@@ -319,6 +294,7 @@ function GCPScheduleSection() {
     async function fetchGCPSchedules() {
       setMainLoading(true);
       setError(null);
+
       try {
         const { data: authData, error: authErr } =
           await supabase.auth.getUser();
@@ -341,13 +317,17 @@ function GCPScheduleSection() {
           .eq("gcp_user_id", userId);
 
         if (error) throw error;
-        setSchedules((data as Schedule[]) || []);
+
+        // normalize first, then cast
+        const rows = (data ?? []) as unknown as Schedule[];
+        setSchedules(rows);
       } catch (err: any) {
-        setError(err.message ?? "Failed to load schedules.");
+        setError(err.message);
       } finally {
         setMainLoading(false);
       }
     }
+
     fetchGCPSchedules();
   }, []);
 
@@ -366,7 +346,7 @@ function GCPScheduleSection() {
         schedules.map((schedule) => (
           <div key={schedule.schedule_id} className="mb-8">
             <h3 className="font-semibold text-lg mb-2">
-              Barangay: {schedule.barangay?.[0]?.barangay_name || "N/A"}
+              Barangay: {schedule.barangay?.barangay_name || "N/A"}
             </h3>
             <div>
               <strong>Days/Pattern:</strong> {schedule.days}

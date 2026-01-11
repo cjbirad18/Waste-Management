@@ -10,6 +10,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.86.2",
     "date-fns": "^4.1.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.4",
     "leaflet": "^1.9.4",
     "next": "15.5.4",
     "react": "19.1.0",
