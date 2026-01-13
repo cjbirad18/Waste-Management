@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import Image from "next/image";
 
 interface FeatureCardProps {
   icon: React.ReactNode;
@@ -163,18 +164,26 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-4 md:flex-row md:items-center md:justify-between md:gap-3">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 hover:scale-110 transition-all duration-300">
-              🚛
+            <div className="relative h-25 w-25 rounded-2xl ">
+              <Image
+                src="/logo.png"
+                alt="Track-the-Truck logo"
+                width={100}
+                height={100}
+                className="object-contain"
+                priority
+              />
             </div>
             <div>
               <p className="text-sm uppercase tracking-wide font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
                 Track‑the‑Truck
               </p>
               <p className="text-xs text-emerald-400 font-medium">
-                Smart Waste Management
+                Tagbilaran City Waste Management and Community Reporting System
               </p>
             </div>
           </div>
+
           <nav className="flex items-center gap-2 overflow-x-auto no-scrollbar text-sm font-semibold">
             {roleLinks.map((role) => (
               <a
@@ -302,7 +311,7 @@ export default function LandingPage() {
       </section>
 
       {/* Role Cards */}
-      <section className="mx-auto max-w-7xl px-6 py-24 relative z-10">
+      <section className="mx-auto max-w-7xl px-6 py-5 relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent drop-shadow-2xl mb-4">
             Choose Your Role
@@ -343,7 +352,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="mx-auto max-w-7xl px-6 py-24 relative z-10">
+      <section className="mx-auto max-w-7xl px-6 py-5 relative z-10">
         <div className="text-center mb-20">
           <h2 className="text-5xl font-bold bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl mb-6">
             Core Features
@@ -410,15 +419,20 @@ export default function LandingPage() {
           />
         </div>
       </section>
-
+      <br />
       {/* Footer */}
       <footer className="bg-gradient-to-r from-slate-900 to-emerald-900/80 text-slate-200 border-t border-green-800/50 relative z-10">
-        <div className="mx-auto max-w-7xl px-6 py-12">
+        <div className="mx-auto max-w-7xl px-6 py-1">
           <div className="flex flex-col items-center justify-between gap-6 md:flex-row md:items-center">
             <div className="flex items-center gap-3 text-emerald-300">
-              <div className="w-8 h-8 bg-emerald-500/20 rounded-xl flex items-center justify-center backdrop-blur-sm border border-emerald-500/30">
-                🚛
-              </div>
+              <Image
+                src="/logo.png"
+                alt="Track-the-Truck logo"
+                width={100}
+                height={100}
+                className="object-contain"
+                priority
+              />
               <span>&copy; {new Date().getFullYear()} Track-the-Truck</span>
             </div>
             <p className="text-emerald-400/80 font-medium text-center md:text-right">
