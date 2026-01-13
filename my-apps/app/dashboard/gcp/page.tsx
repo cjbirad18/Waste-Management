@@ -133,17 +133,20 @@ function SidebarItem({
   return (
     <button
       onClick={onClick}
-      className={`flex gap-2 items-center w-full px-4 py-3 mb-2 text-left rounded transition ${
+      className={`group relative w-full flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-[1.02] ${
         selected
-          ? "bg-blue-100 text-blue-700 font-semibold"
-          : "hover:bg-gray-100 text-gray-600"
+          ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-xl shadow-green-500/30 border-green-500/50"
+          : "border-green-800/50 bg-slate-800/80 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25"
       }`}
       aria-current={selected ? "page" : undefined}
     >
       <span className="text-xl" aria-hidden="true">
         {icon}
       </span>
-      <span>{label}</span>
+      <span className="font-bold">{label}</span>
+      {selected && (
+        <div className="absolute right-3 w-2 h-6 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full animate-pulse" />
+      )}
     </button>
   );
 }
@@ -206,39 +209,42 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
   return (
     <div className="my-6">
       <div className="flex justify-center mb-2">
-        <span className="font-semibold text-lg">
+        <span className="font-semibold text-lg bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow">
           {format(new Date(year, month), "LLLL yyyy")}
         </span>
       </div>
+
       <div className="mt-6 flex flex-row gap-6 justify-center max-w-[450px] mx-auto">
         <div className="flex items-center gap-2">
-          <div className="h-5 w-5 rounded bg-green-600 border border-green-600"></div>
-          <span className="text-gray-800 text-sm">Scheduled</span>
+          <div className="h-5 w-5 rounded bg-emerald-600 border border-emerald-500" />
+          <span className="text-slate-200 text-sm">Scheduled</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-5 w-5 rounded bg-red-100 border border-red-400"></div>
-          <span className="text-gray-800 text-sm">Today</span>
+          <div className="h-5 w-5 rounded bg-red-500/30 border border-red-400" />
+          <span className="text-slate-200 text-sm">Today</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-5 w-5 rounded bg-white border border-green-300"></div>
-          <span className="text-gray-800 text-sm">No schedule</span>
+          <div className="h-5 w-5 rounded bg-slate-900/80 border border-emerald-500/40" />
+          <span className="text-slate-200 text-sm">No schedule</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-5 w-5 rounded bg-gray-50 border border-gray-100"></div>
-          <span className="text-black text-sm">Other month</span>
+          <div className="h-5 w-5 rounded bg-slate-800/80 border border-slate-700" />
+          <span className="text-slate-300 text-sm">Other month</span>
         </div>
       </div>
 
-      <br />
-
-      <div className="grid grid-cols-7 gap-2 min-w-[350px]">
+      <div className="mt-6 grid grid-cols-7 gap-2 min-w-[350px]">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-          <div key={d} className="font-semibold py-1 text-center text-gray-800">
+          <div
+            key={d}
+            className="font-semibold py-1 text-center text-slate-200 text-xs uppercase tracking-wide"
+          >
             {d}
           </div>
         ))}
+
         {weeks.map((weekDays, weekIdx) =>
-          weekDays.map((day, dayIdx) => {
+          weekDays.map((day) => {
             const isScheduled = patternDates.some(
               (d) => d.toDateString() === day.toDateString()
             );
@@ -252,14 +258,16 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
             let cellClass =
               "h-10 w-10 flex flex-col items-center justify-center text-xs rounded border transition";
             if (!isCurrentMonth) {
-              cellClass += " bg-gray-50 text-gray-300 border-gray-100";
+              cellClass += " bg-slate-800/80 text-slate-500 border-slate-700";
             } else if (isToday) {
-              cellClass += " bg-red-100 text-red-700 font-bold border-red-400";
+              cellClass +=
+                " bg-red-500/20 text-red-300 font-bold border-red-400 shadow-md shadow-red-900/40";
             } else if (isScheduled) {
               cellClass +=
-                " bg-green-600 text-white font-bold border-green-600";
+                " bg-emerald-600 text-white font-bold border-emerald-500 shadow-md shadow-emerald-900/50";
             } else {
-              cellClass += " bg-white border-green-300 text-green-700";
+              cellClass +=
+                " bg-slate-900/80 border-emerald-500/40 text-emerald-200 hover:border-emerald-400 hover:bg-emerald-500/10";
             }
 
             return (
@@ -332,32 +340,45 @@ function GCPScheduleSection() {
   }, []);
 
   return (
-    <section className="max-w-4xl mx-auto bg-white rounded-xl shadow p-8">
-      <h2 className="text-2xl font-bold text-green-600 mb-4">
-        My Assigned Schedule
-      </h2>
-      {mainLoading ? (
-        <TruckLoader />
-      ) : error ? (
-        <p className="text-red-600">Error: {error}</p>
-      ) : !schedules.length ? (
-        <p className="text-gray-500">No assigned schedule found.</p>
-      ) : (
-        schedules.map((schedule) => (
-          <div key={schedule.schedule_id} className="mb-8">
-            <h3 className="font-semibold text-lg mb-2">
-              Barangay: {schedule.barangay?.barangay_name || "N/A"}
-            </h3>
-            <div>
-              <strong>Days/Pattern:</strong> {schedule.days}
+    <section className="group relative max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 md:p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+      <div className="relative z-10">
+        <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+          My Assigned Schedule
+        </h2>
+
+        {mainLoading ? (
+          <TruckLoader />
+        ) : error ? (
+          <p className="text-red-300">Error: {error}</p>
+        ) : !schedules.length ? (
+          <p className="text-slate-300">No assigned schedule found.</p>
+        ) : (
+          schedules.map((schedule) => (
+            <div
+              key={schedule.schedule_id}
+              className="mb-8 rounded-2xl border border-green-800/40 bg-slate-900/70 p-4 shadow-inner shadow-green-900/30"
+            >
+              <h3 className="font-semibold text-lg mb-2 text-slate-100">
+                Barangay: {schedule.barangay?.barangay_name || "N/A"}
+              </h3>
+              <div className="text-slate-200 text-sm mb-1">
+                <span className="font-semibold text-emerald-300">
+                  Days/Pattern:
+                </span>{" "}
+                {schedule.days}
+              </div>
+              <div className="text-slate-200 text-sm mb-3">
+                <span className="font-semibold text-emerald-300">
+                  Start Time:
+                </span>{" "}
+                {schedule.start_time || "N/A"}
+              </div>
+              <ScheduleCalendar schedule={schedule} />
             </div>
-            <div>
-              <strong>Start Time:</strong> {schedule.start_time || "N/A"}
-            </div>
-            <ScheduleCalendar schedule={schedule} />
-          </div>
-        ))
-      )}
+          ))
+        )}
+      </div>
     </section>
   );
 }
@@ -498,263 +519,274 @@ function GCPAssignedTasksSection() {
   }
 
   return (
-    <section className="max-w-4xl mx-auto bg-white rounded-xl shadow p-8 mt-8">
-      <h2 className="text-2xl font-bold text-green-600 mb-4">
-        Assigned Incident Tasks
-      </h2>
+    <section className="group relative max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 md:p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+      <div className="relative z-10">
+        <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+          Assigned Incident Tasks
+        </h2>
 
-      {tasks.length === 0 ? (
-        <p className="text-gray-600">You have no assigned incident tasks.</p>
-      ) : (
-        <div className="space-y-4">
-          {tasks.map((t: any) => (
-            <div
-              key={t.gcp_assignment_id}
-              className="border border-gray-200 rounded-lg p-4"
-            >
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="font-semibold text-lg">
-                  Location: {t.report?.location || "N/A"}
-                </h3>
-                <span className="text-xs px-2 py-1 rounded bg-green-50 text-green-700 border border-green-200">
-                  Status: {t.report?.current_status || "N/A"}
-                </span>
-              </div>
-
-              <p className="text-sm text-gray-700 mb-1">
-                <strong>Landmark:</strong> {t.report?.landmark || "N/A"}
-              </p>
-
-              <div className="mt-2 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="px-4 py-1 text-sm bg-green-600 hover:bg-green-700 text-white rounded font-semibold disabled:bg-gray-300"
-                  onClick={() => setActiveIncident(t.report)}
-                  disabled={!t.report?.description}
-                >
-                  View Incident Description
-                </button>
-
-                <button
-                  type="button"
-                  className="px-4 py-1 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold disabled:bg-gray-300"
-                  onClick={() => setActiveTask(t)}
-                  disabled={!t.task_details}
-                >
-                  View Task from Secretary
-                </button>
-
-                {t.gcp_response ? (
-                  <span className="px-4 py-1 text-sm rounded font-semibold bg-gray-100 text-gray-600">
-                    Already responded
+        {tasks.length === 0 ? (
+          <p className="text-slate-300">You have no assigned incident tasks.</p>
+        ) : (
+          <div className="space-y-4">
+            {tasks.map((t: any) => (
+              <div
+                key={t.gcp_assignment_id}
+                className="border border-green-800/40 rounded-2xl p-4 bg-slate-900/70 shadow-inner shadow-green-900/30"
+              >
+                <div className="flex justify-between items-center mb-2 gap-3">
+                  <h3 className="font-semibold text-lg text-slate-100">
+                    Location: {t.report?.location || "N/A"}
+                  </h3>
+                  <span className="text-[11px] px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 font-semibold">
+                    Status: {t.report?.current_status || "N/A"}
                   </span>
-                ) : (
+                </div>
+
+                <p className="text-sm text-slate-300 mb-1">
+                  <span className="font-semibold text-slate-100">
+                    Landmark:
+                  </span>{" "}
+                  {t.report?.landmark || "N/A"}
+                </p>
+
+                <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="px-4 py-1 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded font-semibold"
-                    onClick={() => handleOpenResponse(t)}
+                    className="px-4 py-1 text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-slate-50 rounded-2xl font-semibold disabled:bg-slate-600 disabled:text-slate-400 transition-colors"
+                    onClick={() => setActiveIncident(t.report)}
+                    disabled={!t.report?.description}
                   >
-                    Add Response
+                    View Incident Description
                   </button>
+
+                  <button
+                    type="button"
+                    className="px-4 py-1 text-xs sm:text-sm bg-sky-600 hover:bg-sky-500 text-slate-50 rounded-2xl font-semibold disabled:bg-slate-600 disabled:text-slate-400 transition-colors"
+                    onClick={() => setActiveTask(t)}
+                    disabled={!t.task_details}
+                  >
+                    View Task from Secretary
+                  </button>
+
+                  {t.gcp_response ? (
+                    <span className="px-4 py-1 text-xs sm:text-sm rounded-2xl font-semibold bg-slate-800 text-slate-300 border border-slate-600">
+                      Already responded
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="px-4 py-1 text-xs sm:text-sm bg-purple-600 hover:bg-purple-500 text-slate-50 rounded-2xl font-semibold transition-colors"
+                      onClick={() => handleOpenResponse(t)}
+                    >
+                      Add Response
+                    </button>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-slate-400 mt-2">
+                  Assigned at:{" "}
+                  {t.created_at
+                    ? new Date(t.created_at).toLocaleString()
+                    : "N/A"}
+                </p>
+
+                {t.gcp_response && (
+                  <p className="text-[11px] text-slate-200 mt-1 whitespace-pre-line">
+                    <span className="font-semibold text-emerald-300">
+                      Your response:
+                    </span>{" "}
+                    {t.gcp_response}
+                  </p>
                 )}
               </div>
+            ))}
+          </div>
+        )}
 
-              <p className="text-xs text-gray-500 mt-2">
-                Assigned at:{" "}
-                {t.created_at ? new Date(t.created_at).toLocaleString() : "N/A"}
+        {/* Response modal */}
+        {responseModalOpen && responseAssignment && (
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
+            onClick={() => setResponseModalOpen(false)}
+          >
+            <div
+              className="bg-slate-900/95 rounded-2xl shadow-2xl border border-green-800/60 max-w-md w-full p-6 relative text-slate-100 backdrop-blur-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setResponseModalOpen(false)}
+                className="absolute top-2 right-3 text-2xl text-slate-500 hover:text-red-400 font-bold"
+                aria-label="Close"
+              >
+                ×
+              </button>
+
+              <h3 className="font-bold text-lg mb-3 text-emerald-300">
+                Add Response
+              </h3>
+
+              <p className="text-sm mb-2 text-slate-200">
+                <span className="font-semibold text-slate-100">Location: </span>
+                {responseAssignment.report?.location || "N/A"}
               </p>
 
-              {t.gcp_response && (
-                <p className="text-xs text-gray-600 mt-1 whitespace-pre-line">
-                  <strong>Your response:</strong> {t.gcp_response}
-                </p>
+              <label className="block text-xs font-semibold mb-1 text-slate-100">
+                Your response
+              </label>
+              <textarea
+                className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm mb-3 bg-slate-900/80 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                rows={4}
+                value={responseText}
+                onChange={(e) => setResponseText(e.target.value)}
+              />
+
+              {responseError && (
+                <p className="text-xs text-red-300 mb-2">{responseError}</p>
               )}
-            </div>
-          ))}
-        </div>
-      )}
 
-      {/* Response modal */}
-      {responseModalOpen && responseAssignment && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center"
-          onClick={() => setResponseModalOpen(false)}
-        >
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setResponseModalOpen(false)}
+                  className="px-4 py-1 text-sm rounded-lg border border-slate-600 text-slate-200 hover:bg-slate-800/80 disabled:opacity-60"
+                  disabled={responseSaving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitResponse}
+                  className="px-4 py-1 text-sm rounded-lg bg-purple-600 text-white hover:bg-purple-500 disabled:bg-slate-500 disabled:text-slate-300"
+                  disabled={responseSaving}
+                >
+                  {responseSaving ? "Saving..." : "Submit Response"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Incident description modal */}
+        {activeIncident && (
           <div
-            className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm"
+            onClick={() => setActiveIncident(null)}
           >
-            <button
-              onClick={() => setResponseModalOpen(false)}
-              className="absolute top-2 right-3 text-2xl text-gray-500 hover:text-red-600 font-bold"
-              aria-label="Close"
+            <div
+              className="bg-slate-900/95 rounded-2xl shadow-2xl border border-green-800/60 max-w-md w-full p-6 text-slate-100 backdrop-blur-xl"
+              onClick={(e) => e.stopPropagation()}
             >
-              ×
-            </button>
-
-            <h3 className="font-bold text-lg mb-3 text-green-700">
-              Add Response
-            </h3>
-
-            <p className="text-sm mb-2">
-              <span className="font-semibold">Location: </span>
-              {responseAssignment.report?.location || "N/A"}
-            </p>
-
-            <label className="block text-sm font-semibold mb-1">
-              Your response
-            </label>
-            <textarea
-              className="w-full border rounded px-3 py-2 text-sm mb-3"
-              rows={4}
-              value={responseText}
-              onChange={(e) => setResponseText(e.target.value)}
-            />
-
-            {responseError && (
-              <p className="text-xs text-red-600 mb-2">{responseError}</p>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setResponseModalOpen(false)}
-                className="px-4 py-1 text-sm rounded border border-gray-300"
-                disabled={responseSaving}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmitResponse}
-                className="px-4 py-1 text-sm rounded bg-purple-600 text-white hover:bg-purple-700 disabled:bg-gray-400"
-                disabled={responseSaving}
-              >
-                {responseSaving ? "Saving..." : "Submit Response"}
-              </button>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-bold text-emerald-300">
+                  Incident Description
+                </h3>
+                <button
+                  className="text-xl text-slate-500 hover:text-red-400"
+                  onClick={() => setActiveIncident(null)}
+                >
+                  ×
+                </button>
+              </div>
+              <p className="text-sm text-slate-200 whitespace-pre-line">
+                {activeIncident.description}
+              </p>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Incident description modal */}
-      {activeIncident && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          onClick={() => setActiveIncident(null)}
-        >
+        {/* Task from secretary modal */}
+        {activeTask && (
           <div
-            className="bg-white rounded-lg shadow-lg max-w-md w-full p-6"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm"
+            onClick={() => setActiveTask(null)}
           >
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-lg font-bold text-green-700">
-                Incident Description
-              </h3>
-              <button
-                className="text-xl text-gray-500 hover:text-red-600"
-                onClick={() => setActiveIncident(null)}
-              >
-                ×
-              </button>
+            <div
+              className="bg-slate-900/95 rounded-2xl shadow-2xl border border-green-800/60 max-w-md w-full p-6 text-slate-100 backdrop-blur-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-bold text-emerald-300">
+                  Task from Secretary
+                </h3>
+                <button
+                  className="text-xl text-slate-500 hover:text-red-400"
+                  onClick={() => setActiveTask(null)}
+                >
+                  ×
+                </button>
+              </div>
+              <p className="text-sm text-slate-200 whitespace-pre-line">
+                {activeTask.task_details}
+              </p>
             </div>
-            <p className="text-sm text-gray-800 whitespace-pre-line">
-              {activeIncident.description}
-            </p>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Task from secretary modal */}
-      {activeTask && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          onClick={() => setActiveTask(null)}
-        >
+        {/* Response form modal (detailed) */}
+        {responseModalOpen && responseAssignment && (
           <div
-            className="bg-white rounded-lg shadow-lg max-w-md w-full p-6"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm"
+            onClick={() => setResponseModalOpen(false)}
           >
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-lg font-bold text-green-700">
-                Task from Secretary
-              </h3>
-              <button
-                className="text-xl text-gray-500 hover:text-red-600"
-                onClick={() => setActiveTask(null)}
-              >
-                ×
-              </button>
-            </div>
-            <p className="text-sm text-gray-800 whitespace-pre-line">
-              {activeTask.task_details}
-            </p>
-          </div>
-        </div>
-      )}
+            <div
+              className="bg-slate-900/95 rounded-2xl shadow-2xl border border-green-800/60 max-w-md w-full p-6 text-slate-100 backdrop-blur-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-bold text-emerald-300">
+                  GCP Incident Response
+                </h3>
+                <button
+                  className="text-xl text-slate-500 hover:text-red-400"
+                  onClick={() => setResponseModalOpen(false)}
+                >
+                  ×
+                </button>
+              </div>
 
-      {/* Response form modal */}
-      {responseModalOpen && responseAssignment && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          onClick={() => setResponseModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-lg max-w-md w-full p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-lg font-bold text-green-700">
-                GCP Incident Response
-              </h3>
-              <button
-                className="text-xl text-gray-500 hover:text-red-600"
-                onClick={() => setResponseModalOpen(false)}
-              >
-                ×
-              </button>
-            </div>
+              <p className="text-sm text-slate-300 mb-2">
+                <span className="font-semibold text-slate-100">Location:</span>{" "}
+                {responseAssignment.report?.location || "N/A"}
+              </p>
 
-            <p className="text-sm text-gray-700 mb-2">
-              <strong>Location:</strong>{" "}
-              {responseAssignment.report?.location || "N/A"}
-            </p>
+              <label className="block text-xs font-semibold mb-1 text-slate-100">
+                Response / action taken
+              </label>
+              <textarea
+                className="w-full border border-slate-700 rounded-lg px-2 py-1 text-sm mb-3 bg-slate-900/80 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                rows={4}
+                value={responseText}
+                onChange={(e) => setResponseText(e.target.value)}
+                placeholder="Describe what you did to respond to this incident..."
+              />
 
-            <label className="block text-sm font-semibold mb-1">
-              Response / action taken
-            </label>
-            <textarea
-              className="w-full border rounded px-2 py-1 text-sm mb-3"
-              rows={4}
-              value={responseText}
-              onChange={(e) => setResponseText(e.target.value)}
-              placeholder="Describe what you did to respond to this incident..."
-            />
+              {responseError && (
+                <p className="text-xs text-red-300 mb-2">{responseError}</p>
+              )}
 
-            {responseError && (
-              <p className="text-xs text-red-600 mb-2">{responseError}</p>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className="px-3 py-1 text-sm rounded border border-gray-300"
-                onClick={() => setResponseModalOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="px-4 py-1 text-sm rounded bg-green-600 text-white hover:bg-purple-700 disabled:bg-gray-400"
-                onClick={handleSubmitResponse}
-                disabled={responseSaving}
-              >
-                {responseSaving ? "Saving..." : "Save Response"}
-              </button>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="px-3 py-1 text-sm rounded-lg border border-slate-600 text-slate-200 hover:bg-slate-800/80"
+                  onClick={() => setResponseModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="px-4 py-1 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 disabled:bg-slate-500 disabled:text-slate-300"
+                  onClick={handleSubmitResponse}
+                  disabled={responseSaving}
+                >
+                  {responseSaving ? "Saving..." : "Save Response"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </section>
   );
 }
@@ -938,128 +970,182 @@ export default function GCPDashboard() {
   };
 
   return (
-    <div className="flex bg-gray-50 min-h-screen">
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="md:hidden fixed top-4 left-4 z-[70] p-2 bg-white shadow rounded"
-        aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-      >
-        {sidebarOpen ? "✖" : "☰"}
-      </button>
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-opacity-30 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-      <aside
-        className={`bg-white/95 backdrop-blur border-r border-emerald-100 shadow-lg flex flex-col pt-6 px-5 md:px-4 fixed top-0 left-0 h-full transition-all duration-300 z-50 ${
-          sidebarOpen
-            ? "w-4/5 max-w-xs opacity-100"
-            : "w-0 opacity-0 overflow-hidden"
-        } md:w-64 md:max-w-none md:opacity-100 md:overflow-visible`}
-      >
-        <div>
-          <h1 className="text-xl font-extrabold text-emerald-700 mb-1 tracking-tight">
-            GCP Dashboard
-          </h1>
-          <p className="text-xs font-semibold text-gray-600 leading-snug">
-            Garbage Collection Personnel
-          </p>
-        </div>
-        <nav
-          className="flex-1 mt-6 text-sm font-semibold text-gray-700 space-y-1"
-          aria-label="Main Navigation"
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
+      {/* Subtle animated overlay */}
+      <div className="fixed inset-0 opacity-30 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 animate-pulse" />
+      </div>
+
+      <div className="flex flex-1 relative">
+        {/* Mobile menu button */}
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="md:hidden fixed top-4 left-4 z-[70] inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
+          aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
         >
-          {" "}
-          <SidebarItem
-            label="Dashboard"
-            icon="🏠"
-            selected={activeTab === "dashboard"}
-            onClick={() => {
-              setActiveTab("dashboard");
-              setSidebarOpen(false);
-            }}
+          {sidebarOpen ? "✖" : "☰"}
+        </button>
+
+        {/* Mobile overlay when sidebar is open */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
           />
-          <SidebarItem
-            label="View Schedule"
-            icon="📅"
-            selected={activeTab === "viewSchedule"}
-            onClick={() => {
-              setActiveTab("viewSchedule");
-              setSidebarOpen(false);
-            }}
-          />
-          {/* NEW: Assigned Tasks from secretary */}
-          <SidebarItem
-            label="Assigned Tasks"
-            icon="✅"
-            selected={activeTab === "assignedTasks"}
-            onClick={() => {
-              setActiveTab("assignedTasks");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="Manage Account"
-            icon="🛠️"
-            selected={activeTab === "manageAccount"}
-            onClick={() => {
-              setActiveTab("manageAccount");
-              setSidebarOpen(false);
-            }}
-          />
-          <button
-            onClick={handleLogout}
-            className="mt-8 mb-4 px-6 py-2 text-red-600 flex items-center gap-2 hover:bg-red-100 rounded"
+        )}
+
+        {/* Sidebar */}
+        <aside
+          className={`bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-2xl border-r border-green-800/40 shadow-2xl shadow-green-900/20 flex flex-col pt-6 px-5 md:px-4 fixed top-0 left-0 h-full transition-all duration-300 z-50 ${
+            sidebarOpen
+              ? "w-4/5 max-w-xs opacity-100"
+              : "w-0 opacity-0 overflow-hidden"
+          } md:w-64 md:max-w-none md:opacity-100 md:overflow-visible`}
+        >
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30">
+              🚚
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.3em] bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-bold">
+                Track-the-Truck
+              </p>
+              <h1 className="text-lg font-extrabold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent tracking-tight drop-shadow-lg">
+                GCP Dashboard
+              </h1>
+              <p className="text-[11px] font-semibold text-slate-400 leading-snug">
+                Garbage Collection Personnel
+              </p>
+            </div>
+          </div>
+
+          <nav
+            className="flex-1 mt-4 text-sm font-semibold text-slate-200 space-y-2"
+            aria-label="Main Navigation"
           >
-            Logout
-          </button>
-        </nav>
-      </aside>
-      <main className="flex-1 p-6 md:p-8 transition-all duration-300 md:ml-64">
-        {activeTab === "dashboard" && (
-          <>
-            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {summaryCards.map((sc, i) => (
-                <div
-                  key={i}
-                  className={`rounded-xl shadow flex flex-col items-center py-6 ${sc.bg}`}
-                  role="region"
-                  aria-label={sc.label}
-                >
-                  <span className="text-4xl mb-2" aria-hidden="true">
-                    {sc.icon}
-                  </span>
-                  <span className={`text-xl font-bold ${sc.color}`}>
-                    {sc.count}
-                  </span>
-                  <span className="text-gray-600 text-sm">{sc.label}</span>
+            <SidebarItem
+              label="Dashboard"
+              icon="🏠"
+              selected={activeTab === "dashboard"}
+              onClick={() => {
+                setActiveTab("dashboard");
+                setSidebarOpen(false);
+              }}
+            />
+            <SidebarItem
+              label="View Schedule"
+              icon="📅"
+              selected={activeTab === "viewSchedule"}
+              onClick={() => {
+                setActiveTab("viewSchedule");
+                setSidebarOpen(false);
+              }}
+            />
+            <SidebarItem
+              label="Assigned Tasks"
+              icon="✅"
+              selected={activeTab === "assignedTasks"}
+              onClick={() => {
+                setActiveTab("assignedTasks");
+                setSidebarOpen(false);
+              }}
+            />
+            <SidebarItem
+              label="Manage Account"
+              icon="🛠️"
+              selected={activeTab === "manageAccount"}
+              onClick={() => {
+                setActiveTab("manageAccount");
+                setSidebarOpen(false);
+              }}
+            />
+
+            <button
+              onClick={handleLogout}
+              className="mt-8 mb-4 px-6 py-2 text-red-50 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-red-600/90 to-orange-600/90 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg text-sm font-bold"
+            >
+              ⎋ Logout
+            </button>
+          </nav>
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1 p-6 md:p-8 transition-all duration-300 md:ml-64 space-y-8">
+          {activeTab === "dashboard" && (
+            <>
+              <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {summaryCards.map((sc, i) => (
+                  <div
+                    key={i}
+                    className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70 flex flex-col items-center"
+                    role="region"
+                    aria-label={sc.label}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
+                    <span
+                      className="text-4xl mb-3 relative z-10"
+                      aria-hidden="true"
+                    >
+                      {sc.icon}
+                    </span>
+                    <span className="text-2xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg relative z-10">
+                      {sc.count}
+                    </span>
+                    <span className="text-xs uppercase tracking-wide text-emerald-300 font-semibold mt-1 relative z-10">
+                      {sc.label}
+                    </span>
+                    <div className="w-full mt-4 relative z-10">
+                      <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50">
+                        <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
+                      </div>
+                      <p className="mt-3 text-[11px] text-slate-400 text-center">
+                        Auto-updated from collection data
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </section>
+
+              <section
+                aria-label="Map of collection area and vehicles"
+                className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                      Collection Coverage Map
+                    </h2>
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm">
+                      <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                      Live vehicles
+                    </span>
+                  </div>
+                  <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[500px] md:h-[600px]">
+                    <LeafletMap />
+                  </div>
                 </div>
-              ))}
-            </section>
-            <section aria-label="Map of collection area and vehicles">
-              <LeafletMap />
-            </section>
-          </>
-        )}
+              </section>
+            </>
+          )}
 
-        {activeTab === "viewSchedule" && <GCPScheduleSection />}
+          {activeTab === "viewSchedule" && <GCPScheduleSection />}
 
-        {activeTab === "assignedTasks" && <GCPAssignedTasksSection />}
+          {activeTab === "assignedTasks" && <GCPAssignedTasksSection />}
 
-        {activeTab === "manageAccount" && (
-          <ManageAccountSection
-            form={manageAccountForm}
-            loading={manageAccountLoading}
-            error={manageAccountError}
-            success={manageAccountSuccess}
-            onChange={handleManageAccountFormChange}
-            onSubmit={handleManageAccountSubmit}
-          />
-        )}
-      </main>
+          {activeTab === "manageAccount" && (
+            <ManageAccountSection
+              form={manageAccountForm}
+              loading={manageAccountLoading}
+              error={manageAccountError}
+              success={manageAccountSuccess}
+              onChange={handleManageAccountFormChange}
+              onSubmit={handleManageAccountSubmit}
+            />
+          )}
+        </main>
+      </div>
     </div>
   );
 }
@@ -1081,91 +1167,106 @@ function ManageAccountSection({
   onSubmit: (e: FormEvent) => void;
 }) {
   if (loading) return <TruckLoader />;
+
   return (
-    <section className="max-w-lg mx-auto bg-white rounded-xl shadow p-8">
-      <h2 className="text-2xl font-bold mb-6 text-green-600">Manage Account</h2>
+    <section className="max-w-2xl mx-auto rounded-2xl bg-slate-900/90 border border-slate-800/70 p-6 md:p-8 shadow-xl backdrop-blur-sm">
+      <h2 className="text-2xl font-bold mb-2 text-emerald-400">
+        Manage Account
+      </h2>
+      <p className="text-[11px] text-slate-400 mb-4">
+        Update your profile details and sign-in credentials.
+      </p>
+
       {error && (
         <div
           role="alert"
-          className="mb-4 px-4 py-2 rounded bg-red-100 text-red-700"
+          className="px-4 py-2 mb-3 rounded-lg bg-red-500/10 border border-red-500/50 text-xs text-red-200"
         >
           {error}
         </div>
       )}
+
       {success && (
         <div
           role="status"
-          className="mb-4 px-4 py-2 rounded bg-green-100 text-green-700"
+          className="px-4 py-2 mb-3 rounded-lg bg-emerald-500/10 border border-emerald-500/50 text-xs text-emerald-200"
         >
           {success}
         </div>
       )}
-      <form onSubmit={onSubmit} noValidate>
-        <InputField
-          label="First Name"
-          name="first_name"
-          type="text"
-          value={form.first_name}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="Last Name"
-          name="last_name"
-          type="text"
-          value={form.last_name}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="Username"
-          name="username"
-          type="text"
-          value={form.username}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="Email"
-          name="email"
-          type="email"
-          value={form.email}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="Contact Number"
-          name="contact_number"
-          type="tel"
-          value={form.contact_number}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="New Password"
-          name="password"
-          type="password"
-          value={form.password}
-          onChange={onChange}
-          placeholder="Leave blank to keep current password"
-        />
-        <InputField
-          label="Confirm New Password"
-          name="confirm_password"
-          type="password"
-          value={form.confirm_password}
-          onChange={onChange}
-          placeholder="Confirm your new password"
-        />
-        <div className="flex justify-end mt-6">
-          <button
-            type="submit"
-            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-bold"
-          >
-            Update Account
-          </button>
-        </div>
-      </form>
+
+      {!loading && (
+        <form onSubmit={onSubmit} className="space-y-3" noValidate>
+          {/* make all labels white via utility */}
+          <div className="label:text-slate-100 label:text-xs label:font-semibold space-y-3">
+            <InputField
+              label="First Name"
+              name="first_name"
+              type="text"
+              value={form.first_name}
+              onChange={onChange}
+              required
+            />
+            <InputField
+              label="Last Name"
+              name="last_name"
+              type="text"
+              value={form.last_name}
+              onChange={onChange}
+              required
+            />
+            <InputField
+              label="Username"
+              name="username"
+              type="text"
+              value={form.username}
+              onChange={onChange}
+              required
+            />
+            <InputField
+              label="Email"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={onChange}
+              required
+            />
+            <InputField
+              label="Contact Number"
+              name="contact_number"
+              type="tel"
+              value={form.contact_number}
+              onChange={onChange}
+              required
+            />
+            <InputField
+              label="New Password"
+              name="password"
+              type="password"
+              value={form.password}
+              onChange={onChange}
+              placeholder="Leave blank to keep current password"
+            />
+            <InputField
+              label="Confirm New Password"
+              name="confirm_password"
+              type="password"
+              value={form.confirm_password}
+              onChange={onChange}
+              placeholder="Confirm your new password"
+            />
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              className="inline-flex items-center rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
+            >
+              Update Account
+            </button>
+          </div>
+        </form>
+      )}
     </section>
   );
 }
@@ -1189,7 +1290,10 @@ function InputField({
 }) {
   return (
     <div className="mb-4">
-      <label htmlFor={name} className="block mb-1 font-semibold text-gray-900">
+      <label
+        htmlFor={name}
+        className="block mb-1 text-xs font-semibold text-slate-100"
+      >
         {label}
       </label>
       <input
@@ -1200,8 +1304,8 @@ function InputField({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-gray-400 rounded bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
         autoComplete="off"
+        className="w-full rounded-lg bg-slate-900/90 border border-slate-700 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
       />
     </div>
   );

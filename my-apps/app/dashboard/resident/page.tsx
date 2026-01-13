@@ -81,10 +81,10 @@ function SidebarItem({
   return (
     <button
       onClick={onClick}
-      className={`flex gap-2 items-center justify-between w-full px-4 py-3 mb-2 text-left rounded transition ${
+      className={`group relative w-full flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 mb-2 text-left transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-[1.02] ${
         selected
-          ? "bg-blue-100 text-blue-700 font-semibold"
-          : "hover:bg-gray-100 text-gray-600"
+          ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-xl shadow-green-500/30 border-green-500/50"
+          : "border-green-800/50 bg-slate-800/80 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25"
       }`}
       aria-current={selected ? "page" : undefined}
     >
@@ -92,12 +92,17 @@ function SidebarItem({
         <span className="text-xl" aria-hidden="true">
           {icon}
         </span>
-        <span>{label}</span>
+        <span className="font-bold">{label}</span>
       </span>
+
       {hasBadge && (
-        <span className="inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 text-xs font-bold rounded-full bg-red-600 text-white">
+        <span className="inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-500 text-white shadow shadow-red-900/60">
           {badgeCount}
         </span>
+      )}
+
+      {selected && (
+        <div className="absolute right-3 w-2 h-6 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full animate-pulse" />
       )}
     </button>
   );
@@ -160,39 +165,41 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
   return (
     <div className="my-6">
       <div className="mb-2 mt-2 flex justify-center">
-        <span className="font-semibold text-xl">
+        <span className="font-semibold text-xl bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow">
           {format(new Date(year, month), "LLLL yyyy")}
         </span>
       </div>
+
       <div className="mt-6 flex flex-row gap-6 justify-center max-w-[450px] mx-auto">
         <div className="flex items-center gap-2">
-          <div className="h-5 w-5 rounded bg-green-600 border border-green-600"></div>
-          <span className="text-gray-800 text-sm">Scheduled</span>
+          <div className="h-5 w-5 rounded bg-emerald-600 border border-emerald-500" />
+          <span className="text-slate-200 text-sm">Scheduled</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-5 w-5 rounded bg-red-100 border border-red-400"></div>
-          <span className="text-gray-800 text-sm">Today</span>
+          <div className="h-5 w-5 rounded bg-red-500/30 border border-red-400" />
+          <span className="text-slate-200 text-sm">Today</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-5 w-5 rounded bg-white border border-green-300"></div>
-          <span className="text-gray-800 text-sm">No schedule</span>
+          <div className="h-5 w-5 rounded bg-slate-900/80 border border-emerald-500/40" />
+          <span className="text-slate-200 text-sm">No schedule</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-5 w-5 rounded bg-gray-50 border border-gray-100"></div>
-          <span className="text-black text-sm">Other month</span>
+          <div className="h-5 w-5 rounded bg-slate-800/80 border border-slate-700" />
+          <span className="text-slate-300 text-sm">Other month</span>
         </div>
       </div>
 
-      <br />
-
-      <div className="grid grid-cols-7 gap-2 text-center text-md text-gray-800 select-none min-w-[350px]">
+      <div className="mt-4 grid grid-cols-7 gap-2 text-center text-md text-slate-200 select-none min-w-[350px]">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-          <div key={d} className="font-semibold py-1 text-center text-gray-800">
+          <div
+            key={d}
+            className="font-semibold py-1 text-center text-slate-200 text-xs uppercase tracking-wide"
+          >
             {d}
           </div>
         ))}
         {weeks.map((weekDays, weekIdx) =>
-          weekDays.map((day, dayIdx) => {
+          weekDays.map((day) => {
             const isScheduled = patternDates.some(
               (d) => d.toDateString() === day.toDateString()
             );
@@ -206,14 +213,16 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
             let cellClass =
               "h-10 w-10 flex flex-col items-center justify-center text-lg rounded border transition";
             if (!isCurrentMonth) {
-              cellClass += " bg-gray-50 text-gray-300 border-gray-400";
+              cellClass += " bg-slate-800/80 text-slate-500 border-slate-700";
             } else if (isToday) {
-              cellClass += " bg-red-200 text-red-700 font-bold border-red-400";
+              cellClass +=
+                " bg-red-500/25 text-red-300 font-bold border-red-400 shadow-md shadow-red-900/40";
             } else if (isScheduled) {
               cellClass +=
-                " bg-green-600 text-black font-bold border-green-600";
+                " bg-emerald-600 text-white font-bold border-emerald-500 shadow-md shadow-emerald-900/50";
             } else {
-              cellClass += " bg-white border-green-300 text-black font-bold";
+              cellClass +=
+                " bg-slate-900/80 border-emerald-500/40 text-emerald-200 hover:border-emerald-400 hover:bg-emerald-500/10";
             }
 
             return (
@@ -339,22 +348,30 @@ function ResidentSchedulesFeature({
   );
 
   return (
-    <section className="max-w-4xl mx-auto bg-white rounded-xl shadow p-8">
-      <h2 className="text-3xl font-bold text-green-600 mb-4">
+    <section className="max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 md:p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl">
+      <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
         Schedules Overview
       </h2>
+
       <div className="mb-6">
-        <label htmlFor="barangay-select" className="block font-semibold mb-2">
+        <label
+          htmlFor="barangay-select"
+          className="block text-sm font-semibold mb-2 text-slate-100"
+        >
           See other barangay schedules
         </label>
         <select
           id="barangay-select"
           value={selectedBarangayId}
           onChange={(e) => setSelectedBarangayId(e.target.value)}
-          className="p-2 border border-gray-400 rounded w-full max-w-xs"
+          className="p-2 rounded-lg w-full max-w-xs bg-slate-900/80 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
         >
           {barangays.map((b) => (
-            <option key={b.barangay_id} value={b.barangay_id}>
+            <option
+              key={b.barangay_id}
+              value={b.barangay_id}
+              className="bg-slate-900 text-slate-100"
+            >
               {b.barangay_name}
             </option>
           ))}
@@ -364,50 +381,72 @@ function ResidentSchedulesFeature({
       {loading ? (
         <TruckLoader />
       ) : error ? (
-        <p className="text-red-600">Error: {error}</p>
+        <p className="text-red-300">Error: {error}</p>
       ) : schedule ? (
-        <>
-          <div className="mb-4">
-            <h3 className="font-semibold text-lg">
-              Barangay: {schedule.barangay?.barangay_name || "N/A"}
-            </h3>
-            <div className="text-md text-black">
-              Assigned GCP:{" "}
-              {schedule.gcp_user
-                ? `${schedule.gcp_user.first_name} ${schedule.gcp_user.last_name}`
-                : "None"}
-            </div>
-            <ScheduleCalendar schedule={schedule} />
-            {Array.isArray(schedule.collection_details) &&
-            schedule.collection_details.length > 0 ? (
-              <ul className="space-y-2 text-gray-700">
-                {schedule.collection_details.map((detail) => (
-                  <li
-                    key={detail.collectiondetails_id}
-                    className="border-t pt-2"
-                  >
-                    <div>Truck: {detail.truck?.plate_number || "N/A"}</div>
-                    <div>
-                      Collection Date:{" "}
-                      {new Date(detail.collection_date).toLocaleDateString()}
-                    </div>
-                    <div>Status: {detail.status}</div>
-                    <div>
-                      Assigned User:{" "}
-                      {detail.gcp_assignment?.user
-                        ? `${detail.gcp_assignment.user.first_name} ${detail.gcp_assignment.user.last_name}`
-                        : "Unassigned"}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-500"></p>
-            )}
+        <div className="mb-4">
+          <h3 className="font-semibold text-lg text-slate-100">
+            Barangay: {schedule.barangay?.barangay_name || "N/A"}
+          </h3>
+          <div className="text-sm text-slate-200 mb-2">
+            <span className="font-semibold text-emerald-300">
+              Assigned GCP:
+            </span>{" "}
+            {schedule.gcp_user
+              ? `${schedule.gcp_user.first_name} ${schedule.gcp_user.last_name}`
+              : "None"}
           </div>
-        </>
+
+          <div className="mt-3 mb-4 rounded-2xl border border-green-800/40 bg-slate-900/70 p-3">
+            <ScheduleCalendar schedule={schedule} />
+          </div>
+
+          {Array.isArray(schedule.collection_details) &&
+          schedule.collection_details.length > 0 ? (
+            <ul className="space-y-3 text-slate-200">
+              {schedule.collection_details.map((detail) => (
+                <li
+                  key={detail.collectiondetails_id}
+                  className="border border-green-800/40 rounded-2xl p-3 bg-slate-900/80"
+                >
+                  <div className="text-sm">
+                    <span className="font-semibold text-emerald-300">
+                      Truck:
+                    </span>{" "}
+                    {detail.truck?.plate_number || "N/A"}
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-semibold text-emerald-300">
+                      Collection Date:
+                    </span>{" "}
+                    {detail.collection_date
+                      ? new Date(detail.collection_date).toLocaleDateString()
+                      : "N/A"}
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-semibold text-emerald-300">
+                      Status:
+                    </span>{" "}
+                    {detail.status}
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-semibold text-emerald-300">
+                      Assigned User:
+                    </span>{" "}
+                    {detail.gcp_assignment?.user
+                      ? `${detail.gcp_assignment.user.first_name} ${detail.gcp_assignment.user.last_name}`
+                      : "Unassigned"}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-slate-400 text-sm">
+              No collection details for this schedule.
+            </p>
+          )}
+        </div>
       ) : (
-        <p className="text-gray-500">No schedule found for this barangay.</p>
+        <p className="text-slate-400">No schedule found for this barangay.</p>
       )}
     </section>
   );
@@ -594,26 +633,29 @@ function SubmitReportSection({
   };
 
   return (
-    <section className="max-w-2xl mx-auto bg-white rounded-xl shadow-xl p-7 mt-1 transition-all">
+    <section className="max-w-2xl mx-auto mt-1 rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-emerald-700/60 p-7 shadow-2xl shadow-emerald-900/40 backdrop-blur-2xl transition-all">
       <div className="mb-4 flex items-center gap-3">
-        <span className="bg-green-100 text-green-700 rounded-full p-3 text-2xl">
+        <span className="bg-emerald-500/20 text-emerald-300 rounded-2xl p-3 text-2xl border border-emerald-500/40 shadow-md shadow-emerald-900/50">
           📷
         </span>
-        <h2 className="text-2xl font-bold text-green-700">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
           Submit Incident Report
         </h2>
       </div>
-      <p className="mb-4 text-gray-700">
-        All fields must be completed. Only live camera capture is Optional.
+
+      <p className="mb-4 text-sm text-slate-300">
+        All required fields must be completed. Live camera capture is optional.
       </p>
+
       {fieldError && (
-        <div className="mb-3 px-4 py-2 rounded bg-red-100 text-red-700 font-semibold animate-pulse">
+        <div className="mb-3 px-4 py-2 rounded-2xl bg-red-500/15 text-red-200 font-semibold border border-red-500/50 animate-pulse text-sm">
           {fieldError}
         </div>
       )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block font-semibold mb-1 text-gray-800">
+          <label className="block text-xs font-semibold mb-1 text-slate-100">
             Location
           </label>
           <input
@@ -621,13 +663,14 @@ function SubmitReportSection({
             value={form.location}
             onChange={handleChange}
             required
-            className="w-full p-3 border rounded focus:ring focus:ring-green-200"
+            className="w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
             placeholder="Exact location/address"
             type="text"
           />
         </div>
+
         <div>
-          <label className="block font-semibold mb-1 text-gray-800">
+          <label className="block text-xs font-semibold mb-1 text-slate-100">
             Description
           </label>
           <textarea
@@ -636,12 +679,13 @@ function SubmitReportSection({
             onChange={handleChange}
             required
             rows={3}
-            className="w-full p-3 border rounded focus:ring focus:ring-green-200"
+            className="w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
             placeholder="Describe the incident"
           />
         </div>
+
         <div>
-          <label className="block font-semibold mb-1 text-gray-800">
+          <label className="block text-xs font-semibold mb-1 text-slate-100">
             Barangay
           </label>
           <select
@@ -649,18 +693,23 @@ function SubmitReportSection({
             value={form.barangay_id}
             onChange={handleChange}
             required
-            className="w-full p-3 border rounded focus:ring focus:ring-green-200"
+            className="w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
           >
             <option value="">Select Barangay</option>
             {barangays.map((brgy) => (
-              <option key={brgy.barangay_id} value={brgy.barangay_id}>
+              <option
+                key={brgy.barangay_id}
+                value={brgy.barangay_id}
+                className="bg-slate-900 text-slate-100"
+              >
                 {brgy.barangay_name}
               </option>
             ))}
           </select>
         </div>
+
         <div>
-          <label className="block font-semibold mb-1 text-gray-800">
+          <label className="block text-xs font-semibold mb-1 text-slate-100">
             Landmark
           </label>
           <input
@@ -668,7 +717,7 @@ function SubmitReportSection({
             value={form.landmark}
             onChange={handleChange}
             required
-            className="w-full p-3 border rounded focus:ring focus:ring-green-200"
+            className="w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
             placeholder="Nearby landmark"
             type="text"
           />
@@ -678,11 +727,12 @@ function SubmitReportSection({
           <button
             type="button"
             onClick={startCamera}
-            className="bg-blue-600 text-white rounded px-4 py-2 font-semibold hover:bg-blue-700 transition shadow"
+            className="inline-flex items-center justify-center bg-sky-600 hover:bg-sky-500 text-white rounded-xl px-4 py-2 text-sm font-semibold shadow-lg shadow-sky-900/40 transition-colors"
           >
             Start Camera
           </button>
         )}
+
         {cameraActive && (
           <div className="flex flex-col gap-2 mt-2">
             <video
@@ -690,20 +740,20 @@ function SubmitReportSection({
               width="320"
               height="240"
               autoPlay
-              className="rounded border shadow"
+              className="rounded-xl border border-slate-700 shadow-lg shadow-slate-900/60 bg-black/60"
             />
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={capturePhoto}
-                className="bg-green-500 text-white rounded px-4 py-2 font-semibold hover:bg-green-700 transition shadow"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl px-4 py-2 text-sm font-semibold shadow-lg shadow-emerald-900/50 transition-colors"
               >
                 Capture Photo
               </button>
               <button
                 type="button"
                 onClick={stopCamera}
-                className="bg-gray-300 text-gray-700 rounded px-4 py-2 font-semibold hover:bg-gray-400 transition"
+                className="bg-slate-700/80 text-slate-200 rounded-xl px-4 py-2 text-sm font-semibold hover:bg-slate-600 transition-colors"
               >
                 Cancel
               </button>
@@ -718,11 +768,11 @@ function SubmitReportSection({
         )}
 
         {photoUrl && (
-          <div className="mt-3 mb-2">
+          <div className="mt-3 mb-2 flex justify-center">
             <img
               src={photoUrl}
               alt="Live Capture"
-              className="w-40 rounded shadow border mx-auto"
+              className="w-40 rounded-xl shadow-lg shadow-slate-900/60 border border-slate-700"
             />
           </div>
         )}
@@ -730,7 +780,7 @@ function SubmitReportSection({
         <button
           type="submit"
           disabled={loading}
-          className={`w-full py-3 font-semibold rounded bg-green-600 text-white shadow hover:bg-green-700 transition ${
+          className={`w-full py-3 text-sm font-semibold rounded-2xl bg-emerald-600 text-white shadow-xl shadow-emerald-900/50 hover:bg-emerald-500 transition-all ${
             loading ? "opacity-50 pointer-events-none" : ""
           }`}
         >
@@ -758,85 +808,96 @@ function ManageAccountSection({
 }) {
   if (loading) return <TruckLoader />;
   return (
-    <section className="max-w-2xl mx-auto bg-white rounded-xl shadow p-8">
-      <h2 className="text-2xl font-bold mb-6 text-green-600">Manage Account</h2>
+    <section className="max-w-2xl mx-auto rounded-2xl bg-slate-900/90 border border-slate-800/70 p-6 md:p-8 shadow-xl backdrop-blur-sm">
+      <h2 className="text-2xl font-bold mb-2 text-emerald-400">
+        Manage Account
+      </h2>
+      <p className="text-[11px] text-slate-400 mb-4">
+        Update your profile details and sign-in credentials.
+      </p>
+
       {error && (
         <div
           role="alert"
-          className="mb-4 px-4 py-2 rounded bg-red-100 text-red-700"
+          className="mb-3 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/50 text-xs text-red-200"
         >
           {error}
         </div>
       )}
+
       {success && (
         <div
           role="status"
-          className="mb-4 px-4 py-2 rounded bg-green-100 text-green-700"
+          className="mb-3 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/50 text-xs text-emerald-200"
         >
           {success}
         </div>
       )}
-      <form onSubmit={onSubmit} noValidate>
-        <InputField
-          label="First Name"
-          name="first_name"
-          type="text"
-          value={form.first_name}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="Last Name"
-          name="last_name"
-          type="text"
-          value={form.last_name}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="Username"
-          name="username"
-          type="text"
-          value={form.username}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="Email"
-          name="email"
-          type="email"
-          value={form.email}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="Contact Number"
-          name="contact_number"
-          type="tel"
-          value={form.contact_number}
-          onChange={onChange}
-          required
-        />
-        <InputField
-          label="New Password"
-          name="password"
-          type="password"
-          value={form.password}
-          onChange={onChange}
-          placeholder="Leave blank to keep current password"
-        />
-        <InputField
-          label="Confirm New Password"
-          name="confirm_password"
-          type="password"
-          value={form.confirm_password}
-          onChange={onChange}
-          placeholder="Confirm your new password"
-        />
-        <div className="flex justify-end mt-2">
+
+      <form onSubmit={onSubmit} noValidate className="space-y-3">
+        <div className="label:text-slate-100 label:text-xs label:font-semibold space-y-3">
+          <InputField
+            label="First Name"
+            name="first_name"
+            type="text"
+            value={form.first_name}
+            onChange={onChange}
+            required
+          />
+          <InputField
+            label="Last Name"
+            name="last_name"
+            type="text"
+            value={form.last_name}
+            onChange={onChange}
+            required
+          />
+          <InputField
+            label="Username"
+            name="username"
+            type="text"
+            value={form.username}
+            onChange={onChange}
+            required
+          />
+          <InputField
+            label="Email"
+            name="email"
+            type="email"
+            value={form.email}
+            onChange={onChange}
+            required
+          />
+          <InputField
+            label="Contact Number"
+            name="contact_number"
+            type="tel"
+            value={form.contact_number}
+            onChange={onChange}
+            required
+          />
+          <InputField
+            label="New Password"
+            name="password"
+            type="password"
+            value={form.password}
+            onChange={onChange}
+            placeholder="Leave blank to keep current password"
+          />
+          <InputField
+            label="Confirm New Password"
+            name="confirm_password"
+            type="password"
+            value={form.confirm_password}
+            onChange={onChange}
+            placeholder="Confirm your new password"
+          />
+        </div>
+
+        <div className="flex justify-end pt-2">
           <button
             type="submit"
-            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-bold"
+            className="inline-flex items-center rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
           >
             Update Account
           </button>
@@ -865,7 +926,10 @@ function InputField({
 }) {
   return (
     <div className="mb-4">
-      <label htmlFor={name} className="block mb-1 font-semibold text-gray-900">
+      <label
+        htmlFor={name}
+        className="block mb-1 text-xs font-semibold text-slate-100"
+      >
         {label}
       </label>
       <input
@@ -876,8 +940,8 @@ function InputField({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-gray-400 rounded bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
         autoComplete="off"
+        className="w-full rounded-lg bg-slate-900/90 border border-slate-700 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
       />
     </div>
   );
@@ -1241,263 +1305,295 @@ export default function ResidentDashboard() {
   };
 
   return (
-    <div className="flex bg-gray-50 min-h-screen">
-      {/* Sidebar and toggle button */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="md:hidden fixed top-4 left-4 z-[70] p-2 bg-white shadow rounded"
-        aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-      >
-        {sidebarOpen ? "✖" : "☰"}
-      </button>
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-opacity-30 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-      <aside
-        className={`bg-white/95 backdrop-blur border-r border-emerald-100 shadow-lg flex flex-col pt-6 px-5 md:px-4 fixed top-0 left-0 h-full transition-all duration-300 z-50 ${
-          sidebarOpen
-            ? "w-4/5 max-w-xs opacity-100"
-            : "w-0 opacity-0 overflow-hidden"
-        } md:w-64 md:max-w-none md:opacity-100 md:overflow-visible`}
-      >
-        <div>
-          <h1 className="text-xl font-extrabold text-emerald-700 mb-1 tracking-tight">
-            Resident Dashboard
-          </h1>
-        </div>
-        <nav
-          className="flex-1 mt-6 text-sm font-semibold text-gray-700 space-y-1"
-          aria-label="Main Navigation"
-        >
-          {" "}
-          <SidebarItem
-            label="Dashboard"
-            icon="🏠"
-            selected={activeTab === "dashboard"}
-            onClick={() => {
-              setActiveTab("dashboard");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="Schedules"
-            icon="📅"
-            selected={activeTab === "schedules"}
-            onClick={() => {
-              setActiveTab("schedules");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="Submit Incident Report"
-            icon="📷"
-            selected={activeTab === "submitIncidentReport"}
-            onClick={() => {
-              setActiveTab("submitIncidentReport");
-              setSidebarOpen(false);
-            }}
-          />
-          <SidebarItem
-            label="My Reports"
-            icon="🔔"
-            selected={activeTab === "myReports"}
-            onClick={() => {
-              setActiveTab("myReports");
-              setSidebarOpen(false);
-            }}
-            badgeCount={unreadReportCount}
-          />
-          <SidebarItem
-            label="Manage Account"
-            icon="🛠️"
-            selected={activeTab === "manageAccount"}
-            onClick={() => {
-              setActiveTab("manageAccount");
-              setSidebarOpen(false);
-            }}
-          />
-          <button
-            onClick={handleLogout}
-            className="mt-8 mb-4 px-6 py-2 text-red-600 flex items-center gap-2 hover:bg-red-100 rounded"
-          >
-            Logout
-          </button>
-        </nav>
-      </aside>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
+      {/* Subtle animated overlay */}
+      <div className="fixed inset-0 opacity-30 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 animate-pulse" />
+      </div>
 
-      {/* Main content area */}
-      <main className="flex-1 p-6 md:p-8 transition-all duration-300 md:ml-64 overflow-auto">
-        {reportSuccessModalOpen && (
+      <div className="flex flex-1 overflow-hidden relative z-10">
+        {/* Mobile overlay when sidebar is open */}
+        {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-gray-100/60 backdrop-blur-xs z-10 flex justify-center items-center"
-            onClick={() => setReportSuccessModalOpen(false)}
-          >
-            <div
-              className="bg-white rounded-lg shadow-lg max-w-sm w-full p-6 relative"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setReportSuccessModalOpen(false)}
-                className="absolute top-1 right-2 text-2xl text-gray-500 hover:text-red-600 font-bold"
-                aria-label="Close"
-              >
-                ×
-              </button>
-              <h3 className="font-bold text-lg mb-3 text-green-700 text-center">
-                Incident Report Submitted
-              </h3>
-              <p className="text-gray-800 text-center">
-                {reportSuccess || "Your report was submitted successfully."}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Sidebar and toggle button */}
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="md:hidden fixed top-4 left-4 z-[70] inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
+          aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+        >
+          {sidebarOpen ? "✖" : "☰"}
+        </button>
+
+        <aside
+          className={`bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-2xl border-r border-green-800/40 shadow-2xl shadow-green-900/20 flex flex-col pt-6 px-5 md:px-4 fixed top-0 left-0 h-full transition-all duration-300 z-50 ${
+            sidebarOpen
+              ? "w-4/5 max-w-xs opacity-100"
+              : "w-0 opacity-0 overflow-hidden"
+          } md:w-64 md:max-w-none md:opacity-100 md:overflow-visible`}
+        >
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30">
+              🏠
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.3em] bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-bold">
+                Track-the-Truck
               </p>
-              <div className="mt-4 flex justify-center">
-                <button
-                  onClick={() => setReportSuccessModalOpen(false)}
-                  className="px-4 py-2 bg-green-600 text-white font-semibold rounded hover:bg-green-700 transition"
-                >
-                  OK
-                </button>
-              </div>
+              <h1 className="text-lg font-extrabold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent tracking-tight drop-shadow-lg">
+                Resident Dashboard
+              </h1>
             </div>
           </div>
-        )}
 
-        {activeTab === "dashboard" && (
-          <>
-            <section
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-              aria-label="Dashboard Stats"
+          <nav
+            className="flex-1 mt-4 text-sm font-semibold text-slate-200 space-y-2"
+            aria-label="Main Navigation"
+          >
+            <SidebarItem
+              label="Dashboard"
+              icon="🏠"
+              selected={activeTab === "dashboard"}
+              onClick={() => {
+                setActiveTab("dashboard");
+                setSidebarOpen(false);
+              }}
+            />
+            <SidebarItem
+              label="Schedules"
+              icon="📅"
+              selected={activeTab === "schedules"}
+              onClick={() => {
+                setActiveTab("schedules");
+                setSidebarOpen(false);
+              }}
+            />
+            <SidebarItem
+              label="Submit Incident Report"
+              icon="📷"
+              selected={activeTab === "submitIncidentReport"}
+              onClick={() => {
+                setActiveTab("submitIncidentReport");
+                setSidebarOpen(false);
+              }}
+            />
+            <SidebarItem
+              label="My Reports"
+              icon="🔔"
+              selected={activeTab === "myReports"}
+              onClick={() => {
+                setActiveTab("myReports");
+                setSidebarOpen(false);
+              }}
+            />
+            <SidebarItem
+              label="Manage Account"
+              icon="🛠️"
+              selected={activeTab === "manageAccount"}
+              onClick={() => {
+                setActiveTab("manageAccount");
+                setSidebarOpen(false);
+              }}
+            />
+
+            <button
+              onClick={handleLogout}
+              className="mt-8 mb-4 px-6 py-2 text-sm font-bold text-slate-100 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-red-600/90 to-orange-600/90 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg"
             >
-              {/* Dashboard cards omitted for brevity */}
-            </section>
-            <section aria-label="Map of collection area and vehicles">
-              <LeafletMap />
-            </section>
-          </>
-        )}
+              ⎋ Logout
+            </button>
+          </nav>
+        </aside>
 
-        {activeTab === "submitIncidentReport" && (
-          <SubmitReportSection
-            barangays={barangays}
-            onReportSubmit={handleReportSubmit}
-          />
-        )}
-
-        {activeTab === "manageAccount" && (
-          <ManageAccountSection
-            form={manageAccountForm}
-            loading={manageAccountLoading}
-            error={manageAccountError}
-            success={manageAccountSuccess}
-            onChange={handleManageAccountFormChange}
-            onSubmit={handleManageAccountSubmit}
-          />
-        )}
-
-        {activeTab === "schedules" && (
-          <ResidentSchedulesFeature
-            residentBarangayId={residentBarangayId}
-            barangays={barangays}
-          />
-        )}
-
-        {activeTab === "myReports" && (
-          <section className="max-w-3xl mx-auto bg-white rounded-xl shadow p-6">
-            <h2 className="text-2xl font-bold text-green-600 mb-4">
-              My Recent Reports
-            </h2>
-
-            {reportsLoading && <TruckLoader />}
-
-            {reportsError && (
-              <p className="text-red-600 mb-2">{reportsError}</p>
-            )}
-
-            {!reportsLoading && !reportsError && userReports.length === 0 && (
-              <p className="text-gray-500">
-                You have not submitted any reports yet.
-              </p>
-            )}
-
-            {!reportsLoading && !reportsError && userReports.length > 0 && (
-              <ul className="divide-y divide-gray-200 ">
-                {userReports.map((report, index) => (
-                  <li
-                    key={report.report_id}
-                    className="py-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-2 border-green-400 rounded-lg mb-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-gray-700 ml-6">
-                        {index + 1}.
-                      </span>
-                      <p className="font-semibold text-gray-900 line-clamp-2">
-                        {report.location && report.location.length > 40
-                          ? report.location.slice(0, 40) + "..."
-                          : report.location}
-                      </p>
-                      <button
-                        onClick={() => {
-                          // Show full description in modal, not location
-                          setSelectedMessage(report.description);
-                          setModalOpen(true);
-                        }}
-                        className="ml-2 px-3 py-1 bg-green-600 text-white text-md font-bold rounded shadow hover:bg-green-700 transition"
-                      >
-                        View Message
-                      </button>
-                    </div>
-                    <p className="text-sm text-black font-bold">
-                      Submitted:{" "}
-                      {report.date_submitted
-                        ? new Date(report.date_submitted).toLocaleString()
-                        : "N/A"}
-                    </p>
-                    <span
-                      className={`inline-flex items-center px-3 py-1 text-md font-bold rounded-full mr-10${
-                        report.current_status === "Resolved"
-                          ? "bg-green-300 text-green-700"
-                          : report.current_status === "In Progress"
-                          ? "bg-yellow-300 text-yellow-700"
-                          : "bg-blue-700 text-blue-700"
-                      }`}
-                    >
-                      {report.current_status || "Unknown"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {modalOpen && (
+        {/* Main content area */}
+        <main className="flex-1 p-6 md:p-8 transition-all duration-300 md:ml-64 overflow-auto space-y-8">
+          {/* Success modal */}
+          {reportSuccessModalOpen && (
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center"
+              onClick={() => setReportSuccessModalOpen(false)}
+            >
               <div
-                className="fixed inset-0 backdrop-blur-sm z-10 flex justify-center items-center"
-                onClick={() => setModalOpen(false)}
+                className="bg-slate-900/95 rounded-2xl shadow-2xl border border-emerald-700/60 max-w-sm w-full p-6 relative text-slate-100 backdrop-blur-xl"
+                onClick={(e) => e.stopPropagation()}
               >
-                <div
-                  className="bg-white rounded-lg shadow-lg border max-w-md w-full p-6 relative"
-                  onClick={(e) => e.stopPropagation()}
+                <button
+                  onClick={() => setReportSuccessModalOpen(false)}
+                  className="absolute top-1 right-2 text-2xl text-slate-500 hover:text-red-400 font-bold"
+                  aria-label="Close"
                 >
+                  ×
+                </button>
+                <h3 className="font-bold text-lg mb-3 text-emerald-300 text-center">
+                  Incident Report Submitted
+                </h3>
+                <p className="text-slate-200 text-center">
+                  {reportSuccess || "Your report was submitted successfully."}
+                </p>
+                <div className="mt-4 flex justify-center">
                   <button
-                    onClick={() => setModalOpen(false)}
-                    className="absolute top-1 right-2 text-2xl text-gray-500 hover:text-red-600 font-bold"
-                    aria-label="Close"
+                    onClick={() => setReportSuccessModalOpen(false)}
+                    className="px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500 transition-colors"
                   >
-                    ×
+                    OK
                   </button>
-                  <h3 className="font-bold text-2xl mb-4 text-green-700">
-                    Report Message :
-                  </h3>
-                  <p className="text-gray-800 text-xl whitespace-pre-line">
-                    {selectedMessage}
-                  </p>
                 </div>
               </div>
-            )}
-          </section>
-        )}
-      </main>
+            </div>
+          )}
+
+          {/* Dashboard */}
+          {activeTab === "dashboard" && (
+            <>
+              <section
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+                aria-label="Dashboard Stats"
+              >
+                {/* Dashboard cards omitted for brevity */}
+              </section>
+              <section
+                aria-label="Map of collection area and vehicles"
+                className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                <div className="relative z-10 rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[500px] md:h-[600px]">
+                  <LeafletMap />
+                </div>
+              </section>
+            </>
+          )}
+
+          {/* Submit Incident Report */}
+          {activeTab === "submitIncidentReport" && (
+            <SubmitReportSection
+              barangays={barangays}
+              onReportSubmit={handleReportSubmit}
+            />
+          )}
+
+          {/* Manage Account */}
+          {activeTab === "manageAccount" && (
+            <ManageAccountSection
+              form={manageAccountForm}
+              loading={manageAccountLoading}
+              error={manageAccountError}
+              success={manageAccountSuccess}
+              onChange={handleManageAccountFormChange}
+              onSubmit={handleManageAccountSubmit}
+            />
+          )}
+
+          {/* Schedules */}
+          {activeTab === "schedules" && (
+            <ResidentSchedulesFeature
+              residentBarangayId={residentBarangayId}
+              barangays={barangays}
+            />
+          )}
+
+          {/* My Reports */}
+          {activeTab === "myReports" && (
+            <section className="max-w-3xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl">
+              <h2 className="text-2xl font-bold text-emerald-300 mb-4">
+                My Recent Reports
+              </h2>
+
+              {reportsLoading && <TruckLoader />}
+
+              {reportsError && (
+                <p className="text-red-300 mb-2">{reportsError}</p>
+              )}
+
+              {!reportsLoading && !reportsError && userReports.length === 0 && (
+                <p className="text-slate-300">
+                  You have not submitted any reports yet.
+                </p>
+              )}
+
+              {!reportsLoading && !reportsError && userReports.length > 0 && (
+                <ul className="divide-y divide-green-800/40">
+                  {userReports.map((report, index) => (
+                    <li
+                      key={report.report_id}
+                      className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-emerald-700/50 rounded-2xl px-4 bg-slate-900/70"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-200">
+                          {index + 1}.
+                        </span>
+                        <p className="font-semibold text-slate-100 line-clamp-2">
+                          {report.location && report.location.length > 40
+                            ? report.location.slice(0, 40) + "..."
+                            : report.location}
+                        </p>
+                        <button
+                          onClick={() => {
+                            setSelectedMessage(report.description);
+                            setModalOpen(true);
+                          }}
+                          className="ml-2 px-3 py-1 bg-emerald-600 text-white text-xs font-semibold rounded-2xl shadow hover:bg-emerald-500 transition-colors"
+                        >
+                          View Message
+                        </button>
+                      </div>
+                      <div className="flex flex-col sm:items-end gap-1">
+                        <p className="text-xs text-slate-300">
+                          <span className="font-semibold">Submitted:</span>{" "}
+                          {report.date_submitted
+                            ? new Date(report.date_submitted).toLocaleString()
+                            : "N/A"}
+                        </p>
+                        <span
+                          className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full ${
+                            report.current_status === "Resolved"
+                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                              : report.current_status === "In Progress"
+                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                              : "bg-slate-500/30 text-slate-200 border border-slate-500/60"
+                          }`}
+                        >
+                          {report.current_status || "Unknown"}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {modalOpen && (
+                <div
+                  className="fixed inset-0 backdrop-blur-sm bg-black/60 z-50 flex justify-center items-center"
+                  onClick={() => setModalOpen(false)}
+                >
+                  <div
+                    className="bg-slate-900/95 rounded-2xl shadow-2xl border border-emerald-700/60 max-w-md w-full p-6 relative text-slate-100"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => setModalOpen(false)}
+                      className="absolute top-1 right-2 text-2xl text-slate-500 hover:text-red-400 font-bold"
+                      aria-label="Close"
+                    >
+                      ×
+                    </button>
+                    <h3 className="font-bold text-2xl mb-4 text-emerald-300">
+                      Report Message
+                    </h3>
+                    <p className="text-slate-200 text-sm whitespace-pre-line">
+                      {selectedMessage}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
