@@ -184,7 +184,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <nav className="flex items-center gap-2 overflow-x-auto no-scrollbar text-sm font-semibold">
+          <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold justify-center md:justify-start">
             {roleLinks.map((role) => (
               <a
                 key={role.label}

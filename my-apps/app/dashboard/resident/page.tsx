@@ -1571,22 +1571,46 @@ export default function ResidentDashboard() {
                   onClick={() => setModalOpen(false)}
                 >
                   <div
-                    className="bg-slate-900/95 rounded-2xl shadow-2xl border border-emerald-700/60 max-w-md w-full p-6 relative text-slate-100"
+                    className="relative max-w-md w-full text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/60 bg-slate-900/95"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <button
-                      onClick={() => setModalOpen(false)}
-                      className="absolute top-1 right-2 text-2xl text-slate-500 hover:text-red-400 font-bold"
-                      aria-label="Close"
-                    >
-                      ×
-                    </button>
-                    <h3 className="font-bold text-2xl mb-4 text-emerald-300">
-                      Report Message
-                    </h3>
-                    <p className="text-slate-200 text-sm whitespace-pre-line">
-                      {selectedMessage}
-                    </p>
+                    {/* Title bar */}
+                    <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-2 border-b border-emerald-700/70">
+                      <div className="flex items-center gap-2">
+                        <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
+                          Report Message
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => setModalOpen(false)}
+                        className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
+                        aria-label="Close"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-5">
+                      <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-2">
+                        MESSAGE
+                      </p>
+                      <div className="rounded-lg bg-slate-900/80 border border-slate-700/70 px-3 py-2">
+                        <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed break-words">
+                          {selectedMessage}
+                        </p>
+                      </div>
+
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          onClick={() => setModalOpen(false)}
+                          className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 transition-colors"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

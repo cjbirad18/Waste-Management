@@ -1229,7 +1229,7 @@ export default function BWMCdashboard() {
               {reports.map((report) => (
                 <div
                   key={report.report_id}
-                  className="px-6 py-4 grid grid-cols-[minmax(0,2.2fr)_auto_auto] gap-4 items-center hover:bg-emerald-500/5 transition-colors"
+                  className="px-6 py-4 grid gap-4 items-center hover:bg-emerald-500/5 transition-colors grid-cols-1 sm:grid-cols-[minmax(0,2.4fr)_auto_auto]"
                 >
                   {/* Col 1: Location + date + landmark */}
                   <div className="min-w-0">
@@ -1256,7 +1256,7 @@ export default function BWMCdashboard() {
                   </div>
 
                   {/* Col 2: Status pill */}
-                  <div className="flex items-center justify-center">
+                  <div className="flex items-center justify-start sm:justify-center">
                     <span
                       className={[
                         "inline-flex items-center gap-1 px-3 py-1 rounded-2xl text-[11px] font-semibold border shadow-md backdrop-blur-xl",
@@ -1277,7 +1277,7 @@ export default function BWMCdashboard() {
                   </div>
 
                   {/* Col 3: Actions */}
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center justify-start sm:justify-end gap-2 min-w-[230px]">
                     <button
                       onClick={() => {
                         setDescText(report.description);
@@ -1342,29 +1342,58 @@ export default function BWMCdashboard() {
             onClick={() => setDescModalOpen(false)}
           >
             <div
-              className="relative w-full max-w-md bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl border border-emerald-700/70 p-6 text-slate-100"
+              className="relative w-full max-w-md rounded-2xl bg-slate-900/95 text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] border border-slate-700/80"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                onClick={() => setDescModalOpen(false)}
-                className="absolute top-2 right-3 text-2xl text-slate-400 hover:text-red-400 font-bold leading-none"
-                aria-label="Close"
-              >
-                ×
-              </button>
-              <h3 className="font-bold text-lg mb-3 text-emerald-300">
-                Report Description
-              </h3>
-              <p className="text-sm text-slate-200 whitespace-pre-line">
-                {descText}
-              </p>
-              <div className="mt-4 flex justify-end">
+              {/* Title bar */}
+              <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-2 border-b border-slate-700/80">
+                <div className="flex items-center gap-2">
+                  <span className="ml-2 text-xs font-semibold tracking-wide text-slate-200">
+                    Report Description
+                  </span>
+                </div>
+
                 <button
                   onClick={() => setDescModalOpen(false)}
-                  className="px-4 py-1.5 text-sm rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/40"
+                  className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
+                  aria-label="Close"
                 >
-                  Close
+                  ✕
                 </button>
+              </div>
+
+              {/* Content area */}
+              <div className="p-5">
+                <div className="mb-3">
+                  <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80">
+                    DETAILS
+                  </p>
+                  <p className="mt-1 text-sm text-slate-300">
+                    Detailed information provided by the resident.
+                  </p>
+                </div>
+
+                <div className="mb-4 h-px w-full bg-slate-700/70" />
+
+                {/* Scrollable text */}
+                <div className="max-h-60 overflow-y-auto pr-1 custom-scroll rounded-lg bg-slate-900/80 border border-slate-700/70 px-3 py-2">
+                  <p className="text-sm leading-relaxed text-slate-200 whitespace-pre-line">
+                    {descText}
+                  </p>
+                </div>
+
+                {/* Footer / status bar */}
+                <div className="mt-4 flex items-center justify-between text-[11px] text-slate-400">
+                  <span className="px-2 py-1 rounded-md bg-slate-900/80 border border-slate-700/70">
+                    Ready
+                  </span>
+                  <button
+                    onClick={() => setDescModalOpen(false)}
+                    className="px-4 py-1.5 text-xs font-semibold rounded-md bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/50 hover:from-emerald-500 hover:to-teal-500 transition-colors"
+                  >
+                    Close window
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1377,71 +1406,103 @@ export default function BWMCdashboard() {
             onClick={() => setSelectedReport(null)}
           >
             <div
-              className="relative w-full max-w-md bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl border border-emerald-700/70 p-6 text-slate-100"
+              className="relative w-full max-w-md text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-slate-700/80 bg-slate-900/95"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                onClick={() => setSelectedReport(null)}
-                className="absolute top-2 right-3 text-2xl text-slate-400 hover:text-red-400 font-bold leading-none"
-                aria-label="Close"
-              >
-                ×
-              </button>
-              <h3 className="font-bold text-lg mb-3 text-emerald-300">
-                Response for {selectedReport.location}
-              </h3>
-              <p className="text-sm mb-2 font-semibold text-slate-200">
-                Choose action:
-              </p>
-              <div className="flex flex-col gap-2 mb-3">
-                <label className="flex items-center gap-2 text-sm text-slate-200">
-                  <input
-                    className="text-emerald-500 focus:ring-emerald-500"
-                    type="radio"
-                    name="responseType"
-                    value="NEED_ACTION"
-                    checked={responseType === "NEED_ACTION"}
-                    onChange={() => setResponseType("NEED_ACTION")}
-                  />
-                  <span>Need action by SWMO</span>
-                </label>
-                <label className="flex items-center gap-2 text-sm text-slate-200">
-                  <input
-                    className="text-emerald-500 focus:ring-emerald-500"
-                    type="radio"
-                    name="responseType"
-                    value="ONGOING"
-                    checked={responseType === "ONGOING"}
-                    onChange={() => setResponseType("ONGOING")}
-                  />
-                  <span>BWMC can resolve (Ongoing)</span>
-                </label>
-              </div>
-              <label className="block text-sm font-semibold mb-1 text-slate-200">
-                Remarks
-              </label>
-              <textarea
-                className="w-full border border-slate-700 rounded-xl px-2 py-1.5 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                rows={3}
-                value={responseRemarks}
-                onChange={(e) => setResponseRemarks(e.target.value)}
-                placeholder="Add details about your response..."
-                required
-              />
-              <div className="flex justify-end gap-2">
+              {/* Title bar */}
+              <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-2 border-b border-slate-700/80">
+                <div className="flex items-center gap-2">
+                  <span className="ml-2 text-xs font-semibold tracking-wide text-slate-200">
+                    Response • {selectedReport.location}
+                  </span>
+                </div>
+
                 <button
                   onClick={() => setSelectedReport(null)}
-                  className="px-3 py-1.5 text-sm rounded-xl border border-slate-600 text-slate-200 hover:bg-slate-800"
+                  className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
+                  aria-label="Close"
                 >
-                  Cancel
+                  ✕
                 </button>
-                <button
-                  onClick={handleSubmitResponse}
-                  disabled={!responseType}
-                  className="px-4 py-1.5 text-sm rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/40 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Submit
-                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-5">
+                <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-1">
+                  ACTION
+                </p>
+                <p className="text-sm mb-3 text-slate-200">
+                  Choose how this incident will be handled.
+                </p>
+
+                {/* Options */}
+                <div className="mb-4 space-y-2">
+                  <label className="flex items-start gap-2 text-sm text-slate-200 cursor-pointer">
+                    <input
+                      className="mt-0.5 text-emerald-500 focus:ring-emerald-500"
+                      type="radio"
+                      name="responseType"
+                      value="NEED_ACTION"
+                      checked={responseType === "NEED_ACTION"}
+                      onChange={() => setResponseType("NEED_ACTION")}
+                    />
+                    <span>
+                      <span className="font-semibold">Need action by SWMO</span>
+                      <span className="block text-xs text-slate-400">
+                        Escalate this report to SWMO for direct intervention.
+                      </span>
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-2 text-sm text-slate-200 cursor-pointer">
+                    <input
+                      className="mt-0.5 text-emerald-500 focus:ring-emerald-500"
+                      type="radio"
+                      name="responseType"
+                      value="ONGOING"
+                      checked={responseType === "ONGOING"}
+                      onChange={() => setResponseType("ONGOING")}
+                    />
+                    <span>
+                      <span className="font-semibold">
+                        BWMC can resolve (Ongoing)
+                      </span>
+                      <span className="block text-xs text-slate-400">
+                        Mark as in-progress under your barangay&apos;s handling.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+
+                {/* Remarks */}
+                <label className="block text-sm font-semibold mb-1 text-slate-200">
+                  Remarks
+                </label>
+                <textarea
+                  className="w-full border border-slate-700 rounded-xl px-2.5 py-2 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                  rows={3}
+                  value={responseRemarks}
+                  onChange={(e) => setResponseRemarks(e.target.value)}
+                  placeholder="Add details about your response..."
+                  required
+                />
+
+                {/* Footer / buttons */}
+                <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
+                  <button
+                    onClick={() => setSelectedReport(null)}
+                    className="px-3 py-1.5 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSubmitResponse}
+                    disabled={!responseType}
+                    className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Submit response
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1457,49 +1518,66 @@ export default function BWMCdashboard() {
             }}
           >
             <div
-              className="relative w-full max-w-md bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl border border-red-700/70 p-6 text-slate-100"
+              className="relative w-full max-w-md text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-red-700/80 bg-slate-900/95"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                onClick={() => {
-                  setRejectModalOpen(false);
-                  setSelectedReport(null);
-                }}
-                className="absolute top-2 right-3 text-2xl text-slate-400 hover:text-red-400 font-bold leading-none"
-                aria-label="Close"
-              >
-                ×
-              </button>
-              <h3 className="font-bold text-lg mb-3 text-red-300">
-                Reject Report
-              </h3>
-              <p className="text-sm mb-2 text-slate-200">
-                Please provide the reason for rejecting this report.
-              </p>
-              <textarea
-                className="w-full border border-slate-700 rounded-xl px-2 py-1.5 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                rows={3}
-                value={rejectRemarks}
-                onChange={(e) => setRejectRemarks(e.target.value)}
-                placeholder="Reason for rejection..."
-                required
-              />
-              <div className="flex justify-end gap-2">
+              {/* Title bar */}
+              <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 px-4 py-2 border-b border-red-700/70">
+                <div className="flex items-center gap-2">
+                  <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
+                    Reject Report • {selectedReport.location}
+                  </span>
+                </div>
+
                 <button
                   onClick={() => {
                     setRejectModalOpen(false);
                     setSelectedReport(null);
                   }}
-                  className="px-3 py-1.5 text-sm rounded-xl border border-slate-600 text-slate-200 hover:bg-slate-800"
+                  className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
+                  aria-label="Close"
                 >
-                  Cancel
+                  ✕
                 </button>
-                <button
-                  onClick={handleSubmitReject}
-                  className="px-4 py-1.5 text-sm rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 hover:from-red-500 hover:to-rose-500 shadow-md shadow-red-600/40"
-                >
-                  Submit
-                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-5">
+                <p className="text-xs uppercase tracking-[0.18em] text-red-400/80 mb-1">
+                  REJECTION REASON
+                </p>
+                <p className="text-sm mb-3 text-slate-200">
+                  Please provide a clear explanation for rejecting this
+                  incident.
+                </p>
+
+                <textarea
+                  className="w-full border border-slate-700 rounded-xl px-2.5 py-2 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                  rows={3}
+                  value={rejectRemarks}
+                  onChange={(e) => setRejectRemarks(e.target.value)}
+                  placeholder="Reason for rejection..."
+                  required
+                />
+
+                {/* Footer */}
+                <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
+                  <button
+                    onClick={() => {
+                      setRejectModalOpen(false);
+                      setSelectedReport(null);
+                    }}
+                    className="px-3 py-1.5 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSubmitReject}
+                    className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 border border-red-500/80 shadow-sm shadow-red-700/60 hover:from-red-500 hover:to-rose-500 transition-colors"
+                  >
+                    Submit rejection
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1515,49 +1593,71 @@ export default function BWMCdashboard() {
             }}
           >
             <div
-              className="relative w-full max-w-md bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl border border-emerald-700/70 p-6 text-slate-100"
+              className="relative w-full max-w-md text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/70 bg-slate-900/95"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                onClick={() => {
-                  setActionModalOpen(false);
-                  setSelectedReport(null);
-                }}
-                className="absolute top-2 right-3 text-2xl text-slate-400 hover:text-red-400 font-bold leading-none"
-                aria-label="Close"
-              >
-                ×
-              </button>
-              <h3 className="font-bold text-lg mb-3 text-emerald-300">
-                Create Action Report
-              </h3>
-              <p className="text-sm mb-2 text-slate-200">
-                Describe the action taken by the BWMC to resolve this incident.
-              </p>
-              <textarea
-                className="w-full border border-slate-700 rounded-xl px-2 py-1.5 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                rows={3}
-                value={actionRemarks}
-                onChange={(e) => setActionRemarks(e.target.value)}
-                placeholder="Details of the action taken..."
-                required
-              />
-              <div className="flex justify-end gap-2">
+              {/* Title bar */}
+              <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-2 border-b border-emerald-700/70">
+                <div className="flex items-center gap-2">
+                  <span className="flex gap-1">
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/90 shadow-sm shadow-emerald-900" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80 shadow-sm shadow-amber-900" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-slate-400/80 shadow-sm shadow-slate-900" />
+                  </span>
+                  <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
+                    Action Report • {selectedReport.location}
+                  </span>
+                </div>
+
                 <button
                   onClick={() => {
                     setActionModalOpen(false);
                     setSelectedReport(null);
                   }}
-                  className="px-3 py-1.5 text-sm rounded-xl border border-slate-600 text-slate-200 hover:bg-slate-800"
+                  className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
+                  aria-label="Close"
                 >
-                  Cancel
+                  ✕
                 </button>
-                <button
-                  onClick={handleSubmitActionReport}
-                  className="px-4 py-1.5 text-sm rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/40"
-                >
-                  Submit
-                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-5">
+                <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-1">
+                  ACTION DETAILS
+                </p>
+                <p className="text-sm mb-3 text-slate-200">
+                  Describe the actions taken by the BWMC to resolve this
+                  incident.
+                </p>
+
+                <textarea
+                  className="w-full border border-slate-700 rounded-xl px-2.5 py-2 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                  rows={3}
+                  value={actionRemarks}
+                  onChange={(e) => setActionRemarks(e.target.value)}
+                  placeholder="Details of the action taken..."
+                  required
+                />
+
+                {/* Footer */}
+                <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
+                  <button
+                    onClick={() => {
+                      setActionModalOpen(false);
+                      setSelectedReport(null);
+                    }}
+                    className="px-3 py-1.5 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSubmitActionReport}
+                    className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 transition-colors"
+                  >
+                    Submit action
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1570,29 +1670,47 @@ export default function BWMCdashboard() {
             onClick={() => setViewRemarkModalOpen(false)}
           >
             <div
-              className="relative w-full max-w-md bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl border border-emerald-700/70 p-6 text-slate-100"
+              className="relative w-full max-w-md text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/70 bg-slate-900/95"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                onClick={() => setViewRemarkModalOpen(false)}
-                className="absolute top-2 right-3 text-2xl text-slate-400 hover:text-red-400 font-bold leading-none"
-                aria-label="Close"
-              >
-                ×
-              </button>
-              <h3 className="font-bold text-lg mb-3 text-emerald-300">
-                {viewRemarkTitle}
-              </h3>
-              <p className="text-sm text-slate-200 whitespace-pre-line">
-                {viewRemarkText}
-              </p>
-              <div className="mt-4 flex justify-end">
+              {/* Title bar */}
+              <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-2 border-b border-emerald-700/70">
+                <div className="flex items-center gap-2">
+                  <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
+                    {viewRemarkTitle}
+                  </span>
+                </div>
+
                 <button
                   onClick={() => setViewRemarkModalOpen(false)}
-                  className="px-4 py-1.5 text-sm rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/40"
+                  className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
+                  aria-label="Close"
                 >
-                  Close
+                  ✕
                 </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-5">
+                <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-2">
+                  REMARK
+                </p>
+
+                <div className="max-h-60 overflow-y-auto pr-1 rounded-lg bg-slate-900/80 border border-slate-700/70 px-3 py-2">
+                  <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-line">
+                    {viewRemarkText}
+                  </p>
+                </div>
+
+                {/* Footer */}
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={() => setViewRemarkModalOpen(false)}
+                    className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1835,64 +1953,88 @@ export default function BWMCdashboard() {
                 onClick={() => setRejectAccountModalOpen(false)}
               >
                 <div
-                  className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl shadow-2xl border border-red-700/70 max-w-md w-full p-6 relative text-slate-100"
+                  className="relative max-w-md w-full text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-red-700/80 bg-slate-900/95"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <button
-                    onClick={() => setRejectAccountModalOpen(false)}
-                    className="absolute top-2 right-3 text-2xl text-slate-400 hover:text-red-400 font-bold leading-none"
-                    aria-label="Close"
-                  >
-                    ×
-                  </button>
-                  <h3 className="font-bold text-lg mb-3 text-red-300">
-                    Reject Resident Account
-                  </h3>
-                  <p className="text-sm mb-2 text-slate-200">
-                    Please provide the reason for rejecting this account.
-                  </p>
-                  <textarea
-                    className="w-full border border-slate-700 rounded-xl px-2 py-1.5 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    rows={3}
-                    value={rejectAccountReason}
-                    onChange={(e) => setRejectAccountReason(e.target.value)}
-                    placeholder="Reason for rejection..."
-                    required
-                  />
-                  <div className="flex justify-end gap-2">
+                  {/* Title bar */}
+                  <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 px-4 py-2 border-b border-red-700/70">
+                    <div className="flex items-center gap-2">
+                      <span className="flex gap-1">
+                        <span className="h-2.5 w-2.5 rounded-full bg-red-500/90 shadow-sm shadow-red-900" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80 shadow-sm shadow-amber-900" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80 shadow-sm shadow-emerald-900" />
+                      </span>
+                      <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
+                        Reject Resident Account
+                      </span>
+                    </div>
+
                     <button
                       onClick={() => setRejectAccountModalOpen(false)}
-                      className="px-3 py-1.5 text-sm rounded-xl border border-slate-600 text-slate-200 hover:bg-slate-800"
+                      className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
+                      aria-label="Close"
                     >
-                      Cancel
+                      ✕
                     </button>
-                    <button
-                      onClick={async () => {
-                        if (!selectedUserId) return;
-                        if (!rejectAccountReason.trim()) {
-                          alert("Please enter a reason for rejection.");
-                          return;
-                        }
-                        await handleApproveReject(
-                          selectedUserId,
-                          "rejected",
-                          rejectAccountReason.trim()
-                        );
-                        setRejectAccountModalOpen(false);
-                        setSelectedUserId(null);
-                        setRejectAccountReason("");
-                      }}
-                      className="px-4 py-1.5 text-sm rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 hover:from-red-500 hover:to-rose-500 shadow-md shadow-red-600/40"
-                    >
-                      Submit
-                    </button>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-5">
+                    <p className="text-xs uppercase tracking-[0.18em] text-red-400/80 mb-1">
+                      REJECTION REASON
+                    </p>
+                    <p className="text-sm mb-3 text-slate-200">
+                      Please provide a clear explanation for rejecting this
+                      resident&apos;s account request.
+                    </p>
+
+                    <textarea
+                      className="w-full border border-slate-700 rounded-xl px-2.5 py-2 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                      rows={3}
+                      value={rejectAccountReason}
+                      onChange={(e) => setRejectAccountReason(e.target.value)}
+                      placeholder="Reason for rejection..."
+                      required
+                    />
+
+                    {/* Footer */}
+                    <div className="flex justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
+                      <button
+                        onClick={() => setRejectAccountModalOpen(false)}
+                        className="px-3 py-1.5 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!selectedUserId) return;
+                          if (!rejectAccountReason.trim()) {
+                            alert("Please enter a reason for rejection.");
+                            return;
+                          }
+                          await handleApproveReject(
+                            selectedUserId,
+                            "rejected",
+                            rejectAccountReason.trim()
+                          );
+                          setRejectAccountModalOpen(false);
+                          setSelectedUserId(null);
+                          setRejectAccountReason("");
+                        }}
+                        className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 border border-red-500/80 shadow-sm shadow-red-700/60 hover:from-red-500 hover:to-rose-500 transition-colors"
+                      >
+                        Submit rejection
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
           </section>
         )}
+
         {activeTab === "viewReports" && <ViewReportsSection />}
+
         {activeTab === "processedAccounts" && (
           <section className="my-8 space-y-4 px-2 md:px-10">
             <div className="flex items-center justify-between flex-wrap gap-3">
@@ -1906,14 +2048,16 @@ export default function BWMCdashboard() {
                 </p>
               </div>
               <div className="flex gap-3 text-xs md:text-sm">
-                <span className="px-3 py-1 rounded-2xl bg-slate-800/90 text-emerald-200 border border-emerald-700/60 font-extrabold shadow-md shadow-emerald-900/40">
-                  Approved:{" "}
+                <span className="px-3 py-1 rounded-2xl bg-slate-800/90 text-emerald-200 border border-emerald-700/60 font-extrabold shadow-md shadow-emerald-900/40 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  <span>Approved:</span>
                   <span className="font-extrabold text-emerald-300">
                     {approvedAccounts.length}
                   </span>
                 </span>
-                <span className="px-3 py-1 rounded-2xl bg-slate-800/90 text-red-200 border border-red-700/60 font-extrabold shadow-md shadow-red-900/40">
-                  Rejected:{" "}
+                <span className="px-3 py-1 rounded-2xl bg-slate-800/90 text-red-200 border border-red-700/60 font-extrabold shadow-md shadow-red-900/40 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+                  <span>Rejected:</span>
                   <span className="font-extrabold text-red-300">
                     {rejectedAccounts.length}
                   </span>
@@ -1933,7 +2077,7 @@ export default function BWMCdashboard() {
                     <h3 className="text-2xl font-semibold text-emerald-200">
                       Approved Accounts
                     </h3>
-                    <span className="text-sm md:text-lg font-bold uppercase tracking-wide text-emerald-300">
+                    <span className="text-xs md:text-sm font-semibold uppercase tracking-wide text-emerald-300">
                       Total {approvedAccounts.length}
                     </span>
                   </div>
@@ -1946,14 +2090,14 @@ export default function BWMCdashboard() {
                     <div className="overflow-x-auto">
                       <table className="min-w-full text-sm">
                         <thead>
-                          <tr className="bg-emerald-900/80 text-emerald-100">
-                            <th className="px-4 py-2 text-left font-semibold text-base md:text-lg">
+                          <tr className="bg-emerald-900/80 text-emerald-100 border-b border-emerald-800/70">
+                            <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
                               Name
                             </th>
-                            <th className="px-4 py-2 text-left font-semibold text-base md:text-lg">
+                            <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
                               Email
                             </th>
-                            <th className="px-4 py-2 text-left font-semibold text-base md:text-lg">
+                            <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
                               Contact
                             </th>
                           </tr>
@@ -1962,21 +2106,21 @@ export default function BWMCdashboard() {
                           {approvedAccounts.map((user, idx) => (
                             <tr
                               key={user.user_id}
-                              className={
+                              className={`${
                                 idx % 2 === 0
                                   ? "bg-slate-900/80"
                                   : "bg-emerald-900/40"
-                              }
+                              } hover:bg-emerald-500/10 transition-colors`}
                             >
-                              <td className="px-4 py-2 whitespace-nowrap text-base md:text-lg">
-                                <span className="font-medium text-slate-50">
+                              <td className="px-4 py-2 whitespace-nowrap align-middle">
+                                <span className="font-medium text-slate-50 text-sm md:text-base">
                                   {user.first_name} {user.last_name}
                                 </span>
                               </td>
-                              <td className="px-4 py-2 text-slate-200 text-base md:text-lg">
+                              <td className="px-4 py-2 text-slate-200 text-sm md:text-base align-middle">
                                 {user.email}
                               </td>
-                              <td className="px-4 py-2 text-slate-200 text-base md:text-lg">
+                              <td className="px-4 py-2 text-slate-200 text-sm md:text-base align-middle">
                                 {user.contact_number}
                               </td>
                             </tr>
@@ -1993,7 +2137,7 @@ export default function BWMCdashboard() {
                     <h3 className="text-2xl font-semibold text-red-200">
                       Rejected Accounts
                     </h3>
-                    <span className="text-sm md:text-lg font-bold uppercase tracking-wide text-red-300">
+                    <span className="text-xs md:text-sm font-semibold uppercase tracking-wide text-red-300">
                       Total {rejectedAccounts.length}
                     </span>
                   </div>
@@ -2006,14 +2150,14 @@ export default function BWMCdashboard() {
                     <div className="overflow-x-auto">
                       <table className="min-w-full text-sm">
                         <thead>
-                          <tr className="bg-red-900/80 text-red-100">
-                            <th className="px-4 py-2 text-left font-semibold text-base md:text-lg">
+                          <tr className="bg-red-900/80 text-red-100 border-b border-red-800/70">
+                            <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
                               Name
                             </th>
-                            <th className="px-4 py-2 text-left font-semibold text-base md:text-lg">
+                            <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
                               Email
                             </th>
-                            <th className="px-4 py-2 text-left font-semibold text-base md:text-lg">
+                            <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
                               Contact
                             </th>
                           </tr>
@@ -2022,21 +2166,21 @@ export default function BWMCdashboard() {
                           {rejectedAccounts.map((user, idx) => (
                             <tr
                               key={user.user_id}
-                              className={
+                              className={`${
                                 idx % 2 === 0
                                   ? "bg-slate-900/80"
                                   : "bg-red-900/40"
-                              }
+                              } hover:bg-red-500/10 transition-colors`}
                             >
-                              <td className="px-4 py-2 whitespace-nowrap">
-                                <span className="font-medium text-slate-50 text-base md:text-lg">
+                              <td className="px-4 py-2 whitespace-nowrap align-middle">
+                                <span className="font-medium text-slate-50 text-sm md:text-base">
                                   {user.first_name} {user.last_name}
                                 </span>
                               </td>
-                              <td className="px-4 py-2 text-slate-200 text-base md:text-lg">
+                              <td className="px-4 py-2 text-slate-200 text-sm md:text-base align-middle">
                                 {user.email}
                               </td>
-                              <td className="px-4 py-2 text-slate-200 text-base md:text-lg">
+                              <td className="px-4 py-2 text-slate-200 text-sm md:text-base align-middle">
                                 {user.contact_number}
                               </td>
                             </tr>

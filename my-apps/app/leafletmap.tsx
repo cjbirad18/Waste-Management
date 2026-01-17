@@ -6,6 +6,8 @@ import type { GeoJSON as GeoJSONType, Feature, Point } from "geojson";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/lib/supabaseClient";
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import { point, polygon } from "@turf/helpers";
 
 const mapCenter: [number, number] = [9.6556, 123.8521];
 
@@ -102,11 +104,28 @@ type TruckAnimState = {
   duration: number;
 };
 
+// per-truck inside/outside + 20-min timer
+type TruckState = {
+  inside: boolean;
+  leaveTimeout?: number | null;
+};
+
+// TODO: replace with real mapping from your DB (truck_id -> barangay_id)
+const assignedByTruck: Record<number, number> = {
+  1: 4, // example: truck 1 -> barangay_id 4 (Cogon)
+  // 2: 7, ...
+};
+
+const truckStates: Record<number, TruckState> = {};
+
 export default function LeafletMap() {
   const [geojson, setGeojson] = useState<GeoJSONType | null>(null);
   const [trucks, setTrucks] = useState<TruckRow[]>([]);
   const animStatesRef = useRef<Record<number, TruckAnimState>>({});
   const frameRef = useRef<number | null>(null);
+
+  // barangay_name -> barangay_id
+  const [nameToId, setNameToId] = useState<Record<string, number>>({});
 
   // map theme: "day" | "night"
   const [theme, setTheme] = useState<"day" | "night">("night");
@@ -124,6 +143,135 @@ export default function LeafletMap() {
     };
     load();
   }, []);
+
+  // Load barangay table to map name -> id
+  useEffect(() => {
+    const loadBarangays = async () => {
+      const { data, error } = await supabase
+        .from("barangay")
+        .select("barangay_id, barangay_name");
+      if (error || !data) return;
+      const map: Record<string, number> = {};
+      data.forEach((b: any) => {
+        map[b.barangay_name] = b.barangay_id;
+      });
+      setNameToId(map);
+    };
+    loadBarangays();
+  }, []);
+
+  // Helper: which barangay name is this lat/lng inside?
+  const getBarangayFromPoint = (
+    [lat, lng]: [number, number],
+    gj: GeoJSONType | null
+  ): string | null => {
+    if (!gj) return null;
+
+    const features = (gj as any).features as Feature[] | undefined;
+    if (!features || !Array.isArray(features)) return null;
+
+    for (const f of features) {
+      if (!f.geometry || f.geometry.type !== "Polygon") continue;
+
+      const props: any = f.properties ?? {};
+      const name: string | undefined = props.NAME_3 ?? props.name;
+      if (!name) continue;
+
+      const poly = polygon((f.geometry as any).coordinates);
+      const p = point([lng, lat]);
+
+      if (booleanPointInPolygon(p, poly)) return name;
+    }
+
+    return null;
+  };
+
+  // DB helpers: start / end collection_schedules
+  const startCollectionIfNeeded = async (barangay_id: number) => {
+    const { data, error } = await supabase
+      .from("collection_schedules")
+      .select("schedule_id, start_time, status")
+      .eq("barangay_id", barangay_id)
+      .eq("status", "pending") // adjust if your "not started yet" status differs
+      .order("date_created", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) return;
+    if (data.start_time) return;
+
+    await supabase
+      .from("collection_schedules")
+      .update({
+        start_time: new Date().toISOString(),
+        status: "ongoing",
+      })
+      .eq("schedule_id", data.schedule_id);
+  };
+
+  const endCollectionIfNeeded = async (barangay_id: number) => {
+    const { data, error } = await supabase
+      .from("collection_schedules")
+      .select("schedule_id, end_time, status")
+      .eq("barangay_id", barangay_id)
+      .eq("status", "ongoing")
+      .order("date_created", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) return;
+    if (data.end_time) return;
+
+    await supabase
+      .from("collection_schedules")
+      .update({
+        end_time: new Date().toISOString(),
+        status: "completed",
+      })
+      .eq("schedule_id", data.schedule_id);
+  };
+
+  // Logic per truck update (inside / outside + 20-min grace)
+  const handleTruckLocationLogic = async (row: TruckRow) => {
+    if (!geojson) return;
+    if (row.latitude == null || row.longitude == null) return;
+
+    const assignedBarangayId = assignedByTruck[row.truck_id];
+    if (!assignedBarangayId) return;
+
+    const barangayName = getBarangayFromPoint(
+      [row.latitude, row.longitude],
+      geojson
+    );
+    if (!barangayName) return;
+
+    const currentBarangayId = nameToId[barangayName];
+    if (!currentBarangayId) return;
+
+    const isInsideAssigned = currentBarangayId === assignedBarangayId;
+
+    const state = (truckStates[row.truck_id] ??= { inside: false });
+
+    // ENTER assigned barangay -> start or continue collection
+    if (isInsideAssigned && !state.inside) {
+      state.inside = true;
+      if (state.leaveTimeout) {
+        clearTimeout(state.leaveTimeout);
+        state.leaveTimeout = null;
+      }
+      await startCollectionIfNeeded(assignedBarangayId);
+      return;
+    }
+
+    // LEAVE assigned barangay -> start 20-min timer, only end after timer
+    if (!isInsideAssigned && state.inside && !state.leaveTimeout) {
+      state.leaveTimeout = window.setTimeout(async () => {
+        state.inside = false;
+        state.leaveTimeout = null;
+        await endCollectionIfNeeded(assignedBarangayId);
+      }, 20 * 60 * 1000); // 20 minutes
+    }
+  };
 
   // Load and subscribe to live truck locations
   useEffect(() => {
@@ -144,7 +292,7 @@ export default function LeafletMap() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "truck_live_location" },
-        (payload) => {
+        async (payload) => {
           if (payload.eventType === "DELETE") {
             const oldRow = payload.old as TruckRow | undefined;
             if (oldRow?.truck_id != null) {
@@ -185,6 +333,9 @@ export default function LeafletMap() {
             startTime: performance.now(),
             duration: duration || 1500,
           };
+
+          // run inside/outside + schedule logic
+          await handleTruckLocationLogic(row);
         }
       )
       .subscribe();
@@ -192,7 +343,7 @@ export default function LeafletMap() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [geojson, nameToId]);
 
   // Animation loop
   useEffect(() => {
@@ -244,7 +395,7 @@ export default function LeafletMap() {
         </button>
       </div>
 
-      {/* Map card – full width, fixed height */}
+      {/* Map card */}
       <div className="mx-1 rounded-3xl border border-emerald-800/50 shadow-xl shadow-emerald-900/30 overflow-hidden bg-slate-800/80 backdrop-blur">
         <div className="w-full h-[460px]">
           <MapContainer center={mapCenter} zoom={13} className="w-full h-full">

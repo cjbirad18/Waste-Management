@@ -612,57 +612,77 @@ function GCPAssignedTasksSection() {
             onClick={() => setResponseModalOpen(false)}
           >
             <div
-              className="bg-slate-900/95 rounded-2xl shadow-2xl border border-green-800/60 max-w-md w-full p-6 relative text-slate-100 backdrop-blur-xl"
+              className="relative max-w-md w-full text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/70 bg-slate-900/95 backdrop-blur-xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                onClick={() => setResponseModalOpen(false)}
-                className="absolute top-2 right-3 text-2xl text-slate-500 hover:text-red-400 font-bold"
-                aria-label="Close"
-              >
-                ×
-              </button>
+              {/* Title bar */}
+              <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-2 border-b border-emerald-700/70">
+                <div className="flex items-center gap-2">
+                  <span className="flex gap-1">
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/90 shadow-sm shadow-emerald-900" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80 shadow-sm shadow-amber-900" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-slate-400/80 shadow-sm shadow-slate-900" />
+                  </span>
+                  <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
+                    Add Response •{" "}
+                    {responseAssignment.report?.location || "Unknown"}
+                  </span>
+                </div>
 
-              <h3 className="font-bold text-lg mb-3 text-emerald-300">
-                Add Response
-              </h3>
-
-              <p className="text-sm mb-2 text-slate-200">
-                <span className="font-semibold text-slate-100">Location: </span>
-                {responseAssignment.report?.location || "N/A"}
-              </p>
-
-              <label className="block text-xs font-semibold mb-1 text-slate-100">
-                Your response
-              </label>
-              <textarea
-                className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm mb-3 bg-slate-900/80 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                rows={4}
-                value={responseText}
-                onChange={(e) => setResponseText(e.target.value)}
-              />
-
-              {responseError && (
-                <p className="text-xs text-red-300 mb-2">{responseError}</p>
-              )}
-
-              <div className="flex justify-end gap-2">
                 <button
-                  type="button"
                   onClick={() => setResponseModalOpen(false)}
-                  className="px-4 py-1 text-sm rounded-lg border border-slate-600 text-slate-200 hover:bg-slate-800/80 disabled:opacity-60"
-                  disabled={responseSaving}
+                  className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
+                  aria-label="Close"
                 >
-                  Cancel
+                  ✕
                 </button>
-                <button
-                  type="button"
-                  onClick={handleSubmitResponse}
-                  className="px-4 py-1 text-sm rounded-lg bg-purple-600 text-white hover:bg-purple-500 disabled:bg-slate-500 disabled:text-slate-300"
-                  disabled={responseSaving}
-                >
-                  {responseSaving ? "Saving..." : "Submit Response"}
-                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-5">
+                <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-1">
+                  INCIDENT
+                </p>
+                <p className="text-sm mb-3 text-slate-200">
+                  <span className="font-semibold text-slate-100">
+                    Location:{" "}
+                  </span>
+                  {responseAssignment.report?.location || "N/A"}
+                </p>
+
+                <label className="block text-xs font-semibold mb-1 text-slate-100">
+                  Your response
+                </label>
+                <textarea
+                  className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm mb-3 bg-slate-900/80 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 resize-none"
+                  rows={4}
+                  value={responseText}
+                  onChange={(e) => setResponseText(e.target.value)}
+                />
+
+                {responseError && (
+                  <p className="text-xs text-red-300 mb-2">{responseError}</p>
+                )}
+
+                {/* Footer */}
+                <div className="flex justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setResponseModalOpen(false)}
+                    className="px-4 py-1 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 disabled:opacity-60 transition-colors"
+                    disabled={responseSaving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSubmitResponse}
+                    className="px-4 py-1 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 disabled:bg-slate-600 disabled:text-slate-300 disabled:border-slate-500 transition-colors"
+                    disabled={responseSaving}
+                  >
+                    {responseSaving ? "Saving..." : "Submit response"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -675,23 +695,46 @@ function GCPAssignedTasksSection() {
             onClick={() => setActiveIncident(null)}
           >
             <div
-              className="bg-slate-900/95 rounded-2xl shadow-2xl border border-green-800/60 max-w-md w-full p-6 text-slate-100 backdrop-blur-xl"
+              className="relative max-w-md w-full text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/70 bg-slate-900/95 backdrop-blur-xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-bold text-emerald-300">
-                  Incident Description
-                </h3>
+              {/* Title bar */}
+              <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-2 border-b border-emerald-700/70">
+                <div className="flex items-center gap-2">
+                  <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
+                    Incident Description
+                  </span>
+                </div>
+
                 <button
-                  className="text-xl text-slate-500 hover:text-red-400"
+                  className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
                   onClick={() => setActiveIncident(null)}
+                  aria-label="Close"
                 >
-                  ×
+                  ✕
                 </button>
               </div>
-              <p className="text-sm text-slate-200 whitespace-pre-line">
-                {activeIncident.description}
-              </p>
+
+              {/* Content */}
+              <div className="p-5">
+                <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-2">
+                  DETAILS
+                </p>
+                <div className="max-h-60 overflow-y-auto pr-1 rounded-lg bg-slate-900/80 border border-slate-700/70 px-3 py-2">
+                  <p className="text-sm text-slate-200 whitespace-pre-line leading-relaxed">
+                    {activeIncident.description}
+                  </p>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={() => setActiveIncident(null)}
+                    className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -699,27 +742,55 @@ function GCPAssignedTasksSection() {
         {/* Task from secretary modal */}
         {activeTask && (
           <div
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm overflow-y-auto"
             onClick={() => setActiveTask(null)}
           >
             <div
-              className="bg-slate-900/95 rounded-2xl shadow-2xl border border-green-800/60 max-w-md w-full p-6 text-slate-100 backdrop-blur-xl"
+              className="relative max-w-lg w-[90vw] md:w-[32rem] my-8 text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/70 bg-slate-900/95 backdrop-blur-xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-bold text-emerald-300">
-                  Task from Secretary
-                </h3>
+              {/* Title bar */}
+              <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-2 border-b border-emerald-700/70">
+                <div className="flex items-center gap-2">
+                  <span className="flex gap-1">
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/90 shadow-sm shadow-emerald-900" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80 shadow-sm shadow-amber-900" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-slate-400/80 shadow-sm shadow-slate-900" />
+                  </span>
+                  <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
+                    Task from Secretary
+                  </span>
+                </div>
+
                 <button
-                  className="text-xl text-slate-500 hover:text-red-400"
+                  className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
                   onClick={() => setActiveTask(null)}
+                  aria-label="Close"
                 >
-                  ×
+                  ✕
                 </button>
               </div>
-              <p className="text-sm text-slate-200 whitespace-pre-line">
-                {activeTask.task_details}
-              </p>
+
+              {/* Content */}
+              <div className="p-5">
+                <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-2">
+                  TASK DETAILS
+                </p>
+                <div className="rounded-lg bg-slate-900/80 border border-slate-700/70 px-3 py-2">
+                  <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed break-words">
+                    {activeTask.task_details}
+                  </p>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={() => setActiveTask(null)}
+                    className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
