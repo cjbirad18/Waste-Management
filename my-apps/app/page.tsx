@@ -13,7 +13,6 @@ interface FeatureCardProps {
 function FeatureCard({ icon, title, desc }: FeatureCardProps) {
   return (
     <div className="group relative bg-gradient-to-br from-slate-800/90 to-gray-800/90 border border-green-800/40 backdrop-blur-xl rounded-3xl shadow-2xl shadow-green-900/20 p-8 flex flex-col items-center text-center h-full min-h-[220px] transition-all duration-500 hover:-translate-y-3 hover:scale-[1.02] hover:shadow-3xl hover:shadow-green-600/30 hover:border-green-600/60 text-slate-200 overflow-hidden">
-      {/* Subtle glow effect */}
       <div className="absolute inset-0 bg-gradient-to-r from-green-500/8 via-transparent to-emerald-500/8 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
       <div className="relative z-10 flex flex-col items-center space-y-4">
@@ -96,7 +95,6 @@ function useDashboardCountsInPage() {
       const resZones = await supabase
         .from("barangay")
         .select("*", { count: "exact", head: true });
-
       barangaysCovered = resZones.error ? 0 : resZones.count || 0;
 
       setCounts({
@@ -119,6 +117,14 @@ function useDashboardCountsInPage() {
 
 export default function LandingPage() {
   const { counts, loading } = useDashboardCountsInPage();
+  const [now, setNow] = useState<Date>(new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const roleLinks = [
     {
@@ -301,7 +307,10 @@ export default function LandingPage() {
 
                 {!loading && counts && (
                   <p className="mt-6 text-sm text-emerald-400 text-center font-medium pt-4 border-t border-green-800/50 relative z-10">
-                    Updated {new Date().toLocaleTimeString()}
+                    Time{" "}
+                    <span className="font-semibold text-emerald-300">
+                      {now.toLocaleTimeString()}
+                    </span>
                   </p>
                 )}
               </div>
@@ -420,6 +429,7 @@ export default function LandingPage() {
         </div>
       </section>
       <br />
+
       {/* Footer */}
       <footer className="bg-gradient-to-r from-slate-900 to-emerald-900/80 text-slate-200 border-t border-green-800/50 relative z-10">
         <div className="mx-auto max-w-7xl px-6 py-1">
@@ -436,7 +446,7 @@ export default function LandingPage() {
               <span>&copy; {new Date().getFullYear()} Track-the-Truck</span>
             </div>
             <p className="text-emerald-400/80 font-medium text-center md:text-right">
-              Serving Tagbilaran City waste management operations
+              Serving Tagbilaran City Waste Management Operations
             </p>
           </div>
         </div>
