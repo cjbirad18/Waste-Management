@@ -33,6 +33,14 @@ const truckShadowIcon = L.divIcon({
   iconAnchor: [15, 15],
 });
 
+// Resident marker icon
+const residentIcon = L.icon({
+  iconUrl: "/resident.png", // create this icon in public/ or change path
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -32],
+});
+
 // Color per barangay
 const getBarangayColor = (name?: string) => {
   switch (name) {
@@ -118,6 +126,18 @@ const assignedByTruck: Record<number, number> = {
 
 const truckStates: Record<number, TruckState> = {};
 
+// last time each truck sent data (ms since epoch)
+const lastSeenAt: Record<number, number> = {};
+
+type AppRole =
+  | "GCP"
+  | "Resident"
+  | "SWMO"
+  | "TCEMO"
+  | "BWMC"
+  | "Secretary"
+  | null;
+
 export default function LeafletMap() {
   const [geojson, setGeojson] = useState<GeoJSONType | null>(null);
   const [trucks, setTrucks] = useState<TruckRow[]>([]);
@@ -129,6 +149,14 @@ export default function LeafletMap() {
 
   // map theme: "day" | "night"
   const [theme, setTheme] = useState<"day" | "night">("night");
+
+  // auth-based role + resident location
+  const [role, setRole] = useState<AppRole>(null);
+  const [residentLocation, setResidentLocation] = useState<{
+    lat: number;
+    lng: number;
+    address?: string | null;
+  } | null>(null);
 
   const dayTileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
   const nightTileUrl =
@@ -160,10 +188,50 @@ export default function LeafletMap() {
     loadBarangays();
   }, []);
 
+  // Load current user's role + resident location (from resident_live_location)
+  useEffect(() => {
+    const loadUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // 1) get role and address
+      const { data: profile, error: profileErr } = await supabase
+        .from("users")
+        .select("role, full_address")
+        .eq("auth_uid", user.id)
+        .maybeSingle();
+
+      if (profileErr || !profile) return;
+
+      setRole(profile.role as AppRole);
+
+      if (profile.role !== "Resident") return;
+
+      // 2) get latest live location
+      const { data: live, error: liveErr } = await supabase
+        .from("resident_live_location")
+        .select("latitude, longitude, updated_at")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (liveErr || !live) return;
+
+      setResidentLocation({
+        lat: live.latitude,
+        lng: live.longitude,
+        address: profile.full_address,
+      });
+    };
+
+    loadUser();
+  }, []);
+
   // Helper: which barangay name is this lat/lng inside?
   const getBarangayFromPoint = (
     [lat, lng]: [number, number],
-    gj: GeoJSONType | null
+    gj: GeoJSONType | null,
   ): string | null => {
     if (!gj) return null;
 
@@ -192,7 +260,7 @@ export default function LeafletMap() {
       .from("collection_schedules")
       .select("schedule_id, start_time, status")
       .eq("barangay_id", barangay_id)
-      .eq("status", "pending") // adjust if your "not started yet" status differs
+      .eq("status", "pending")
       .order("date_created", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -241,7 +309,7 @@ export default function LeafletMap() {
 
     const barangayName = getBarangayFromPoint(
       [row.latitude, row.longitude],
-      geojson
+      geojson,
     );
     if (!barangayName) return;
 
@@ -265,11 +333,14 @@ export default function LeafletMap() {
 
     // LEAVE assigned barangay -> start 20-min timer, only end after timer
     if (!isInsideAssigned && state.inside && !state.leaveTimeout) {
-      state.leaveTimeout = window.setTimeout(async () => {
-        state.inside = false;
-        state.leaveTimeout = null;
-        await endCollectionIfNeeded(assignedBarangayId);
-      }, 20 * 60 * 1000); // 20 minutes
+      state.leaveTimeout = window.setTimeout(
+        async () => {
+          state.inside = false;
+          state.leaveTimeout = null;
+          await endCollectionIfNeeded(assignedBarangayId);
+        },
+        20 * 60 * 1000,
+      );
     }
   };
 
@@ -282,6 +353,11 @@ export default function LeafletMap() {
 
       if (!error && data) {
         setTrucks(data as TruckRow[]);
+        (data as TruckRow[]).forEach((row) => {
+          if (row.truck_id != null) {
+            lastSeenAt[row.truck_id] = Date.now();
+          }
+        });
       }
     }
 
@@ -297,15 +373,18 @@ export default function LeafletMap() {
             const oldRow = payload.old as TruckRow | undefined;
             if (oldRow?.truck_id != null) {
               setTrucks((prev) =>
-                prev.filter((t) => t.truck_id !== oldRow.truck_id)
+                prev.filter((t) => t.truck_id !== oldRow.truck_id),
               );
               delete animStatesRef.current[oldRow.truck_id];
+              delete lastSeenAt[oldRow.truck_id];
             }
             return;
           }
 
           const row = payload.new as TruckRow;
           if (row.latitude == null || row.longitude == null) return;
+
+          lastSeenAt[row.truck_id] = Date.now();
 
           setTrucks((prev) => {
             const next = [...prev];
@@ -334,9 +413,8 @@ export default function LeafletMap() {
             duration: duration || 1500,
           };
 
-          // run inside/outside + schedule logic
           await handleTruckLocationLogic(row);
-        }
+        },
       )
       .subscribe();
 
@@ -345,28 +423,34 @@ export default function LeafletMap() {
     };
   }, [geojson, nameToId]);
 
-  // Animation loop
+  // Animation loop + hide trucks if offline > 5 minutes
   useEffect(() => {
     const animate = () => {
       const now = performance.now();
       const animStates = animStatesRef.current;
+      const cutoff = Date.now() - 5 * 60 * 1000;
 
       setTrucks((prev) =>
-        prev.map((t) => {
-          const s = animStates[t.truck_id];
-          if (!s || t.latitude == null || t.longitude == null) return t;
+        prev
+          .filter((t) => {
+            const last = lastSeenAt[t.truck_id];
+            return last == null || last >= cutoff;
+          })
+          .map((t) => {
+            const s = animStates[t.truck_id];
+            if (!s || t.latitude == null || t.longitude == null) return t;
 
-          const { from, to, startTime, duration } = s;
-          if (duration <= 0) {
-            return { ...t, latitude: to[0], longitude: to[1] };
-          }
+            const { from, to, startTime, duration } = s;
+            if (duration <= 0) {
+              return { ...t, latitude: to[0], longitude: to[1] };
+            }
 
-          const p = Math.min((now - startTime) / duration, 1);
-          const lat = from[0] + (to[0] - from[0]) * p;
-          const lng = from[1] + (to[1] - from[1]) * p;
+            const p = Math.min((now - startTime) / duration, 1);
+            const lat = from[0] + (to[0] - from[0]) * p;
+            const lng = from[1] + (to[1] - from[1]) * p;
 
-          return { ...t, latitude: lat, longitude: lng };
-        })
+            return { ...t, latitude: lat, longitude: lng };
+          }),
       );
 
       frameRef.current = requestAnimationFrame(animate);
@@ -451,34 +535,55 @@ export default function LeafletMap() {
               />
             )}
 
-            {trucks.map((t) => {
-              if (t.latitude == null || t.longitude == null) return null;
-              const pos: [number, number] = [t.latitude, t.longitude];
-              const key = t.id ?? `truck-${t.truck_id}`;
+            {/* GCP sees trucks */}
+            {role === "GCP" &&
+              trucks.map((t) => {
+                if (t.latitude == null || t.longitude == null) return null;
+                const pos: [number, number] = [t.latitude, t.longitude];
+                const key = t.id ?? `truck-${t.truck_id}`;
 
-              return (
-                <React.Fragment key={key}>
-                  <Marker
-                    position={pos}
-                    icon={truckShadowIcon}
-                    interactive={false}
-                  />
-                  <Marker position={pos} icon={truckIcon}>
-                    <Popup>
-                      <div className="text-sm">
-                        <div className="font-semibold">{`Truck ${t.truck_id}`}</div>
-                        {t.updated_at && (
-                          <div className="text-xs text-gray-600">
-                            Last update:{" "}
-                            {new Date(t.updated_at).toLocaleTimeString()}
-                          </div>
-                        )}
+                return (
+                  <React.Fragment key={key}>
+                    <Marker
+                      position={pos}
+                      icon={truckShadowIcon}
+                      interactive={false}
+                    />
+                    <Marker position={pos} icon={truckIcon}>
+                      <Popup>
+                        <div className="text-sm">
+                          <div className="font-semibold">{`Truck ${t.truck_id}`}</div>
+                          {t.updated_at && (
+                            <div className="text-xs text-gray-600">
+                              Last update:{" "}
+                              {new Date(t.updated_at).toLocaleTimeString()}
+                            </div>
+                          )}
+                        </div>
+                      </Popup>
+                    </Marker>
+                  </React.Fragment>
+                );
+              })}
+
+            {/* Resident sees only their own location */}
+            {role === "Resident" && residentLocation && (
+              <Marker
+                position={[residentLocation.lat, residentLocation.lng]}
+                icon={residentIcon}
+              >
+                <Popup>
+                  <div className="text-sm">
+                    <div className="font-semibold">Your location</div>
+                    {residentLocation.address && (
+                      <div className="text-xs text-gray-600">
+                        {residentLocation.address}
                       </div>
-                    </Popup>
-                  </Marker>
-                </React.Fragment>
-              );
-            })}
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            )}
           </MapContainer>
         </div>
       </div>

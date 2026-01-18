@@ -116,7 +116,7 @@ interface Schedule {
 function generatePatternDates(
   pattern: string,
   year: number,
-  month: number
+  month: number,
 ): Date[] {
   if (!pattern) return [];
 
@@ -201,7 +201,7 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
         {weeks.map((weekDays, weekIdx) =>
           weekDays.map((day) => {
             const isScheduled = patternDates.some(
-              (d) => d.toDateString() === day.toDateString()
+              (d) => d.toDateString() === day.toDateString(),
             );
             const isCurrentMonth = day.getMonth() === month;
             const isToday =
@@ -233,14 +233,14 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
                   isScheduled && isCurrentMonth
                     ? `Scheduled: ${format(day, "EEE, MMM d, yyyy")}`
                     : isToday
-                    ? "Today"
-                    : ""
+                      ? "Today"
+                      : ""
                 }
               >
                 <span>{dayText}</span>
               </div>
             );
-          })
+          }),
         )}
       </div>
     </div>
@@ -323,7 +323,7 @@ function ResidentSchedulesFeature({
        collection_date,
        status
      )
-  `
+  `,
         )
         .order("date_created", { ascending: false });
 
@@ -344,7 +344,7 @@ function ResidentSchedulesFeature({
   }, []);
 
   const schedule = schedules.find(
-    (s) => String(s.barangay?.barangay_id) === String(selectedBarangayId)
+    (s) => String(s.barangay?.barangay_id) === String(selectedBarangayId),
   );
 
   return (
@@ -539,7 +539,7 @@ function SubmitReportSection({
   };
 
   const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -947,7 +947,62 @@ function InputField({
   );
 }
 
+function useResidentTracking() {
+  useEffect(() => {
+    let watchId: number | null = null;
+
+    async function startTracking() {
+      const {
+        data: { user },
+        error: authErr,
+      } = await supabase.auth.getUser();
+      if (authErr || !user) return;
+
+      if (!("geolocation" in navigator)) {
+        console.log("geolocation not available");
+        return;
+      }
+
+      watchId = navigator.geolocation.watchPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          console.log("Resident GPS update", { latitude, longitude });
+
+          // Option A: write to resident_live_location
+          await supabase.from("resident_live_location").upsert(
+            {
+              user_id: user.id,
+              latitude,
+              longitude,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id" },
+          );
+        },
+        (err) => {
+          console.error("Resident GPS error", err.code, err.message);
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 30000,
+        },
+      );
+    }
+
+    startTracking();
+
+    return () => {
+      if (watchId !== null && "geolocation" in navigator) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, []);
+}
+
 export default function ResidentDashboard() {
+  useResidentTracking();
+
   const router = useRouter();
   const [reportSuccess, setReportSuccess] = useState<string | null>(null);
   const [reportSuccessModalOpen, setReportSuccessModalOpen] = useState(false);
@@ -973,11 +1028,11 @@ export default function ResidentDashboard() {
       contact_number: "",
       password: "",
       confirm_password: "",
-    }
+    },
   );
   const [manageAccountLoading, setManageAccountLoading] = useState(true);
   const [manageAccountError, setManageAccountError] = useState<string | null>(
-    null
+    null,
   );
   const [manageAccountSuccess, setManageAccountSuccess] = useState<
     string | null
@@ -1096,7 +1151,7 @@ export default function ResidentDashboard() {
         setGcps(gcpResp.data || []);
       } catch (err) {
         setScheduleError(
-          "Failed to load reference data: " + (err as Error).message
+          "Failed to load reference data: " + (err as Error).message,
         );
       }
     }
@@ -1136,7 +1191,7 @@ export default function ResidentDashboard() {
         const { data, error } = await supabase
           .from("community_reports")
           .select(
-            "report_id, description, current_status, date_submitted, barangay_id"
+            "report_id, description, current_status, date_submitted, barangay_id",
           )
           .eq("user_id", userId)
           .order("date_submitted", { ascending: false })
@@ -1152,7 +1207,7 @@ export default function ResidentDashboard() {
         setUserReports(reports);
 
         const unread = reports.filter(
-          (r) => r.current_status && r.current_status !== "Resolved"
+          (r) => r.current_status && r.current_status !== "Resolved",
         ).length;
         setUnreadReportCount(unread);
       } catch {
@@ -1173,7 +1228,7 @@ export default function ResidentDashboard() {
     });
   };
   const handleScheduleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     setScheduleData({
       ...scheduleData,
@@ -1553,8 +1608,8 @@ export default function ResidentDashboard() {
                             report.current_status === "Resolved"
                               ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
                               : report.current_status === "In Progress"
-                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                              : "bg-slate-500/30 text-slate-200 border border-slate-500/60"
+                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                                : "bg-slate-500/30 text-slate-200 border border-slate-500/60"
                           }`}
                         >
                           {report.current_status || "Unknown"}
