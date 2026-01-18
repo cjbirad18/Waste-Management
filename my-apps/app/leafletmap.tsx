@@ -144,6 +144,32 @@ type AppRole =
   | "Secretary"
   | null;
 
+// Haversine distance in km
+function haversineKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6371; // km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function computeEtaMinutes(distanceKm: number, speedKmh: number): number {
+  if (speedKmh <= 0) return Infinity;
+  const hours = distanceKm / speedKmh;
+  return Math.round(hours * 60);
+}
+
 export default function LeafletMap() {
   const [geojson, setGeojson] = useState<GeoJSONType | null>(null);
   const [trucks, setTrucks] = useState<TruckRow[]>([]);
@@ -155,6 +181,7 @@ export default function LeafletMap() {
 
   // map theme: "day" | "night"
   const [theme, setTheme] = useState<"day" | "night">("night");
+  const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
 
   // auth-based role + resident location
   const [role, setRole] = useState<AppRole>(null);
@@ -234,6 +261,41 @@ export default function LeafletMap() {
 
     loadUser();
   }, []);
+
+  useEffect(() => {
+    if (role !== "Resident" || !residentLocation || trucks.length === 0) {
+      setEtaMinutes(null);
+      return;
+    }
+
+    // Use average speed between 15 and 20 km/h (e.g. 17.5)
+    const speedKmh = 17.5;
+
+    let bestDist: number | null = null;
+
+    trucks.forEach((t) => {
+      if (t.latitude == null || t.longitude == null) return;
+
+      const d = haversineKm(
+        residentLocation.lat,
+        residentLocation.lng,
+        t.latitude,
+        t.longitude,
+      );
+
+      if (bestDist === null || d < bestDist) {
+        bestDist = d;
+      }
+    });
+
+    if (bestDist === null) {
+      setEtaMinutes(null);
+      return;
+    }
+
+    const eta = computeEtaMinutes(bestDist, speedKmh);
+    setEtaMinutes(eta);
+  }, [role, residentLocation, trucks]);
 
   // Helper: which barangay name is this lat/lng inside?
   const getBarangayFromPoint = (
@@ -594,6 +656,22 @@ export default function LeafletMap() {
           </MapContainer>
         </div>
       </div>
+
+      {role === "Resident" && (
+        <div className="mx-6 mt-2 rounded-2xl border border-emerald-700/60 bg-slate-900/80 px-4 py-2 text-xs text-emerald-100 shadow-md shadow-emerald-900/40">
+          {etaMinutes == null ? (
+            <span>Truck ETA: Not available yet.</span>
+          ) : (
+            <span>
+              Estimated arrival of nearest truck:{" "}
+              <span className="font-semibold">
+                {etaMinutes} minute{etaMinutes === 1 ? "" : "s"}
+              </span>
+              .
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Legend */}
       <div className="mt-3 flex flex-wrap gap-2 text-xs px-6 pb-2">
