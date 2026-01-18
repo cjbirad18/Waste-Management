@@ -35,8 +35,7 @@ const truckShadowIcon = L.divIcon({
 
 // Resident marker icon
 const residentIcon = L.icon({
-  iconUrl: "/resident.png", // create this icon in public/ or change path
-  iconSize: [32, 32],
+  iconUrl: "/resident.png",
   iconAnchor: [16, 32],
   popupAnchor: [0, -32],
 });
