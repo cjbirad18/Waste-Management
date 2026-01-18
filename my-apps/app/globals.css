@@ -98,3 +98,53 @@ body {
     color: #000000 !important; /* pure black text */
   }
 }
+
+.resident-pulse-wrapper {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  transform: translate(-13px, -13px); /* center over lat/lng */
+}
+
+/* solid center dot */
+.resident-pulse-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  margin-top: -6px;
+  border-radius: 9999px;
+  background: #38bdf8; /* sky-400 */
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.9);
+}
+
+/* outer pulsing ring */
+.resident-pulse-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  margin-top: -11px;
+  border-radius: 9999px;
+  border: 2px solid rgba(56, 189, 248, 0.7);
+  animation: residentPulseBlue 1.4s ease-out infinite;
+}
+
+@keyframes residentPulseBlue {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0.9;
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(1.4);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.4);
+    opacity: 0;
+  }
+}

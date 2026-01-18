@@ -33,12 +33,18 @@ const truckShadowIcon = L.divIcon({
   iconAnchor: [15, 15],
 });
 
-// Resident marker icon
-const residentIcon = L.icon({
-  iconUrl: "/resident.png",
-  iconSize: [60, 70], // important
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
+// Resident marker: blue blinking circle
+const residentIcon = L.divIcon({
+  className: "",
+  html: `
+    <div class="resident-pulse-wrapper">
+      <div class="resident-pulse-ring"></div>
+      <div class="resident-pulse-dot"></div>
+    </div>
+  `,
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+  popupAnchor: [0, -13],
 });
 
 // Color per barangay
