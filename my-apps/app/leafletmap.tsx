@@ -200,7 +200,7 @@ export default function LeafletMap() {
       // 1) get role and address from users
       const { data: profile, error: profileErr } = await supabase
         .from("users")
-        .select("role, full_address")
+        .select("role")
         .eq("user_id", user.id) // <-- use user_id here
         .maybeSingle();
 
@@ -223,7 +223,6 @@ export default function LeafletMap() {
       setResidentLocation({
         lat: live.latitude,
         lng: live.longitude,
-        address: profile.full_address,
       });
     };
 
