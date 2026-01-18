@@ -154,6 +154,7 @@ export default function LeafletMap() {
   const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
 
   const [role, setRole] = useState<AppRole>(null);
+
   const [residentLocation, setResidentLocation] = useState<{
     lat: number;
     lng: number;
@@ -482,21 +483,33 @@ export default function LeafletMap() {
     };
   }, []);
 
+  useEffect(() => {
+    const updateThemeFromTime = () => {
+      const hour = new Date().getHours(); // 0–23
+      // Example: day = 6:00–17:59, night = 18:00–5:59
+      if (hour >= 6 && hour < 18) {
+        setTheme("day");
+      } else {
+        setTheme("night");
+      }
+    };
+
+    updateThemeFromTime(); // set on initial load
+    const id = setInterval(updateThemeFromTime, 60 * 1000); // check every minute
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div className="w-full mx-auto my-6">
       {/* Header row with theme toggle */}
-      <div className="mb-1 flex items-center justify-between gap-1 px-4 md:px-6">
+      <div className="mb-1 flex items-center justify-between gap-1 px-4 md:px-6 z-[1000] relative">
         <h3 className="text-sm font-semibold text-emerald-200">
           Collection Map
         </h3>
-        <button
-          type="button"
-          onClick={() => setTheme((prev) => (prev === "day" ? "night" : "day"))}
-          className="inline-flex items-center gap-2 rounded-2xl border border-emerald-700/70 bg-slate-900/90 px-3 py-1 text-xs font-semibold text-emerald-200 shadow-md shadow-emerald-900/40 hover:bg-emerald-600/20 transition"
-        >
+        <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-700/70 bg-slate-900/90 px-3 py-1 text-xs font-semibold text-emerald-200 shadow-md shadow-emerald-900/40">
           <span className="text-base">{theme === "day" ? "🌙" : "☀️"}</span>
-          <span>{theme === "day" ? "Night mode" : "Day mode"}</span>
-        </button>
+          <span>{theme === "day" ? "Day mode" : "Night mode"}</span>
+        </div>
       </div>
 
       {/* MOBILE ETA: separate bar above map so it never covers it */}
