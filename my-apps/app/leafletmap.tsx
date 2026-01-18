@@ -36,7 +36,7 @@ const truckShadowIcon = L.divIcon({
 // Resident marker icon
 const residentIcon = L.icon({
   iconUrl: "/resident.png",
-  iconSize: [32, 32],
+  iconSize: [60, 70], // important
   iconAnchor: [16, 32],
   popupAnchor: [0, -32],
 });
@@ -194,29 +194,30 @@ export default function LeafletMap() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      console.log("auth user", user);
-
+      console.log("auth user", user); // debug
       if (!user) return;
 
+      // 1) get role and address from users
       const { data: profile, error: profileErr } = await supabase
         .from("users")
         .select("role, full_address")
-        .eq("auth_uid", user.id)
+        .eq("user_id", user.id) // <-- use user_id here
         .maybeSingle();
-      console.log("profile", profile, profileErr);
 
+      console.log("profile", profile, profileErr); // debug
       if (profileErr || !profile) return;
 
       setRole(profile.role as AppRole);
       if (profile.role !== "Resident") return;
 
+      // 2) get latest live location
       const { data: live, error: liveErr } = await supabase
         .from("resident_live_location")
         .select("latitude, longitude, updated_at")
         .eq("user_id", user.id)
         .maybeSingle();
-      console.log("live", live, liveErr);
 
+      console.log("live", live, liveErr); // debug
       if (liveErr || !live) return;
 
       setResidentLocation({
