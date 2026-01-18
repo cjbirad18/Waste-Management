@@ -25,7 +25,6 @@ const truckIcon = L.icon({
   popupAnchor: [0, -16],
 });
 
-// HTML-based blinking shadow dot
 const truckShadowIcon = L.divIcon({
   className: "",
   html: '<div class="truck-shadow-dot"></div>',
@@ -33,7 +32,6 @@ const truckShadowIcon = L.divIcon({
   iconAnchor: [15, 15],
 });
 
-// Resident marker: blue blinking circle
 const residentIcon = L.divIcon({
   className: "",
   html: `
@@ -47,7 +45,6 @@ const residentIcon = L.divIcon({
   popupAnchor: [0, -13],
 });
 
-// Color per barangay
 const getBarangayColor = (name?: string) => {
   switch (name) {
     case "Bool":
@@ -85,24 +82,6 @@ const getBarangayColor = (name?: string) => {
   }
 };
 
-const barangayNames = [
-  "Bool",
-  "Booy",
-  "Cabawan",
-  "Cogon",
-  "Dampas",
-  "Dao",
-  "Manga",
-  "Mansasa",
-  "Poblacion I",
-  "Poblacion II",
-  "Poblacion III",
-  "San Isidro",
-  "Taloto",
-  "Tiptip",
-  "Ubujan",
-];
-
 type TruckRow = {
   id?: string;
   truck_id: number;
@@ -118,21 +97,16 @@ type TruckAnimState = {
   duration: number;
 };
 
-// per-truck inside/outside + 20-min timer
 type TruckState = {
   inside: boolean;
   leaveTimeout?: number | null;
 };
 
-// TODO: replace with real mapping from your DB (truck_id -> barangay_id)
 const assignedByTruck: Record<number, number> = {
-  1: 4, // example: truck 1 -> barangay_id 4 (Cogon)
-  // 2: 7, ...
+  1: 4,
 };
 
 const truckStates: Record<number, TruckState> = {};
-
-// last time each truck sent data (ms since epoch)
 const lastSeenAt: Record<number, number> = {};
 
 type AppRole =
@@ -144,14 +118,13 @@ type AppRole =
   | "Secretary"
   | null;
 
-// Haversine distance in km
 function haversineKm(
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number,
 ): number {
-  const R = 6371; // km
+  const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
@@ -176,14 +149,10 @@ export default function LeafletMap() {
   const animStatesRef = useRef<Record<number, TruckAnimState>>({});
   const frameRef = useRef<number | null>(null);
 
-  // barangay_name -> barangay_id
   const [nameToId, setNameToId] = useState<Record<string, number>>({});
-
-  // map theme: "day" | "night"
   const [theme, setTheme] = useState<"day" | "night">("night");
   const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
 
-  // auth-based role + resident location
   const [role, setRole] = useState<AppRole>(null);
   const [residentLocation, setResidentLocation] = useState<{
     lat: number;
@@ -195,7 +164,6 @@ export default function LeafletMap() {
   const nightTileUrl =
     "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png";
 
-  // Load barangay GeoJSON
   useEffect(() => {
     const load = async () => {
       const res = await fetch("/data/barangays.geojson", { cache: "no-store" });
@@ -205,7 +173,6 @@ export default function LeafletMap() {
     load();
   }, []);
 
-  // Load barangay table to map name -> id
   useEffect(() => {
     const loadBarangays = async () => {
       const { data, error } = await supabase
@@ -221,36 +188,30 @@ export default function LeafletMap() {
     loadBarangays();
   }, []);
 
-  // Load current user's role + resident location (from resident_live_location)
   useEffect(() => {
     const loadUser = async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      console.log("auth user", user); // debug
       if (!user) return;
 
-      // 1) get role and address from users
       const { data: profile, error: profileErr } = await supabase
         .from("users")
         .select("role")
-        .eq("user_id", user.id) // <-- use user_id here
+        .eq("user_id", user.id)
         .maybeSingle();
 
-      console.log("profile", profile, profileErr); // debug
       if (profileErr || !profile) return;
 
       setRole(profile.role as AppRole);
       if (profile.role !== "Resident") return;
 
-      // 2) get latest live location
       const { data: live, error: liveErr } = await supabase
         .from("resident_live_location")
         .select("latitude, longitude, updated_at")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      console.log("live", live, liveErr); // debug
       if (liveErr || !live) return;
 
       setResidentLocation({
@@ -268,9 +229,7 @@ export default function LeafletMap() {
       return;
     }
 
-    // Use average speed between 15 and 20 km/h (e.g. 17.5)
     const speedKmh = 17.5;
-
     let bestDist: number | null = null;
 
     trucks.forEach((t) => {
@@ -297,7 +256,6 @@ export default function LeafletMap() {
     setEtaMinutes(eta);
   }, [role, residentLocation, trucks]);
 
-  // Helper: which barangay name is this lat/lng inside?
   const getBarangayFromPoint = (
     [lat, lng]: [number, number],
     gj: GeoJSONType | null,
@@ -323,7 +281,6 @@ export default function LeafletMap() {
     return null;
   };
 
-  // DB helpers: start / end collection_schedules
   const startCollectionIfNeeded = async (barangay_id: number) => {
     const { data, error } = await supabase
       .from("collection_schedules")
@@ -368,7 +325,6 @@ export default function LeafletMap() {
       .eq("schedule_id", data.schedule_id);
   };
 
-  // Logic per truck update (inside / outside + 20-min grace)
   const handleTruckLocationLogic = async (row: TruckRow) => {
     if (!geojson) return;
     if (row.latitude == null || row.longitude == null) return;
@@ -386,10 +342,8 @@ export default function LeafletMap() {
     if (!currentBarangayId) return;
 
     const isInsideAssigned = currentBarangayId === assignedBarangayId;
-
     const state = (truckStates[row.truck_id] ??= { inside: false });
 
-    // ENTER assigned barangay -> start or continue collection
     if (isInsideAssigned && !state.inside) {
       state.inside = true;
       if (state.leaveTimeout) {
@@ -400,7 +354,6 @@ export default function LeafletMap() {
       return;
     }
 
-    // LEAVE assigned barangay -> start 20-min timer, only end after timer
     if (!isInsideAssigned && state.inside && !state.leaveTimeout) {
       state.leaveTimeout = window.setTimeout(
         async () => {
@@ -413,7 +366,6 @@ export default function LeafletMap() {
     }
   };
 
-  // Load and subscribe to live truck locations
   useEffect(() => {
     async function loadTrucks() {
       const { data, error } = await supabase
@@ -492,7 +444,6 @@ export default function LeafletMap() {
     };
   }, [geojson, nameToId]);
 
-  // Animation loop + hide trucks if offline > 5 minutes
   useEffect(() => {
     const animate = () => {
       const now = performance.now();
@@ -534,7 +485,7 @@ export default function LeafletMap() {
   return (
     <div className="w-full mx-auto my-6">
       {/* Header row with theme toggle */}
-      <div className="mb-1 flex items-center justify-between gap-1 px-6">
+      <div className="mb-1 flex items-center justify-between gap-1 px-4 md:px-6">
         <h3 className="text-sm font-semibold text-emerald-200">
           Collection Map
         </h3>
@@ -548,9 +499,120 @@ export default function LeafletMap() {
         </button>
       </div>
 
-      {/* Map card */}
-      <div className="mx-1 rounded-3xl border border-emerald-800/50 shadow-xl shadow-emerald-900/30 overflow-hidden bg-slate-800/80 backdrop-blur">
-        <div className="w-full h-[460px]">
+      {/* MOBILE ETA: separate bar above map so it never covers it */}
+      {role === "Resident" && (
+        <div className="mb-2 px-3 md:hidden">
+          <div className="relative w-full rounded-2xl border border-emerald-700/60 bg-slate-900/95 px-4 py-3 text-xs text-emerald-50 shadow-xl shadow-emerald-900/50 backdrop-blur-xl">
+            <div className="absolute inset-x-0 -top-[1px] h-[2px] bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-400" />
+
+            <div className="mb-1 flex items-center gap-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-400/60">
+                <span className="text-[13px]">⏱️</span>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold tracking-wide text-emerald-200 uppercase">
+                  Truck ETA
+                </p>
+                <p className="text-[10px] text-emerald-300/70">
+                  Nearest truck to your location
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-1">
+              {etaMinutes == null ? (
+                <p className="text-[11px] text-emerald-100/80">
+                  Live truck data is not available yet. Please wait while we
+                  locate the nearest collection vehicle.
+                </p>
+              ) : (
+                <>
+                  <p className="text-[24px] leading-none font-bold text-emerald-300">
+                    {etaMinutes}
+                    <span className="ml-1 text-[11px] font-semibold text-emerald-200/80">
+                      min{etaMinutes === 1 ? "" : "s"}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-[11px] text-emerald-100/80">
+                    Estimated arrival of the nearest garbage truck at your
+                    current location, assuming normal traffic conditions.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="mt-2 border-t border-emerald-700/40 pt-1.5">
+              <p className="text-[10px] text-emerald-300/60">
+                Times are estimates based on live GPS and an average speed of
+                15–20 km/h.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Map card (container is same size as map) */}
+      <div className="mx-1 rounded-3xl border border-emerald-800/50 shadow-xl shadow-emerald-900/30 overflow-hidden bg-slate-800/80 backdrop-blur relative">
+        {/* DESKTOP/TABLET ETA: overlay inside map, left side */}
+        {role === "Resident" && (
+          <div
+            className="
+            pointer-events-none absolute top-4 z-[500]
+            hidden md:block
+            left-6
+          "
+          >
+            <div className="pointer-events-auto relative max-w-xs rounded-2xl border border-emerald-700/60 bg-slate-900/95 px-4 py-3 text-xs text-emerald-50 shadow-2xl shadow-emerald-900/50 backdrop-blur-xl">
+              <div className="absolute inset-x-0 -top-[1px] h-[2px] bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-400" />
+
+              <div className="mb-1 flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-400/60">
+                  <span className="text-[13px]">⏱️</span>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold tracking-wide text-emerald-200 uppercase">
+                    Truck ETA
+                  </p>
+                  <p className="text-[10px] text-emerald-300/70">
+                    Nearest truck to your location
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-1">
+                {etaMinutes == null ? (
+                  <p className="text-[11px] text-emerald-100/80">
+                    Live truck data is not available yet. Please wait while we
+                    locate the nearest collection vehicle.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-[26px] leading-none font-bold text-emerald-300">
+                      {etaMinutes}
+                      <span className="ml-1 text-[11px] font-semibold text-emerald-200/80">
+                        min{etaMinutes === 1 ? "" : "s"}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-[11px] text-emerald-100/80">
+                      Estimated arrival of the nearest garbage truck at your
+                      current location, assuming normal traffic conditions.
+                    </p>
+                  </>
+                )}
+              </div>
+
+              <div className="mt-2 border-t border-emerald-700/40 pt-1.5">
+                <p className="text-[10px] text-emerald-300/60">
+                  Times are estimates based on live GPS and an average speed of
+                  15–20 km/h.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Map fills the whole container */}
+        <div className="w-full h-[420px] sm:h-[520px] md:h-[620px]">
           <MapContainer center={mapCenter} zoom={13} className="w-full h-full">
             <TileLayer
               attribution={
@@ -644,55 +706,12 @@ export default function LeafletMap() {
                 <Popup>
                   <div className="text-sm">
                     <div className="font-semibold">Your location</div>
-                    {residentLocation.address && (
-                      <div className="text-xs text-gray-600">
-                        {residentLocation.address}
-                      </div>
-                    )}
                   </div>
                 </Popup>
               </Marker>
             )}
           </MapContainer>
         </div>
-      </div>
-
-      {role === "Resident" && (
-        <div className="mx-6 mt-2 rounded-2xl border border-emerald-700/60 bg-slate-900/80 px-4 py-2 text-xs text-emerald-100 shadow-md shadow-emerald-900/40">
-          {etaMinutes == null ? (
-            <span>Truck ETA: Not available yet.</span>
-          ) : (
-            <span>
-              Estimated arrival of nearest truck:{" "}
-              <span className="font-semibold">
-                {etaMinutes} minute{etaMinutes === 1 ? "" : "s"}
-              </span>
-              .
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Legend */}
-      <div className="mt-3 flex flex-wrap gap-2 text-xs px-6 pb-2">
-        {barangayNames.map((bgy) => (
-          <div
-            key={bgy}
-            className="flex items-center gap-1 px-2 py-1 rounded-xl border border-slate-700 bg-slate-900/90 text-slate-100 shadow-sm shadow-slate-900/60"
-          >
-            <span
-              style={{
-                display: "inline-block",
-                width: 12,
-                height: 12,
-                borderRadius: 2,
-                backgroundColor: getBarangayColor(bgy),
-                border: "1px solid #111",
-              }}
-            />
-            <span>{bgy}</span>
-          </div>
-        ))}
       </div>
     </div>
   );

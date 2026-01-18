@@ -148,3 +148,8 @@ body {
     opacity: 0;
   }
 }
+
+.leaflet-container {
+  height: 600px;
+  width: 100%;
+}
