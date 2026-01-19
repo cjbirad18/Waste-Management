@@ -452,6 +452,8 @@ function ResidentSchedulesFeature({
   );
 }
 
+const BUCKET = "incident-photos";
+
 function SubmitReportSection({
   barangays,
   onReportSubmit,
@@ -467,15 +469,35 @@ function SubmitReportSection({
   const [fieldError, setFieldError] = useState("");
   const [loading, setLoading] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<"user" | "environment">(
+    "environment",
+  ); // back camera by default
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const startCamera = async () => {
     try {
+      setFieldError("");
+      // stop previous stream if any
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+
+      const constraints: MediaStreamConstraints = {
+        video: { facingMode: cameraFacing }, // "user" or "environment"
+        audio: false,
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
       setCameraActive(true);
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (videoRef.current) videoRef.current.srcObject = stream;
     } catch {
       setFieldError("Cannot access camera");
       setCameraActive(false);
@@ -484,10 +506,19 @@ function SubmitReportSection({
 
   const stopCamera = () => {
     setCameraActive(false);
-    const stream = videoRef.current?.srcObject as MediaStream | null;
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      if (videoRef.current) videoRef.current.srcObject = null;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  const toggleCameraFacing = () => {
+    setCameraFacing((prev) => (prev === "user" ? "environment" : "user"));
+    if (cameraActive) {
+      startCamera(); // restart with new facing mode
     }
   };
 
@@ -496,46 +527,55 @@ function SubmitReportSection({
     const ctx = canvasRef.current.getContext("2d");
     if (!ctx) return;
 
-    ctx.drawImage(videoRef.current, 0, 0, 320, 240);
+    // match canvas to video size
+    const vw = videoRef.current.videoWidth || 320;
+    const vh = videoRef.current.videoHeight || 240;
+    canvasRef.current.width = vw;
+    canvasRef.current.height = vh;
+
+    ctx.drawImage(videoRef.current, 0, 0, vw, vh);
+
+    // 1) create preview URL
+    const dataUrl = canvasRef.current.toDataURL("image/jpeg");
+    setPhotoUrl(dataUrl);
+
+    // 2) also create a File for upload later
     canvasRef.current.toBlob((blob) => {
       if (!blob) {
         console.error("capturePhoto: blob is null");
         return;
       }
-
       const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
-      console.log("capturePhoto: created file", file);
-
-      // Only keep the File in state; no upload yet
       setForm((prev) => ({ ...prev, photoFile: file }));
-      setPhotoUrl(""); // clear any previous preview
-      stopCamera();
     }, "image/jpeg");
+
+    stopCamera();
+  };
+
+  // NEW: retake handler
+  const handleRetakePhoto = () => {
+    setPhotoUrl("");
+    setForm((prev) => ({ ...prev, photoFile: null }));
+    startCamera();
   };
 
   const uploadPhotoToSupabase = async (file: File): Promise<string> => {
-    console.log("uploadPhotoToSupabase: uploading file", file);
-
     const fileName = `reports/${Date.now()}_${file.name}`;
 
     const { error: uploadError } = await supabase.storage
-      .from("report-photos-bucket")
-      .upload(fileName, file);
+      .from(BUCKET)
+      .upload(fileName, file, {
+        contentType: "image/jpeg",
+      });
+
+    const { data } = supabase.storage.from(BUCKET).getPublicUrl(fileName);
 
     if (uploadError) {
-      console.error("Storage upload error:", uploadError);
       setFieldError(`Photo upload failed: ${uploadError.message}`);
       return "";
     }
 
-    const { data } = supabase.storage
-      .from("report-photos-bucket")
-      .getPublicUrl(fileName);
-
-    const publicUrl = data?.publicUrl ?? "";
-    console.log("uploadPhotoToSupabase: publicUrl", publicUrl);
-
-    return publicUrl;
+    return data?.publicUrl ?? "";
   };
 
   const handleChange = (
@@ -543,11 +583,13 @@ function SubmitReportSection({
   ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    setFieldError("");
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setFieldError("");
+
     if (
       !form.description.trim() ||
       !form.barangay_id ||
@@ -557,6 +599,13 @@ function SubmitReportSection({
       setFieldError("All fields except photo are required.");
       return;
     }
+
+    // NEW: require a captured photo
+    if (!form.photoFile) {
+      setFieldError("Please capture a photo before submitting.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -589,23 +638,23 @@ function SubmitReportSection({
         return;
       }
 
-      // Only now, after report exists, upload photo (if any) and insert row
+      // If you want to force photo requirement, uncomment:
+      // if (!form.photoFile) {
+      //   setFieldError("Please capture a photo.");
+      //   setLoading(false);
+      //   return;
+      // }
+
       if (form.photoFile) {
         const url = await uploadPhotoToSupabase(form.photoFile);
-        console.log("handleSubmit uploaded photoUrl:", url);
-
         if (url) {
           const { error: photoError } = await supabase
-            .from("report_photos")
-            .insert({
-              report_id: reportData.report_id,
-              photo_path: url,
-            });
-
-          console.log("photo insert error:", photoError);
+            .from("community_reports")
+            .update({ photo_path: url }) // new column
+            .eq("report_id", reportData.report_id);
 
           if (photoError) {
-            setFieldError("Photo record failed, but report saved!");
+            setFieldError(`Photo save failed, but report was submitted.`);
             setLoading(false);
             return;
           }
@@ -621,12 +670,11 @@ function SubmitReportSection({
         landmark: "",
         photoFile: null,
       });
-      // keep photoUrl if you want to show last submitted preview, else clear:
       setPhotoUrl("");
       if (onReportSubmit) onReportSubmit();
     } catch (err) {
-      setFieldError("Unexpected error occurred.");
       console.error(err);
+      setFieldError("Unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -654,6 +702,7 @@ function SubmitReportSection({
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Location */}
         <div>
           <label className="block text-xs font-semibold mb-1 text-slate-100">
             Location
@@ -669,6 +718,7 @@ function SubmitReportSection({
           />
         </div>
 
+        {/* Description */}
         <div>
           <label className="block text-xs font-semibold mb-1 text-slate-100">
             Description
@@ -684,6 +734,7 @@ function SubmitReportSection({
           />
         </div>
 
+        {/* Barangay */}
         <div>
           <label className="block text-xs font-semibold mb-1 text-slate-100">
             Barangay
@@ -708,6 +759,7 @@ function SubmitReportSection({
           </select>
         </div>
 
+        {/* Landmark */}
         <div>
           <label className="block text-xs font-semibold mb-1 text-slate-100">
             Landmark
@@ -723,32 +775,49 @@ function SubmitReportSection({
           />
         </div>
 
+        {/* Camera controls */}
         {!cameraActive && (
-          <button
-            type="button"
-            onClick={startCamera}
-            className="inline-flex items-center justify-center bg-sky-600 hover:bg-sky-500 text-white rounded-xl px-4 py-2 text-sm font-semibold shadow-lg shadow-sky-900/40 transition-colors"
-          >
-            Start Camera
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={startCamera}
+              className="inline-flex items-center justify-center bg-sky-600 hover:bg-sky-500 text-white rounded-xl px-4 py-2 text-sm font-semibold shadow-lg shadow-sky-900/40 transition-colors"
+            >
+              Start Camera
+            </button>
+            <button
+              type="button"
+              onClick={toggleCameraFacing}
+              className="inline-flex items-center justify-center bg-slate-800/90 hover:bg-slate-700 text-emerald-300 rounded-xl px-4 py-2 text-xs font-semibold border border-emerald-500/50 shadow-md shadow-slate-900/50 transition-colors"
+            >
+              Use {cameraFacing === "user" ? "Back" : "Front"} Camera
+            </button>
+          </div>
         )}
 
         {cameraActive && (
           <div className="flex flex-col gap-2 mt-2">
             <video
               ref={videoRef}
-              width="320"
-              height="240"
+              width={320}
+              height={240}
               autoPlay
               className="rounded-xl border border-slate-700 shadow-lg shadow-slate-900/60 bg-black/60"
             />
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={capturePhoto}
                 className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl px-4 py-2 text-sm font-semibold shadow-lg shadow-emerald-900/50 transition-colors"
               >
                 Capture Photo
+              </button>
+              <button
+                type="button"
+                onClick={toggleCameraFacing}
+                className="bg-slate-800/90 hover:bg-slate-700 text-emerald-300 rounded-xl px-4 py-2 text-xs font-semibold border border-emerald-500/50 transition-colors"
+              >
+                Switch to {cameraFacing === "user" ? "Back" : "Front"} Camera
               </button>
               <button
                 type="button"
@@ -760,29 +829,34 @@ function SubmitReportSection({
             </div>
             <canvas
               ref={canvasRef}
-              width="320"
-              height="240"
+              width={320}
+              height={240}
               style={{ display: "none" }}
             />
           </div>
         )}
 
         {photoUrl && (
-          <div className="mt-3 mb-2 flex justify-center">
+          <div className="mt-3 mb-2 flex flex-col items-center gap-3">
             <img
               src={photoUrl}
               alt="Live Capture"
               className="w-40 rounded-xl shadow-lg shadow-slate-900/60 border border-slate-700"
             />
+            <button
+              type="button"
+              onClick={handleRetakePhoto}
+              className="inline-flex items-center justify-center bg-slate-800/90 hover:bg-slate-700 text-emerald-300 rounded-xl px-4 py-2 text-xs font-semibold border border-emerald-500/50 shadow-md shadow-slate-900/50 transition-colors"
+            >
+              Retake Photo
+            </button>
           </div>
         )}
 
         <button
           type="submit"
-          disabled={loading}
-          className={`w-full py-3 text-sm font-semibold rounded-2xl bg-emerald-600 text-white shadow-xl shadow-emerald-900/50 hover:bg-emerald-500 transition-all ${
-            loading ? "opacity-50 pointer-events-none" : ""
-          }`}
+          disabled={loading || !form.photoFile}
+          className="w-full py-3 text-sm font-semibold rounded-2xl ..."
         >
           {loading ? "Submitting..." : "Submit Report"}
         </button>

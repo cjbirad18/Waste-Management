@@ -92,7 +92,7 @@ function SidebarItem({
 function generatePatternDates(
   pattern: string | null,
   year: number,
-  month: number
+  month: number,
 ) {
   if (!pattern) return [];
   const validDays =
@@ -198,11 +198,11 @@ function ScheduleFormWithCalendar({
   // Filter out barangays already scheduled
   const scheduledBarangayIds = schedules.map((s) => s.barangay_id);
   const availableBarangays = barangays.filter(
-    (b) => !scheduledBarangayIds.includes(b.barangay_id)
+    (b) => !scheduledBarangayIds.includes(b.barangay_id),
   );
 
   const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
 
@@ -210,13 +210,13 @@ function ScheduleFormWithCalendar({
     if (name === "gcp_user_id") {
       // Count existing assignments for that GCP
       const gcpAssignedCount = schedules.filter(
-        (s) => s.gcp_user_id === value
+        (s) => s.gcp_user_id === value,
       ).length;
 
       // Show confirmation window if assigned >= 2
       if (gcpAssignedCount >= 2) {
         const confirmed = window.confirm(
-          "This GCP is already assigned twice. Do you want to continue?"
+          "This GCP is already assigned twice. Do you want to continue?",
         );
         if (!confirmed) {
           // If not confirmed, reset the field and return early
@@ -261,7 +261,7 @@ function ScheduleFormWithCalendar({
 
     // Confirm user intent to save schedule
     const proceedSave = window.confirm(
-      "Do you want to continue saving the schedule?"
+      "Do you want to continue saving the schedule?",
     );
     if (!proceedSave) return;
 
@@ -270,16 +270,16 @@ function ScheduleFormWithCalendar({
       "schedules:",
       schedules,
       "selected GCP ID:",
-      schedule.gcp_user_id
+      schedule.gcp_user_id,
     );
 
     const gcpAssignedCount = schedules.filter(
-      (s) => s.gcp_user_id === schedule.gcp_user_id
+      (s) => s.gcp_user_id === schedule.gcp_user_id,
     ).length;
 
     if (gcpAssignedCount >= 2) {
       const confirmed = window.confirm(
-        "This GCP is already assigned twice. Do you want to continue?"
+        "This GCP is already assigned twice. Do you want to continue?",
       );
       if (!confirmed) return;
     }
@@ -305,7 +305,7 @@ function ScheduleFormWithCalendar({
 
       if (insertError || !data) {
         setError(
-          "Failed to save schedule: " + (insertError?.message ?? "Unknown")
+          "Failed to save schedule: " + (insertError?.message ?? "Unknown"),
         );
         setSuccess(null);
         return;
@@ -527,7 +527,7 @@ function ScheduleFormWithCalendar({
               const patternDates = generatePatternDates(
                 schedule.schedule_pattern,
                 year,
-                month
+                month,
               );
 
               const weeks: Date[][] = [];
@@ -566,12 +566,12 @@ function ScheduleFormWithCalendar({
                         >
                           {d}
                         </div>
-                      )
+                      ),
                     )}
                     {weeks.map((weekDays, weekIdx) =>
                       weekDays.map((day) => {
                         const isScheduled = patternDates.some(
-                          (d) => d.toDateString() === day.toDateString()
+                          (d) => d.toDateString() === day.toDateString(),
                         );
                         const dayText =
                           day.getMonth() === month ? format(day, "d") : "";
@@ -590,21 +590,21 @@ function ScheduleFormWithCalendar({
                               isScheduled && isCurrentMonth
                                 ? "bg-gradient-to-br from-emerald-500/90 to-teal-500/90 text-slate-100 shadow-lg shadow-emerald-500/40 scale-105 border-emerald-400/70 hover:scale-110"
                                 : isSatOrSun && isCurrentMonth
-                                ? "bg-gradient-to-br from-slate-700/50 to-gray-700/50 text-slate-400 border-slate-600/50 hover:bg-slate-600/50"
-                                : !isCurrentMonth
-                                ? "bg-slate-800/30 text-slate-500 border-slate-700/50 hover:bg-slate-700/40"
-                                : "bg-slate-900/50 text-slate-300 border-green-800/50 hover:bg-green-500/10 hover:border-green-600/70 hover:text-slate-200"
+                                  ? "bg-gradient-to-br from-slate-700/50 to-gray-700/50 text-slate-400 border-slate-600/50 hover:bg-slate-600/50"
+                                  : !isCurrentMonth
+                                    ? "bg-slate-800/30 text-slate-500 border-slate-700/50 hover:bg-slate-700/40"
+                                    : "bg-slate-900/50 text-slate-300 border-green-800/50 hover:bg-green-500/10 hover:border-green-600/70 hover:text-slate-200"
                             }
                           `}
                             title={
                               isScheduled && isCurrentMonth
                                 ? `Scheduled: ${format(
                                     day,
-                                    "EEE, MMM d, yyyy"
+                                    "EEE, MMM d, yyyy",
                                   )} at ${schedule.start_time}`
                                 : isSatOrSun && isCurrentMonth
-                                ? "No working day"
-                                : ""
+                                  ? "No working day"
+                                  : ""
                             }
                           >
                             <span>{dayText}</span>
@@ -613,7 +613,7 @@ function ScheduleFormWithCalendar({
                             )}
                           </div>
                         );
-                      })
+                      }),
                     )}
                   </div>
                 </div>
@@ -687,7 +687,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
       collection_date,
       status
     )
-  `
+  `,
           )
           .eq("barangay_id", selectedBarangay)
           .order("date_created", { ascending: false });
@@ -707,7 +707,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
   const handleDelete = async (schedule_id: string) => {
     if (
       !window.confirm(
-        "Are you sure? This will permanently delete the schedule."
+        "Are you sure? This will permanently delete the schedule.",
       )
     )
       return;
@@ -718,7 +718,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
         .eq("schedule_id", schedule_id);
       if (error) throw error;
       setSchedules((s) =>
-        s.filter((sc: any) => sc.schedule_id !== schedule_id)
+        s.filter((sc: any) => sc.schedule_id !== schedule_id),
       );
     } catch (err) {
       alert("Failed to delete schedule.");
@@ -743,8 +743,8 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
 
       setSchedules((s) =>
         s.map((sc: any) =>
-          sc.schedule_id === schedule_id ? { ...sc, days: editPattern } : sc
-        )
+          sc.schedule_id === schedule_id ? { ...sc, days: editPattern } : sc,
+        ),
       );
       setEditScheduleId(null);
     } catch (err) {
@@ -792,7 +792,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
           {weeks.map((weekDays, weekIdx) =>
             weekDays.map((day, dayIdx) => {
               const isScheduled = patternDates.some(
-                (d) => d.toDateString() === day.toDateString()
+                (d) => d.toDateString() === day.toDateString(),
               );
               const dayText = day.getMonth() === month ? format(day, "d") : "";
               const isCurrentMonth = day.getMonth() === month;
@@ -820,7 +820,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
                   <span>{dayText}</span>
                 </div>
               );
-            })
+            }),
           )}
         </div>
       </div>
@@ -1311,7 +1311,7 @@ function SecretaryReportsSection() {
       setAssignError(
         updateError?.message ||
           historyError?.message ||
-          "Failed to update report status."
+          "Failed to update report status.",
       );
       return;
     }
@@ -1330,126 +1330,168 @@ function SecretaryReportsSection() {
   if (error) return <div className="text-red-700">{error}</div>;
 
   return (
-    <section className="group relative max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-      {/* Glow effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+    <>
+      {/* Main card with passed incidents */}
+      <section className="group relative h-190 max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+        {/* Glow effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
 
-      <div className="relative z-10">
-        <h2 className="text-2xl font-black mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
-          Passed Incident Reports
-        </h2>
+        <div className="relative z-500">
+          <h2 className="text-2xl font-black mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+            Passed Incident Reports
+          </h2>
 
-        {/* Empty state */}
-        {reports.length === 0 ? (
-          <div className="text-center py-12 rounded-2xl bg-slate-900/50 border border-green-800/50 backdrop-blur-xl text-slate-400">
-            <div className="text-5xl mb-4 opacity-50">🚨</div>
-            <p className="text-lg font-semibold">No passed incident reports</p>
-            <p className="text-sm mt-1">at the moment.</p>
-          </div>
-        ) : (
-          /* Scrollable Table */
-          <div className="max-h-80 overflow-y-auto rounded-2xl border border-green-800/50 bg-slate-900/50 backdrop-blur-xl shadow-inner pr-2 scrollbar-thin scrollbar-thumb-emerald-500/50 scrollbar-track-slate-900/50">
-            <table className="w-full text-sm">
-              <thead className="bg-gradient-to-r from-slate-900/95 to-gray-900/95 sticky top-0 z-10 border-b border-green-800/50">
-                <tr>
-                  <th className="p-4 text-left font-bold text-slate-200">
-                    Location
-                  </th>
-                  <th className="p-4 text-left font-bold text-slate-200">
-                    Landmark
-                  </th>
-                  <th className="p-4 text-left font-bold text-slate-200">
-                    Date Submitted
-                  </th>
-                  <th className="p-4 text-left font-bold text-slate-200">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-green-800/30">
-                {reports.map((report) => (
-                  <tr
-                    key={report.report_id}
-                    className="hover:bg-slate-800/60 transition-all duration-200 group/item"
-                  >
-                    <td className="p-4 text-slate-300 font-medium">
-                      {report.location}
-                    </td>
-                    <td className="p-4 text-slate-400">{report.landmark}</td>
-                    <td className="p-4 text-slate-400">
-                      {new Date(report.date_submitted).toLocaleString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                    <td className="p-4">
-                      <button
-                        onClick={() => handleOpenAssign(report)}
-                        className="group relative inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-sm font-bold text-slate-100 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 rounded-xl overflow-hidden whitespace-nowrap"
-                      >
-                        <span className="relative z-10 uppercase tracking-wide">
-                          Assign GCP & Task
-                        </span>
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-                    </td>
+          {/* Empty state */}
+          {reports.length === 0 ? (
+            <div className="text-center py-12 rounded-2xl bg-slate-900/50 border border-green-800/50 backdrop-blur-xl text-slate-400">
+              <div className="text-5xl mb-4 opacity-50">🚨</div>
+              <p className="text-lg font-semibold">
+                No passed incident reports
+              </p>
+              <p className="text-sm mt-1">at the moment.</p>
+            </div>
+          ) : (
+            /* Scrollable Table */
+            <div className="max-h-70 overflow-y-auto rounded-2xl border border-green-800/50 bg-slate-900/50 backdrop-blur-xl shadow-inner pr-2 scrollbar-thin scrollbar-thumb-emerald-500/50 scrollbar-track-slate-900/50">
+              <table className="w-full text-md">
+                <thead className="bg-gradient-to-r from-slate-900/95 to-gray-900/95 sticky top-0 z-10 border-b border-green-800/50">
+                  <tr>
+                    <th className="p-4 text-left font-bold text-slate-200">
+                      Location
+                    </th>
+                    <th className="p-4 text-left font-bold text-slate-200">
+                      Landmark
+                    </th>
+                    <th className="p-4 text-left font-bold text-slate-200">
+                      Date Submitted
+                    </th>
+                    <th className="p-4 text-left font-bold text-slate-200">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody className="divide-y divide-green-800/30">
+                  {reports.map((report) => (
+                    <tr
+                      key={report.report_id}
+                      className="hover:bg-slate-800/60 transition-all duration-200 group/item"
+                    >
+                      <td className="p-4 text-slate-300 font-medium">
+                        {report.location}
+                      </td>
+                      <td className="p-4 text-slate-400">{report.landmark}</td>
+                      <td className="p-4 text-slate-400">
+                        {new Date(report.date_submitted).toLocaleString(
+                          "en-US",
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAssign(report)}
+                          className="group relative inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-sm font-bold text-slate-100 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 rounded-xl overflow-hidden whitespace-nowrap"
+                        >
+                          <span className="relative z-10 uppercase tracking-wide">
+                            Assign GCP &amp; Task
+                          </span>
+                          <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
 
-        {/* Dark Modal */}
-        {assignModalOpen && selectedReport && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4">
-            <div
-              className="group relative bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 rounded-2xl shadow-2xl shadow-green-900/30 backdrop-blur-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl rounded-2xl" />
+      {/* Full-screen modal (fixed design) */}
+      {assignModalOpen && selectedReport && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setAssignModalOpen(false)} // close on backdrop
+        >
+          <div
+            className="group relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-emerald-700/60 bg-gradient-to-br from-slate-900/98 to-slate-800/98 p-6 md:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl"
+            onClick={(e) => e.stopPropagation()} // keep clicks inside
+          >
+            {/* Soft glow */}
+            <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-r from-emerald-500/8 via-transparent to-teal-500/8 opacity-0 blur-xl transition-opacity group-hover:opacity-100" />
 
-              <div className="relative z-10">
-                {/* Close button */}
-                <button
-                  onClick={() => setAssignModalOpen(false)}
-                  className="group absolute -top-4 -right-4 w-10 h-10 bg-slate-900/90 border-2 border-slate-600/50 rounded-2xl shadow-xl hover:bg-red-600/90 hover:border-red-500/70 hover:shadow-2xl hover:shadow-red-500/40 hover:scale-110 transition-all duration-300 backdrop-blur-xl flex items-center justify-center text-slate-300 hover:text-white font-bold text-xl"
-                >
-                  <span className="relative z-10">✕</span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm" />
-                </button>
-
-                <h3 className="font-black text-xl mb-4 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-xl tracking-tight">
-                  Assign GCP & Task
-                </h3>
-
-                <div className="space-y-4 mb-4">
-                  <div className="text-sm text-slate-300">
-                    <span className="font-bold text-slate-200">Location:</span>{" "}
-                    {selectedReport.location}
-                  </div>
-                  <div className="text-sm text-slate-300">
-                    <span className="font-bold text-slate-200">Landmark:</span>{" "}
-                    {selectedReport.landmark}
-                  </div>
+            <div className="relative z-10">
+              {/* Top row: title + close */}
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[11px] font-semibold tracking-wide text-emerald-300/80 uppercase">
+                    Incident Task Assignment
+                  </p>
+                  <h3 className="mt-1 text-xl md:text-2xl font-black tracking-tight bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-xl">
+                    Assign GCP &amp; Task
+                  </h3>
                 </div>
 
-                {/* GCP Select */}
-                <div className="mb-4">
-                  <label className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm">
-                    Select GCP
-                  </label>
+                <button
+                  type="button"
+                  onClick={() => setAssignModalOpen(false)}
+                  className="group/close relative flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-600/60 bg-slate-900/90 text-sm font-bold text-slate-200 shadow-lg backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:border-red-500/70 hover:bg-red-600/90 hover:text-white hover:shadow-red-500/40"
+                >
+                  <span className="relative z-10">✕</span>
+                  <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-white/25 to-transparent opacity-0 blur-sm transition-opacity group-hover/close:opacity-100" />
+                </button>
+              </div>
+
+              {/* Context pill */}
+              <div className="mb-4 rounded-2xl border border-emerald-700/50 bg-slate-900/80 px-4 py-3 text-xs text-slate-200 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-400/70 text-[13px]">
+                    📍
+                  </span>
+                  <div>
+                    <p className="font-semibold text-emerald-200 text-[11px] uppercase tracking-wide">
+                      Location
+                    </p>
+                    <p className="text-[13px] text-slate-100">
+                      {selectedReport.location}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 h-px w-full bg-slate-700/70 md:mt-0 md:h-8 md:w-px" />
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-400/70 text-[13px]">
+                    🏷️
+                  </span>
+                  <div>
+                    <p className="font-semibold text-emerald-200 text-[11px] uppercase tracking-wide">
+                      Landmark
+                    </p>
+                    <p className="text-[13px] text-slate-100">
+                      {selectedReport.landmark}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* GCP Select */}
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">
+                  Select GCP
+                </label>
+                <div className="relative">
                   <select
                     value={selectedGcpId}
                     onChange={(e) => setSelectedGcpId(e.target.value)}
-                    className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 
-                             focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 
-                             transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/20 
-                             appearance-none pr-10 [&:invalid]:text-slate-400"
+                    className="w-full rounded-xl bg-slate-950/80 border border-emerald-700/60 px-4 py-3 text-sm text-slate-100 
+                         focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-400 
+                         transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/25 
+                         appearance-none pr-10 [&:invalid]:text-slate-400"
                   >
                     <option value="">-- Choose GCP --</option>
                     {gcpUsers.map((u) => (
@@ -1458,61 +1500,56 @@ function SecretaryReportsSection() {
                       </option>
                     ))}
                   </select>
+                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-emerald-300/80 text-xs">
+                    ▼
+                  </span>
                 </div>
+              </div>
 
-                {/* Task Details */}
-                <div className="mb-6">
-                  <label className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm">
-                    Task Details
-                  </label>
-                  <textarea
-                    className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 resize-vertical 
-                             focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 
-                             transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/20"
-                    rows={3}
-                    value={taskDetails}
-                    onChange={(e) => setTaskDetails(e.target.value)}
-                    placeholder="Describe what the GCP should do..."
-                  />
+              {/* Task details */}
+              <div className="mb-6">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">
+                  Task Details
+                </label>
+                <textarea
+                  rows={3}
+                  value={taskDetails}
+                  onChange={(e) => setTaskDetails(e.target.value)}
+                  placeholder="Describe what the GCP should do..."
+                  className="w-full rounded-xl bg-slate-950/80 border border-emerald-700/60 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 resize-vertical 
+                       focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-400 
+                       transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/25"
+                />
+              </div>
+
+              {assignError && (
+                <div className="mb-4 rounded-xl border border-orange-500/60 bg-gradient-to-r from-orange-500/20 to-red-500/25 p-3 text-xs text-orange-100 backdrop-blur-xl shadow-md">
+                  {assignError}
                 </div>
+              )}
 
-                {assignError && (
-                  <div className="rounded-xl bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/50 p-3 text-orange-200 text-sm backdrop-blur-xl shadow-md animate-pulse mb-4">
-                    {assignError}
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex justify-end gap-3 pt-2 border-t border-green-800/40">
-                  <button
-                    onClick={() => setAssignModalOpen(false)}
-                    className="px-6 py-2.5 bg-gradient-to-r from-slate-600/90 to-gray-600/90 text-sm font-bold text-slate-100 shadow-lg 
-                             hover:shadow-xl hover:shadow-slate-500/40 hover:scale-[1.02] transition-all duration-300 
-                             backdrop-blur-xl border border-slate-500/40 rounded-xl overflow-hidden"
-                  >
-                    <span className="relative z-10 uppercase tracking-wide">
-                      Cancel
-                    </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 opacity-0 hover:opacity-100 transition-opacity" />
-                  </button>
-                  <button
-                    onClick={handleSubmitAssign}
-                    className="px-6 py-2.5 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-sm font-bold text-slate-100 shadow-lg shadow-emerald-500/30 
-                             hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 
-                             backdrop-blur-xl border border-emerald-500/40 rounded-xl overflow-hidden"
-                  >
-                    <span className="relative z-10 uppercase tracking-wide">
-                      Assign
-                    </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/20 opacity-0 hover:opacity-100 transition-opacity" />
-                  </button>
-                </div>
+              {/* Bottom actions */}
+              <div className="flex flex-col gap-3 border-t border-emerald-800/40 pt-4 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setAssignModalOpen(false)}
+                  className="relative inline-flex items-center justify-center rounded-xl border border-slate-500/60 bg-slate-800/90 px-6 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-100 shadow-md backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:bg-slate-700/95"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitAssign}
+                  className="relative inline-flex items-center justify-center rounded-xl border border-emerald-500/60 bg-gradient-to-r from-emerald-600/95 to-teal-500/95 px-6 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-50 shadow-lg shadow-emerald-500/40 backdrop-blur-xl transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl hover:shadow-emerald-400/60"
+                >
+                  Assign Task
+                </button>
               </div>
             </div>
           </div>
-        )}
-      </div>
-    </section>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1572,7 +1609,7 @@ function SecretaryGcpResponsesSection() {
         )
       )
     )
-  `
+  `,
         )
         .order("created_at", { ascending: false });
 
@@ -1649,8 +1686,8 @@ function SecretaryGcpResponsesSection() {
                     <td className="p-4 text-slate-300 max-w-[200px] truncate">
                       {row.report
                         ? `${row.report.location} (${row.report.landmark})`
-                        : row.collectiondetails?.schedule?.barangay
-                            ?.barangayname ?? "N/A"}
+                        : (row.collectiondetails?.schedule?.barangay
+                            ?.barangayname ?? "N/A")}
                     </td>
                     <td className="p-4">
                       <button
@@ -1720,8 +1757,8 @@ function SecretaryGcpResponsesSection() {
                     <div className="text-lg font-semibold text-slate-200">
                       {selectedRow.report
                         ? `${selectedRow.report.location} (${selectedRow.report.landmark})`
-                        : selectedRow.collectiondetails?.schedule?.barangay
-                            ?.barangay_name ?? "N/A"}
+                        : (selectedRow.collectiondetails?.schedule?.barangay
+                            ?.barangay_name ?? "N/A")}
                     </div>
                   </div>
 
@@ -1736,7 +1773,7 @@ function SecretaryGcpResponsesSection() {
                             year: "numeric",
                             hour: "2-digit",
                             minute: "2-digit",
-                          }
+                          },
                         )
                       : ""}
                   </div>
@@ -1801,7 +1838,7 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
       const { data, error } = await supabase
         .from("garbage_trucks")
         .select(
-          "truck_id, plate_number, capacity, status, truck_code, gcp_user_id"
+          "truck_id, plate_number, capacity, status, truck_code, gcp_user_id",
         );
       if (error) setError(error.message);
       else setTrucks(data || []);
@@ -1811,7 +1848,7 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
   }, []);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -2043,8 +2080,8 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
                         t.status === "Available"
                           ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
                           : t.status === "Under maintenance"
-                          ? "bg-orange-500/20 text-orange-300 border border-orange-500/40"
-                          : "bg-slate-500/20 text-slate-300 border border-slate-500/40"
+                            ? "bg-orange-500/20 text-orange-300 border border-orange-500/40"
+                            : "bg-slate-500/20 text-slate-300 border border-slate-500/40"
                       }`}
                     >
                       {t.status}
@@ -2099,11 +2136,11 @@ export default function SecretaryDashboard() {
       contact_number: "",
       password: "",
       confirm_password: "",
-    }
+    },
   );
   const [manageAccountLoading, setManageAccountLoading] = useState(true);
   const [manageAccountError, setManageAccountError] = useState<string | null>(
-    null
+    null,
   );
   const [manageAccountSuccess, setManageAccountSuccess] = useState<
     string | null
@@ -2307,7 +2344,7 @@ export default function SecretaryDashboard() {
         setGcps(gcpResp.data || []);
       } catch (err) {
         setScheduleError(
-          "Failed to load reference data: " + (err as Error).message
+          "Failed to load reference data: " + (err as Error).message,
         );
       }
     }

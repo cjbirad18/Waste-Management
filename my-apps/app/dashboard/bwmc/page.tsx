@@ -22,6 +22,7 @@ import {
   addWeeks,
   format,
 } from "date-fns";
+import Image from "next/image";
 
 import ReportsAnalytics from "../../generatereport/barangayconcern";
 
@@ -165,7 +166,7 @@ export default function BWMCdashboard() {
   });
   const [manageAccountLoading, setManageAccountLoading] = useState(true);
   const [manageAccountError, setManageAccountError] = useState<string | null>(
-    null
+    null,
   );
   const [manageAccountSuccess, setManageAccountSuccess] = useState<
     string | null
@@ -194,7 +195,7 @@ export default function BWMCdashboard() {
           barangay_id,
           barangay_name
         )
-      `
+      `,
         )
         .eq("user_id", session.user.id)
         .single<UserWithBarangay>(); // <-- generic here
@@ -281,7 +282,7 @@ export default function BWMCdashboard() {
   const handleApproveReject = async (
     userId: string,
     newStatus: "approved" | "rejected",
-    reason?: string
+    reason?: string,
   ) => {
     try {
       const { error } = await supabase
@@ -430,7 +431,7 @@ export default function BWMCdashboard() {
     e.preventDefault();
 
     const confirmed = window.confirm(
-      "Are you sure you want to update your account details?"
+      "Are you sure you want to update your account details?",
     );
     if (!confirmed) return;
 
@@ -508,7 +509,7 @@ export default function BWMCdashboard() {
   function generatePatternDates(
     pattern: string,
     year: number,
-    month: number
+    month: number,
   ): Date[] {
     if (!pattern) return [];
 
@@ -590,7 +591,7 @@ export default function BWMCdashboard() {
           {weeks.map((weekDays, weekIdx) =>
             weekDays.map((day, dayIdx) => {
               const isScheduled = patternDates.some(
-                (d) => d.toDateString() === day.toDateString()
+                (d) => d.toDateString() === day.toDateString(),
               );
               const isCurrentMonth = day.getMonth() === month;
               const isToday =
@@ -621,14 +622,14 @@ export default function BWMCdashboard() {
                     isScheduled && isCurrentMonth
                       ? `Scheduled: ${format(day, "EEE, MMM d, yyyy")}`
                       : isToday
-                      ? "Today"
-                      : ""
+                        ? "Today"
+                        : ""
                   }
                 >
                   <span>{dayText}</span>
                 </div>
               );
-            })
+            }),
           )}
         </div>
       </div>
@@ -644,7 +645,7 @@ export default function BWMCdashboard() {
       { barangay_id: number | string; barangay_name: string }[]
     >([]);
     const [selectedBarangayId, setSelectedBarangayId] = useState<string>(
-      defaultBarangayId ? String(defaultBarangayId) : ""
+      defaultBarangayId ? String(defaultBarangayId) : "",
     );
     const [schedules, setSchedules] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -712,7 +713,7 @@ export default function BWMCdashboard() {
               collection_date,
               status
             )
-          `
+          `,
             )
             .order("date_created", { ascending: false });
 
@@ -735,7 +736,7 @@ export default function BWMCdashboard() {
     });
 
     const activeSchedule = orderedSchedules.find(
-      (s) => String(s.barangay?.barangay_id) === String(selectedBarangayId)
+      (s) => String(s.barangay?.barangay_id) === String(selectedBarangayId),
     );
 
     return (
@@ -833,7 +834,7 @@ export default function BWMCdashboard() {
                           </span>{" "}
                           {detail.collection_date
                             ? new Date(
-                                detail.collection_date
+                                detail.collection_date,
                               ).toLocaleDateString()
                             : "N/A"}
                         </div>
@@ -889,6 +890,9 @@ export default function BWMCdashboard() {
     const [viewRemarkModalOpen, setViewRemarkModalOpen] = useState(false);
     const [viewRemarkText, setViewRemarkText] = useState("");
     const [viewRemarkTitle, setViewRemarkTitle] = useState("Remarks");
+    const [selectedDescReport, setSelectedDescReport] = useState<
+      (typeof reports)[0] | null
+    >(null);
 
     useEffect(() => {
       const fetchReports = async () => {
@@ -930,16 +934,14 @@ export default function BWMCdashboard() {
           .eq("barangay_id", userData.barangay_id)
           .order("date_submitted", { ascending: false });
 
-        if (reportError) {
-          setError("Failed to fetch reports.");
-          setReports([]);
-        } else {
-          const withLocalRemarks = (data || []).map((r: any) => ({
+        if (!reportError && data) {
+          const withLocalRemarks = data.map((r: any) => ({
             ...r,
-            latest_remarks: r.latest_remarks || null,
+            latest_remarks: r.latest_remarks ?? null,
           }));
           setReports(withLocalRemarks);
         }
+
         setLoading(false);
       };
 
@@ -992,7 +994,7 @@ export default function BWMCdashboard() {
         alert(
           `Update error (response): ${
             updateError?.message || historyError?.message || "Unknown error"
-          }`
+          }`,
         );
         return;
       }
@@ -1026,8 +1028,8 @@ export default function BWMCdashboard() {
                 current_status: newStatus,
                 latest_remarks: responseRemarks,
               }
-            : r
-        )
+            : r,
+        ),
       );
 
       setSelectedReport(null);
@@ -1072,7 +1074,7 @@ export default function BWMCdashboard() {
         alert(
           `Update error (reject): ${
             updateError?.message || historyError?.message || "Unknown error"
-          }`
+          }`,
         );
         return;
       }
@@ -1081,8 +1083,8 @@ export default function BWMCdashboard() {
         prev.map((r) =>
           r.report_id === selectedReport.report_id
             ? { ...r, current_status: newStatus, latest_remarks: rejectRemarks }
-            : r
-        )
+            : r,
+        ),
       );
 
       setSelectedReport(null);
@@ -1127,7 +1129,7 @@ export default function BWMCdashboard() {
         alert(
           `Update error (action): ${
             updateError?.message || historyError?.message || "Unknown error"
-          }`
+          }`,
         );
         return;
       }
@@ -1136,8 +1138,8 @@ export default function BWMCdashboard() {
         prev.map((r) =>
           r.report_id === selectedReport.report_id
             ? { ...r, current_status: newStatus, latest_remarks: actionRemarks }
-            : r
-        )
+            : r,
+        ),
       );
 
       setSelectedReport(null);
@@ -1263,12 +1265,12 @@ export default function BWMCdashboard() {
                         report.current_status === "Needs Action"
                           ? "bg-amber-500/15 text-amber-200 border-amber-500/60"
                           : report.current_status === "Ongoing"
-                          ? "bg-sky-500/15 text-sky-200 border-sky-500/60"
-                          : report.current_status === "Rejected"
-                          ? "bg-red-500/15 text-red-200 border-red-500/60"
-                          : report.current_status === "Resolved"
-                          ? "bg-emerald-500/15 text-emerald-200 border-emerald-500/60"
-                          : "bg-slate-800/80 text-slate-200 border-slate-600/70",
+                            ? "bg-sky-500/15 text-sky-200 border-sky-500/60"
+                            : report.current_status === "Rejected"
+                              ? "bg-red-500/15 text-red-200 border-red-500/60"
+                              : report.current_status === "Resolved"
+                                ? "bg-emerald-500/15 text-emerald-200 border-emerald-500/60"
+                                : "bg-slate-800/80 text-slate-200 border-slate-600/70",
                       ].join(" ")}
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-current" />
@@ -1280,10 +1282,11 @@ export default function BWMCdashboard() {
                   <div className="flex items-center justify-start sm:justify-end gap-2 min-w-[230px]">
                     <button
                       onClick={() => {
+                        console.log("REPORT CLICKED:", report); // should log photo_path: "https://..."
+                        setSelectedDescReport(report);
                         setDescText(report.description);
                         setDescModalOpen(true);
                       }}
-                      className="px-3 py-1 text-[11px] md:text-xs rounded-2xl bg-gradient-to-r from-emerald-600/90 to-teal-600/90 text-slate-50 border border-emerald-500/80 shadow-lg shadow-emerald-600/30 hover:shadow-emerald-400/50 hover:scale-[1.03] transition-all duration-200"
                     >
                       View description
                     </button>
@@ -1297,10 +1300,10 @@ export default function BWMCdashboard() {
                           setViewRemarkTitle(
                             report.current_status === "Rejected"
                               ? "Reject Remark"
-                              : "Response Remark"
+                              : "Response Remark",
                           );
                           setViewRemarkText(
-                            report.latest_remarks || "No remarks provided."
+                            report.latest_remarks || "No remarks provided.",
                           );
                           setViewRemarkModalOpen(true);
                         }}
@@ -1336,10 +1339,13 @@ export default function BWMCdashboard() {
         </div>
 
         {/* Description modal */}
-        {descModalOpen && (
+        {descModalOpen && selectedDescReport && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-            onClick={() => setDescModalOpen(false)}
+            onClick={() => {
+              setDescModalOpen(false);
+              setSelectedDescReport(null);
+            }}
           >
             <div
               className="relative w-full max-w-md rounded-2xl bg-slate-900/95 text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] border border-slate-700/80"
@@ -1354,7 +1360,10 @@ export default function BWMCdashboard() {
                 </div>
 
                 <button
-                  onClick={() => setDescModalOpen(false)}
+                  onClick={() => {
+                    setDescModalOpen(false);
+                    setSelectedDescReport(null);
+                  }}
                   className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
                   aria-label="Close"
                 >
@@ -1363,8 +1372,23 @@ export default function BWMCdashboard() {
               </div>
 
               {/* Content area */}
-              <div className="p-5">
-                <div className="mb-3">
+              <div className="p-5 space-y-4">
+                {/* Photo container */}
+                <div className="rounded-xl border border-slate-700/80 bg-slate-950/60 px-3 py-3 flex items-center justify-center min-h-[140px]">
+                  {selectedDescReport?.photo_path ? (
+                    <img
+                      src={selectedDescReport.photo_path}
+                      alt="Incident photo"
+                      className="max-h-64 max-w-full rounded-lg object-contain shadow-lg shadow-slate-900/70"
+                    />
+                  ) : (
+                    <p className="text-xs text-slate-500 italic">
+                      No photo was attached to this report.
+                    </p>
+                  )}
+                </div>
+
+                <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80">
                     DETAILS
                   </p>
@@ -1373,7 +1397,7 @@ export default function BWMCdashboard() {
                   </p>
                 </div>
 
-                <div className="mb-4 h-px w-full bg-slate-700/70" />
+                <div className="h-px w-full bg-slate-700/70" />
 
                 {/* Scrollable text */}
                 <div className="max-h-60 overflow-y-auto pr-1 custom-scroll rounded-lg bg-slate-900/80 border border-slate-700/70 px-3 py-2">
@@ -1383,12 +1407,12 @@ export default function BWMCdashboard() {
                 </div>
 
                 {/* Footer / status bar */}
-                <div className="mt-4 flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="px-2 py-1 rounded-md bg-slate-900/80 border border-slate-700/70">
-                    Ready
-                  </span>
+                <div className="flex items-center justify-between text-[11px] text-slate-400">
                   <button
-                    onClick={() => setDescModalOpen(false)}
+                    onClick={() => {
+                      setDescModalOpen(false);
+                      setSelectedDescReport(null);
+                    }}
                     className="px-4 py-1.5 text-xs font-semibold rounded-md bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/50 hover:from-emerald-500 hover:to-teal-500 transition-colors"
                   >
                     Close window
@@ -1913,7 +1937,7 @@ export default function BWMCdashboard() {
                               <button
                                 onClick={() => {
                                   const confirmed = window.confirm(
-                                    "Are you sure you want to APPROVE this account?"
+                                    "Are you sure you want to APPROVE this account?",
                                   );
                                   if (!confirmed) return;
                                   handleApproveReject(user.user_id, "approved");
@@ -1926,7 +1950,7 @@ export default function BWMCdashboard() {
                               <button
                                 onClick={() => {
                                   const confirmed = window.confirm(
-                                    "Are you sure you want to REJECT this account?"
+                                    "Are you sure you want to REJECT this account?",
                                   );
                                   if (!confirmed) return;
                                   setSelectedUserId(user.user_id);
@@ -2015,7 +2039,7 @@ export default function BWMCdashboard() {
                           await handleApproveReject(
                             selectedUserId,
                             "rejected",
-                            rejectAccountReason.trim()
+                            rejectAccountReason.trim(),
                           );
                           setRejectAccountModalOpen(false);
                           setSelectedUserId(null);
