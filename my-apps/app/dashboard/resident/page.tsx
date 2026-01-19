@@ -1021,7 +1021,9 @@ function InputField({
   );
 }
 
-function useResidentTracking() {
+function useResidentTracking(
+  onPosition?: (coords: { lat: number; lng: number }) => void,
+) {
   useEffect(() => {
     let watchId: number | null = null;
 
@@ -1031,18 +1033,16 @@ function useResidentTracking() {
         error: authErr,
       } = await supabase.auth.getUser();
       if (authErr || !user) return;
-
-      if (!("geolocation" in navigator)) {
-        console.log("geolocation not available");
-        return;
-      }
+      if (!("geolocation" in navigator)) return;
 
       watchId = navigator.geolocation.watchPosition(
         async (pos) => {
           const { latitude, longitude } = pos.coords;
-          console.log("Resident GPS update", { latitude, longitude });
 
-          // Option A: write to resident_live_location
+          // update UI immediately
+          onPosition?.({ lat: latitude, lng: longitude });
+
+          // still persist to Supabase
           await supabase.from("resident_live_location").upsert(
             {
               user_id: user.id,
@@ -1053,9 +1053,7 @@ function useResidentTracking() {
             { onConflict: "user_id" },
           );
         },
-        (err) => {
-          console.error("Resident GPS error", err.code, err.message);
-        },
+        (err) => console.error("Resident GPS error", err.code, err.message),
         {
           enableHighAccuracy: true,
           maximumAge: 0,
@@ -1071,7 +1069,7 @@ function useResidentTracking() {
         navigator.geolocation.clearWatch(watchId);
       }
     };
-  }, []);
+  }, [onPosition]);
 }
 
 export default function ResidentDashboard() {
@@ -1083,6 +1081,8 @@ export default function ResidentDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState("");
+  const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
+  useResidentTracking(setGps);
 
   const [activeTab, setActiveTab] = useState<
     | "dashboard"
