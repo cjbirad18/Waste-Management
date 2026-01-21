@@ -199,7 +199,7 @@ export default function AdminDashboard() {
   });
   const [manageAccountLoading, setManageAccountLoading] = useState(true);
   const [manageAccountError, setManageAccountError] = useState<string | null>(
-    null
+    null,
   );
   const [manageAccountSuccess, setManageAccountSuccess] = useState<
     string | null
@@ -246,7 +246,7 @@ export default function AdminDashboard() {
     ...allRoles.filter(
       (role) =>
         !singleAccountRoles.includes(role.value) ||
-        !takenSingleRoles.includes(role.value)
+        !takenSingleRoles.includes(role.value),
     ),
   ];
 
@@ -395,7 +395,7 @@ export default function AdminDashboard() {
             data.map((b: any) => ({
               value: b.barangay_id,
               label: b.barangay_name,
-            }))
+            })),
           );
         }
       } catch (err) {
@@ -459,7 +459,7 @@ export default function AdminDashboard() {
   };
 
   const handleUserFormChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     setUserForm({ ...userForm, [e.target.name]: e.target.value });
   };
@@ -598,7 +598,7 @@ export default function AdminDashboard() {
     e.preventDefault();
 
     const confirmed = window.confirm(
-      "Are you sure you want to update your account details?"
+      "Are you sure you want to update your account details?",
     );
     if (!confirmed) return;
 
@@ -668,7 +668,7 @@ export default function AdminDashboard() {
       const { data: collectionRows, error } = await supabase
         .from("collection_details")
         .select(
-          "collection_date, waste_weight, departure_time, completion_time"
+          "collection_date, waste_weight, departure_time, completion_time",
         );
       if (error) throw error;
 
@@ -682,7 +682,7 @@ export default function AdminDashboard() {
         monthMap[month] = (monthMap[month] || 0) + Number(d.waste_weight);
       });
       setWasteCollectionData(
-        Object.entries(monthMap).map(([month, tons]) => ({ month, tons }))
+        Object.entries(monthMap).map(([month, tons]) => ({ month, tons })),
       );
 
       const perfMap: { [month: string]: { total: number; fast: number } } = {};
@@ -704,7 +704,7 @@ export default function AdminDashboard() {
         Object.entries(perfMap).map(([month, val]) => ({
           month,
           efficiency: val.total ? Math.round((val.fast / val.total) * 100) : 0,
-        }))
+        })),
       );
     } catch (err) {
       setErrorReportData((err as Error).message);
@@ -720,7 +720,7 @@ export default function AdminDashboard() {
       const { data: concernsData, error } = await supabase
         .from("community_reports")
         .select(
-          "report_id, barangay_id, description, current_status, date_submitted, resident_id"
+          "report_id, barangay_id, description, current_status, date_submitted, resident_id",
         );
       if (error) throw error;
       const { data: barangays } = await supabase
@@ -734,7 +734,7 @@ export default function AdminDashboard() {
         concernsData.map((r: any) => ({
           ...r,
           barangay_name: barangayMap[r.barangay_id] || "Unknown",
-        }))
+        })),
       );
     } catch (err) {
       setErrorReportData((err as Error).message);
@@ -977,7 +977,7 @@ export default function AdminDashboard() {
                       | "collection"
                       | "userAdmin"
                       | "reports"
-                      | "manageAccount"
+                      | "manageAccount",
                   );
                   setSidebarOpen(false);
                 }}
@@ -1448,8 +1448,8 @@ export default function AdminDashboard() {
                                       issue.current_status === "Resolved"
                                         ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
                                         : issue.current_status === "In Progress"
-                                        ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                                        : "bg-slate-500/20 text-slate-300 border-slate-500/40"
+                                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                                          : "bg-slate-500/20 text-slate-300 border-slate-500/40"
                                     }`}
                                   >
                                     {issue.current_status}
