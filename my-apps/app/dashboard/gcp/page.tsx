@@ -23,6 +23,13 @@ import dynamic from "next/dynamic";
 const LeafletMap = dynamic(() => import("../../leafletmap"), { ssr: false });
 import TruckLoader from "../../loading/TruckLoader";
 
+type SecretaryActiveTab =
+  | "dashboard"
+  | "userAdmin"
+  | "viewSchedule"
+  | "assignedTasks"
+  | "manageAccount";
+
 const summaryCards = [
   {
     label: "Collection Office Accounts",
@@ -95,7 +102,7 @@ function useTruckTracking() {
             },
             {
               onConflict: "truck_id", // <--- add this option
-            }
+            },
           );
         },
         (err) => {
@@ -105,7 +112,7 @@ function useTruckTracking() {
           enableHighAccuracy: true,
           maximumAge: 0,
           timeout: 30000,
-        }
+        },
       );
     }
 
@@ -246,7 +253,7 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
         {weeks.map((weekDays, weekIdx) =>
           weekDays.map((day) => {
             const isScheduled = patternDates.some(
-              (d) => d.toDateString() === day.toDateString()
+              (d) => d.toDateString() === day.toDateString(),
             );
             const isCurrentMonth = day.getMonth() === month;
             const isToday =
@@ -278,14 +285,14 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
                   isScheduled && isCurrentMonth
                     ? `Scheduled: ${format(day, "EEE, MMM d, yyyy")}`
                     : isToday
-                    ? "Today"
-                    : ""
+                      ? "Today"
+                      : ""
                 }
               >
                 <span>{dayText}</span>
               </div>
             );
-          })
+          }),
         )}
       </div>
     </div>
@@ -320,7 +327,7 @@ function GCPScheduleSection() {
             start_time,
             end_time,
             status
-          `
+          `,
           )
           .eq("gcp_user_id", userId);
 
@@ -393,7 +400,7 @@ function GCPAssignedTasksSection() {
 
   const [responseModalOpen, setResponseModalOpen] = useState(false);
   const [responseAssignment, setResponseAssignment] = useState<any | null>(
-    null
+    null,
   );
   const [responseText, setResponseText] = useState("");
   const [responseSaving, setResponseSaving] = useState(false);
@@ -426,7 +433,7 @@ function GCPAssignedTasksSection() {
               current_status,
               date_submitted
             )
-          `
+          `,
           )
           .eq("user_id", userId)
           .order("created_at", { ascending: false });
@@ -490,8 +497,8 @@ function GCPAssignedTasksSection() {
                   ? { ...t.report, current_status: "Resolved" }
                   : t.report,
               }
-            : t
-        )
+            : t,
+        ),
       );
 
       setResponseModalOpen(false);
@@ -889,7 +896,7 @@ export default function GCPDashboard() {
   });
   const [manageAccountLoading, setManageAccountLoading] = useState(true);
   const [manageAccountError, setManageAccountError] = useState<string | null>(
-    null
+    null,
   );
   const [manageAccountSuccess, setManageAccountSuccess] = useState<
     string | null
@@ -951,7 +958,7 @@ export default function GCPDashboard() {
   const handleManageAccountSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const confirmed = window.confirm(
-      "Are you sure you want to update your account details?"
+      "Are you sure you want to update your account details?",
     );
     if (!confirmed) return;
     setManageAccountError(null);
@@ -1042,57 +1049,68 @@ export default function GCPDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
-      {/* Subtle animated overlay */}
+      {/* Subtle background animation */}
       <div className="fixed inset-0 opacity-30 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 animate-pulse" />
       </div>
 
-      <div className="flex flex-1 relative">
-        {/* Mobile menu button */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="md:hidden fixed top-4 left-4 z-[70] inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
-          aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-        >
-          {sidebarOpen ? "✖" : "☰"}
-        </button>
+      {/* Top navigation (SWMO style) */}
+      <header className="sticky top-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
+        <div className="flex items-center justify-between px-4 md:px-8 py-4">
+          <div className="flex items-center gap-4">
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="md:hidden inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
+              aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            >
+              {sidebarOpen ? "✖" : "☰"}
+            </button>
 
-        {/* Mobile overlay when sidebar is open */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30">
+                🚚
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-bold">
+                  Track-the-Truck
+                </p>
+                <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                  GCP Dashboard
+                </h1>
+                <p className="text-[11px] font-semibold text-slate-400 leading-snug">
+                  Garbage Collection Personnel
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Shell layout */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Overlay for mobile */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
         )}
 
-        {/* Sidebar */}
+        {/* Sidebar (SWMO layout, using SidebarItem) */}
         <aside
-          className={`bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-2xl border-r border-green-800/40 shadow-2xl shadow-green-900/20 flex flex-col pt-6 px-5 md:px-4 fixed top-0 left-0 h-full transition-all duration-300 z-50 ${
-            sidebarOpen
-              ? "w-4/5 max-w-xs opacity-100"
-              : "w-0 opacity-0 overflow-hidden"
-          } md:w-64 md:max-w-none md:opacity-100 md:overflow-visible`}
+          className={`
+          fixed z-40 inset-y-0 left-0 w-72 ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }
+          md:static md:translate-x-0 md:w-64
+          bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-green-800/40
+          flex flex-col py-6 px-4 transition-all duration-300 backdrop-blur-2xl shadow-2xl shadow-green-900/20
+        `}
         >
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30">
-              🚚
-            </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.3em] bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-bold">
-                Track-the-Truck
-              </p>
-              <h1 className="text-lg font-extrabold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent tracking-tight drop-shadow-lg">
-                GCP Dashboard
-              </h1>
-              <p className="text-[11px] font-semibold text-slate-400 leading-snug">
-                Garbage Collection Personnel
-              </p>
-            </div>
-          </div>
-
           <nav
-            className="flex-1 mt-4 text-sm font-semibold text-slate-200 space-y-2"
+            className="flex-1 space-y-2 text-sm font-semibold text-slate-200"
             aria-label="Main Navigation"
           >
             <SidebarItem
@@ -1132,17 +1150,22 @@ export default function GCPDashboard() {
               }}
             />
 
-            <button
-              onClick={handleLogout}
-              className="mt-8 mb-4 px-6 py-2 text-red-50 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-red-600/90 to-orange-600/90 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg text-sm font-bold"
-            >
-              ⎋ Logout
-            </button>
+            <div className="pt-6 mt-6 border-t border-green-800/40">
+              <button
+                onClick={handleLogout}
+                className="group relative w-full rounded-2xl bg-gradient-to-r from-red-600/90 to-orange-600/90 px-4 py-3 text-sm font-bold text-slate-100 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg overflow-hidden"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  ⎋ Logout
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              </button>
+            </div>
           </nav>
         </aside>
 
-        {/* Main content */}
-        <main className="flex-1 p-6 md:p-8 transition-all duration-300 md:ml-64 space-y-8">
+        {/* Main content (unchanged components) */}
+        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10">
           {activeTab === "dashboard" && (
             <>
               <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -1206,178 +1229,258 @@ export default function GCPDashboard() {
           {activeTab === "assignedTasks" && <GCPAssignedTasksSection />}
 
           {activeTab === "manageAccount" && (
-            <ManageAccountSection
-              form={manageAccountForm}
-              loading={manageAccountLoading}
-              error={manageAccountError}
-              success={manageAccountSuccess}
-              onChange={handleManageAccountFormChange}
-              onSubmit={handleManageAccountSubmit}
-            />
+            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 max-w-2xl mx-auto">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+              <div className="relative z-10">
+                <ManageAccountSection
+                  form={manageAccountForm}
+                  loading={manageAccountLoading}
+                  error={manageAccountError}
+                  success={manageAccountSuccess}
+                  onChange={handleManageAccountFormChange}
+                  onSubmit={handleManageAccountSubmit}
+                />
+              </div>
+            </div>
           )}
         </main>
       </div>
     </div>
   );
-}
 
-// ---- ManageAccountSection + InputField ----
-function ManageAccountSection({
-  form,
-  loading,
-  error,
-  success,
-  onChange,
-  onSubmit,
-}: {
-  form: typeof ManageAccountSection.prototype.form;
-  loading: boolean;
-  error: string | null;
-  success: string | null;
-  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  onSubmit: (e: FormEvent) => void;
-}) {
-  if (loading) return <TruckLoader />;
+  // ---- ManageAccountSection + InputField ----
+  function ManageAccountSection({
+    form,
+    loading,
+    error,
+    success,
+    onChange,
+    onSubmit,
+  }: {
+    form: typeof ManageAccountSection.prototype.form;
+    loading: boolean;
+    error: string | null;
+    success: string | null;
+    onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+    onSubmit: (e: FormEvent) => void;
+  }) {
+    if (loading) return <TruckLoader />;
 
-  return (
-    <section className="max-w-2xl mx-auto rounded-2xl bg-slate-900/90 border border-slate-800/70 p-6 md:p-8 shadow-xl backdrop-blur-sm">
-      <h2 className="text-2xl font-bold mb-2 text-emerald-400">
-        Manage Account
-      </h2>
-      <p className="text-[11px] text-slate-400 mb-4">
-        Update your profile details and sign-in credentials.
-      </p>
+    return (
+      <section className="max-w-5xl mx-auto rounded-3xl bg-slate-900/95 border border-slate-800 px-10 py-8 shadow-2xl">
+        <h2 className="text-3xl font-bold mb-1 text-emerald-400">
+          Manage Account
+        </h2>
+        <p className="text-[11px] text-slate-400 mb-6">
+          Update your profile details and sign-in credentials.
+        </p>
 
-      {error && (
-        <div
-          role="alert"
-          className="px-4 py-2 mb-3 rounded-lg bg-red-500/10 border border-red-500/50 text-xs text-red-200"
-        >
-          {error}
-        </div>
-      )}
+        {error && (
+          <div
+            role="alert"
+            className="mb-4 rounded-lg bg-red-500/10 border border-red-500/50 px-4 py-2 text-xs text-red-200"
+          >
+            {error}
+          </div>
+        )}
 
-      {success && (
-        <div
-          role="status"
-          className="px-4 py-2 mb-3 rounded-lg bg-emerald-500/10 border border-emerald-500/50 text-xs text-emerald-200"
-        >
-          {success}
-        </div>
-      )}
+        {success && (
+          <div
+            role="status"
+            className="mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/50 px-4 py-2 text-xs text-emerald-200"
+          >
+            {success}
+          </div>
+        )}
 
-      {!loading && (
-        <form onSubmit={onSubmit} className="space-y-3" noValidate>
-          {/* make all labels white via utility */}
-          <div className="label:text-slate-100 label:text-xs label:font-semibold space-y-3">
-            <InputField
-              label="First Name"
-              name="first_name"
-              type="text"
-              value={form.first_name}
-              onChange={onChange}
-              required
-            />
-            <InputField
-              label="Last Name"
-              name="last_name"
-              type="text"
-              value={form.last_name}
-              onChange={onChange}
-              required
-            />
-            <InputField
-              label="Username"
+        <form onSubmit={onSubmit} className="space-y-4" noValidate>
+          {/* Username */}
+          <div>
+            <label
+              htmlFor="username"
+              className="block text-xs font-semibold text-slate-100 mb-1"
+            >
+              Username
+            </label>
+            <input
+              id="username"
               name="username"
               type="text"
               value={form.username}
               onChange={onChange}
               required
+              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Enter your username"
             />
-            <InputField
-              label="Email"
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={onChange}
-              required
-            />
-            <InputField
-              label="Contact Number"
-              name="contact_number"
-              type="tel"
-              value={form.contact_number}
-              onChange={onChange}
-              required
-            />
-            <InputField
-              label="New Password"
+          </div>
+
+          {/* First / Last */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="first_name"
+                className="block text-xs font-semibold text-slate-100 mb-1"
+              >
+                First Name
+              </label>
+              <input
+                id="first_name"
+                name="first_name"
+                type="text"
+                value={form.first_name}
+                onChange={onChange}
+                required
+                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Enter your first name"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="last_name"
+                className="block text-xs font-semibold text-slate-100 mb-1"
+              >
+                Last Name
+              </label>
+              <input
+                id="last_name"
+                name="last_name"
+                type="text"
+                value={form.last_name}
+                onChange={onChange}
+                required
+                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Enter your last name"
+              />
+            </div>
+          </div>
+
+          {/* Contact / Email */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="contact_number"
+                className="block text-xs font-semibold text-slate-100 mb-1"
+              >
+                Contact Number
+              </label>
+              <input
+                id="contact_number"
+                name="contact_number"
+                type="tel"
+                value={form.contact_number}
+                onChange={onChange}
+                required
+                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="09123456789"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="email"
+                className="block text-xs font-semibold text-slate-100 mb-1"
+              >
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                value={form.email}
+                onChange={onChange}
+                required
+                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="user@tagbilaran.gov.ph"
+              />
+            </div>
+          </div>
+
+          {/* Passwords */}
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-xs font-semibold text-slate-100 mb-1"
+            >
+              Password
+            </label>
+            <input
+              id="password"
               name="password"
               type="password"
               value={form.password}
               onChange={onChange}
+              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="Leave blank to keep current password"
             />
-            <InputField
-              label="Confirm New Password"
+          </div>
+
+          <div>
+            <label
+              htmlFor="confirm_password"
+              className="block text-xs font-semibold text-slate-100 mb-1"
+            >
+              Confirm Password
+            </label>
+            <input
+              id="confirm_password"
               name="confirm_password"
               type="password"
               value={form.confirm_password}
               onChange={onChange}
+              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="Confirm your new password"
             />
           </div>
 
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-end pt-3">
             <button
               type="submit"
-              className="inline-flex items-center rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
+              className="inline-flex items-center rounded-md bg-emerald-600 px-6 py-2.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
             >
               Update Account
             </button>
           </div>
         </form>
-      )}
-    </section>
-  );
-}
+      </section>
+    );
+  }
 
-function InputField({
-  label,
-  name,
-  type,
-  value,
-  onChange,
-  required = false,
-  placeholder = "",
-}: {
-  label: string;
-  name: string;
-  type: string;
-  value: string;
-  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  required?: boolean;
-  placeholder?: string;
-}) {
-  return (
-    <div className="mb-4">
-      <label
-        htmlFor={name}
-        className="block mb-1 text-xs font-semibold text-slate-100"
-      >
-        {label}
-      </label>
-      <input
-        id={name}
-        name={name}
-        type={type}
-        value={value}
-        onChange={onChange}
-        required={required}
-        placeholder={placeholder}
-        autoComplete="off"
-        className="w-full rounded-lg bg-slate-900/90 border border-slate-700 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-      />
-    </div>
-  );
+  function InputField({
+    label,
+    name,
+    type,
+    value,
+    onChange,
+    required = false,
+    placeholder = "",
+  }: {
+    label: string;
+    name: string;
+    type: string;
+    value: string;
+    onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+    required?: boolean;
+    placeholder?: string;
+  }) {
+    return (
+      <div className="mb-4">
+        <label
+          htmlFor={name}
+          className="block mb-1 text-xs font-semibold text-slate-100"
+        >
+          {label}
+        </label>
+        <input
+          id={name}
+          name={name}
+          type={type}
+          value={value}
+          onChange={onChange}
+          required={required}
+          placeholder={placeholder}
+          autoComplete="off"
+          className="w-full rounded-lg bg-slate-900/90 border border-slate-700 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+        />
+      </div>
+    );
+  }
 }

@@ -58,6 +58,21 @@ interface ScheduleFormState {
   start_time: string; // locked time like "07:00"
 }
 
+type SecretaryActiveTab =
+  | "dashboard"
+  | "inputSchedule"
+  | "garbageTrucks"
+  | "schedules"
+  | "passedIncidents"
+  | "gcpResponses"
+  | "manageAccount";
+
+type SidebarItem = {
+  label: string;
+  icon: string;
+  tab: SecretaryActiveTab;
+};
+
 // Sidebar navigation item
 function SidebarItem({
   label,
@@ -973,40 +988,59 @@ function ManageAccountSection({
 }) {
   if (loading) return <TruckLoader />;
   return (
-    <section className="group relative max-w-2xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-4 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-300 hover:border-green-600/70 h-fit max-h-[95vh] overflow-hidden">
-      {/* Glow effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+    <section className="max-w-5xl mx-auto rounded-3xl bg-slate-900/95 border border-slate-800 px-10 py-8 shadow-2xl">
+      <h2 className="text-3xl font-bold mb-1 text-emerald-400">
+        Manage Account
+      </h2>
+      <p className="text-[11px] text-slate-400 mb-6">
+        Update your profile details and sign-in credentials.
+      </p>
 
-      <div className="relative z-10 space-y-4">
-        <h2 className="text-xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-xl tracking-tight">
-          Manage Account
-        </h2>
+      {error && (
+        <div
+          role="alert"
+          className="mb-4 rounded-lg bg-red-500/10 border border-red-500/50 px-4 py-2 text-xs text-red-200"
+        >
+          {error}
+        </div>
+      )}
 
-        {/* Compact Error/Success alerts */}
-        {error && (
-          <div className="rounded-xl bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/50 p-3 text-orange-200 text-sm backdrop-blur-xl shadow-lg animate-pulse">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-orange-500 rounded-full animate-ping" />
-              {error}
-            </div>
-          </div>
-        )}
-        {success && (
-          <div className="rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/50 p-3 text-emerald-200 text-sm backdrop-blur-xl shadow-lg">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-emerald-500 rounded-full animate-ping" />
-              {success}
-            </div>
-          </div>
-        )}
+      {success && (
+        <div
+          role="status"
+          className="mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/50 px-4 py-2 text-xs text-emerald-200"
+        >
+          {success}
+        </div>
+      )}
 
-        {/* Ultra-compact form */}
-        <form onSubmit={onSubmit} noValidate className="space-y-3">
-          {/* First Name */}
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        {/* Username */}
+        <div>
+          <label
+            htmlFor="username"
+            className="block text-xs font-semibold text-slate-100 mb-1"
+          >
+            Username
+          </label>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            value={form.username}
+            onChange={onChange}
+            required
+            className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            placeholder="Enter your username"
+          />
+        </div>
+
+        {/* First / Last */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label
               htmlFor="first_name"
-              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+              className="block text-xs font-semibold text-slate-100 mb-1"
             >
               First Name
             </label>
@@ -1016,16 +1050,15 @@ function ManageAccountSection({
               type="text"
               value={form.first_name}
               onChange={onChange}
-              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-200 backdrop-blur-sm shadow-sm hover:shadow-emerald-500/20"
               required
+              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Enter your first name"
             />
           </div>
-
-          {/* Last Name */}
           <div>
             <label
               htmlFor="last_name"
-              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+              className="block text-xs font-semibold text-slate-100 mb-1"
             >
               Last Name
             </label>
@@ -1035,54 +1068,19 @@ function ManageAccountSection({
               type="text"
               value={form.last_name}
               onChange={onChange}
-              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-200 backdrop-blur-sm shadow-sm hover:shadow-emerald-500/20"
               required
+              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Enter your last name"
             />
           </div>
+        </div>
 
-          {/* Username */}
-          <div>
-            <label
-              htmlFor="username"
-              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
-            >
-              Username
-            </label>
-            <input
-              id="username"
-              name="username"
-              type="text"
-              value={form.username}
-              onChange={onChange}
-              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-200 backdrop-blur-sm shadow-sm hover:shadow-emerald-500/20"
-              required
-            />
-          </div>
-
-          {/* Email */}
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
-            >
-              Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={onChange}
-              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-200 backdrop-blur-sm shadow-sm hover:shadow-emerald-500/20"
-              required
-            />
-          </div>
-
-          {/* Contact Number */}
+        {/* Contact / Email */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label
               htmlFor="contact_number"
-              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+              className="block text-xs font-semibold text-slate-100 mb-1"
             >
               Contact Number
             </label>
@@ -1092,63 +1090,77 @@ function ManageAccountSection({
               type="tel"
               value={form.contact_number}
               onChange={onChange}
-              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-200 backdrop-blur-sm shadow-sm hover:shadow-emerald-500/20"
               required
+              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="09123456789"
             />
           </div>
-
-          {/* New Password */}
           <div>
             <label
-              htmlFor="password"
-              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+              htmlFor="email"
+              className="block text-xs font-semibold text-slate-100 mb-1"
             >
-              New Password
+              Email
             </label>
             <input
-              id="password"
-              name="password"
-              type="password"
-              value={form.password}
+              id="email"
+              name="email"
+              type="email"
+              value={form.email}
               onChange={onChange}
-              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-200 backdrop-blur-sm shadow-sm hover:shadow-emerald-500/20"
-              placeholder="Leave blank to keep current password"
+              required
+              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="user@tagbilaran.gov.ph"
             />
           </div>
+        </div>
 
-          {/* Confirm New Password */}
-          <div>
-            <label
-              htmlFor="confirm_password"
-              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
-            >
-              Confirm New Password
-            </label>
-            <input
-              id="confirm_password"
-              name="confirm_password"
-              type="password"
-              value={form.confirm_password}
-              onChange={onChange}
-              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-200 backdrop-blur-sm shadow-sm hover:shadow-emerald-500/20"
-              placeholder="Confirm your new password"
-            />
-          </div>
+        {/* Passwords */}
+        <div>
+          <label
+            htmlFor="password"
+            className="block text-xs font-semibold text-slate-100 mb-1"
+          >
+            Password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            value={form.password}
+            onChange={onChange}
+            className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            placeholder="Leave blank to keep current password"
+          />
+        </div>
 
-          {/* Compact Submit Button */}
-          <div className="flex justify-end pt-2 border-t border-green-800/40 -mx-1">
-            <button
-              type="submit"
-              className="group relative px-8 py-2.5 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-sm font-black text-slate-100 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 rounded-2xl overflow-hidden"
-            >
-              <span className="relative z-10 uppercase tracking-wide">
-                Update Account
-              </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
-          </div>
-        </form>
-      </div>
+        <div>
+          <label
+            htmlFor="confirm_password"
+            className="block text-xs font-semibold text-slate-100 mb-1"
+          >
+            Confirm Password
+          </label>
+          <input
+            id="confirm_password"
+            name="confirm_password"
+            type="password"
+            value={form.confirm_password}
+            onChange={onChange}
+            className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            placeholder="Confirm your new password"
+          />
+        </div>
+
+        <div className="flex justify-end pt-3">
+          <button
+            type="submit"
+            className="inline-flex items-center rounded-md bg-emerald-600 px-6 py-2.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
+          >
+            Update Account
+          </button>
+        </div>
+      </form>
     </section>
   );
 }
@@ -2100,16 +2112,7 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
 export default function SecretaryDashboard() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-
-  const [activeTab, setActiveTab] = useState<
-    | "dashboard"
-    | "manageAccount"
-    | "inputSchedule"
-    | "schedules"
-    | "passedIncidents"
-    | "gcpResponses"
-    | "garbageTrucks"
-  >("dashboard");
+  const [activeTab, setActiveTab] = useState<SecretaryActiveTab>("dashboard");
 
   useEffect(() => {
     async function fetchBarangays() {
@@ -2550,217 +2553,266 @@ export default function SecretaryDashboard() {
     }
   };
 
+  const sidebarItems: {
+    label: string;
+    icon: string;
+    tab: SecretaryActiveTab;
+  }[] = [
+    { label: "Dashboard", icon: "📊", tab: "dashboard" },
+    { label: "Create Schedules", icon: "📝", tab: "inputSchedule" },
+    { label: "Garbage Trucks", icon: "🚚", tab: "garbageTrucks" },
+    { label: "View Schedules", icon: "📅", tab: "schedules" },
+    { label: "Passed Incidents", icon: "🚨", tab: "passedIncidents" },
+    { label: "GCP Responses", icon: "💬", tab: "gcpResponses" },
+    { label: "Manage Account", icon: "👤", tab: "manageAccount" },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
       {/* Subtle background animation */}
       <div className="fixed inset-0 opacity-30 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 animate-pulse" />
       </div>
 
-      {/* Mobile hamburger */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="md:hidden fixed top-6 left-6 z-[70] p-3 bg-gradient-to-r from-green-500/90 to-emerald-600/90 shadow-2xl shadow-green-500/30 rounded-2xl text-slate-100 hover:shadow-3xl hover:shadow-green-500/40 hover:scale-110 transition-all duration-300 backdrop-blur-xl border border-green-500/50"
-        aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-      >
-        {sidebarOpen ? "✖" : "☰"}
-      </button>
-
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={`bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-2xl border-r border-green-800/40 shadow-2xl shadow-green-900/20 flex flex-col fixed inset-y-0 left-0 w-72 h-screen transition-all duration-500 z-50 md:flex md:w-72 md:translate-x-0 ${
-          sidebarOpen
-            ? "opacity-100 translate-x-0"
-            : "w-[80vw] max-w-sm opacity-100 translate-x-0 md:w-72"
-        }`}
-      >
-        {/* Header - Fixed height */}
-        <div className="flex-shrink-0 pt-4 pb-6 px-6 border-b border-green-800/30">
-          <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 mx-auto mb-4 hover:scale-110 transition-all duration-300">
-            🚛
-          </div>
-          <h1 className="text-xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl mb-1 text-center tracking-tight leading-tight">
-            Secretary Dashboard
-          </h1>
-          <p className="text-xs font-semibold text-emerald-400 leading-snug text-center tracking-wide">
-            SWMO/TCEMO
-          </p>
-        </div>
-
-        {/* Scrollable Navigation */}
-        <nav
-          className="flex-1 px-4 py-4 space-y-2 text-sm font-bold text-emerald-300 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-900"
-          style={{ scrollbarWidth: "thin" }}
-          aria-label="Main Navigation"
-        >
-          {[
-            { label: "Dashboard", icon: "📊", tab: "dashboard" },
-            { label: "Create Schedules", icon: "📝", tab: "inputSchedule" },
-            { label: "Garbage Trucks", icon: "🚚", tab: "garbageTrucks" },
-            { label: "View Schedules", icon: "📅", tab: "schedules" },
-            { label: "Passed Incidents", icon: "🚨", tab: "passedIncidents" },
-            { label: "GCP Responses", icon: "💬", tab: "gcpResponses" },
-            { label: "Manage Account", icon: "👤", tab: "manageAccount" },
-          ].map((item) => (
+      {/* Top navigation (same as SWMO) */}
+      <header className="sticky top-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
+        <div className="flex items-center justify-between px-4 md:px-8 py-4">
+          <div className="flex items-center gap-4">
             <button
-              key={item.tab}
-              onClick={() => {
-                setActiveTab(item.tab as typeof activeTab);
-                setSidebarOpen(false);
-              }}
-              className={`group relative w-full flex items-center gap-4 rounded-2xl border px-4 py-3 text-left transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-[1.02] ${
-                activeTab === item.tab
-                  ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-xl shadow-green-500/30 border-green-500/50 !text-emerald-100"
-                  : "border-green-800/50 bg-slate-800/80 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25"
-              }`}
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="md:hidden inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
+              aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
-              <span className="text-xl flex-shrink-0">{item.icon}</span>
-              <span className="font-bold flex-1 text-left truncate">
-                {item.label}
-              </span>
-              {activeTab === item.tab && (
-                <div className="w-2 h-6 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full animate-pulse shadow-lg ml-auto" />
-              )}
+              {sidebarOpen ? "✖" : "☰"}
             </button>
-          ))}
-        </nav>
-
-        {/* Logout - 🎯 GUARANTEED VISIBLE: Fixed bottom position */}
-        <div className="flex-shrink-0 p-6 border-t border-green-800/40 bg-slate-950/50 backdrop-blur-xl">
-          <button
-            onClick={handleLogout}
-            className="group relative w-full rounded-2xl bg-gradient-to-r from-red-600/95 to-orange-600/95 px-6 py-4 text-sm font-black text-slate-100 border border-red-500/50 shadow-xl shadow-red-500/30 hover:shadow-2xl hover:shadow-red-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl overflow-hidden"
-          >
-            <span className="relative z-10 flex items-center justify-center gap-2 tracking-wide">
-              ⎋ Logout
-            </span>
-            <div className="absolute inset-0 bg-gradient-to-r from-white/30 via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          </button>
-        </div>
-      </aside>
-
-      {/* Main content */}
-      <main className="flex-1 p-6 md:p-8 transition-all duration-500 md:ml-72 relative z-10 overflow-y-auto">
-        {activeTab === "dashboard" && (
-          <>
-            {/* Summary Cards */}
-            <section className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {summaryCards.map((card, idx) => (
-                <div
-                  key={idx}
-                  className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 hover:border-green-600/70 transition-all duration-500 text-center"
-                  role="region"
-                  aria-label={card.label}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
-                  <div className="relative z-10 space-y-3 h-full flex flex-col justify-center">
-                    <div className="text-4xl mx-auto group-hover:scale-110 transition-all duration-300">
-                      {card.icon}
-                    </div>
-                    <div>
-                      <p className="text-3xl lg:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl">
-                        {card.count}
-                      </p>
-                      <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold mt-1">
-                        {card.label}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </section>
-
-            <section
-              className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden"
-              aria-label="Map of collection area and vehicles"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-              <div className="relative z-10">
-                <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-2xl">
-                  Live Collection Map
-                </h2>
-                <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[500px] md:h-[600px]">
-                  <LeafletMap />
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 hover:scale-110 transition-all duration-300">
+                🚛
               </div>
-            </section>
-          </>
-        )}
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-bold">
+                  Track-the-Truck
+                </p>
+                <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                  Secretary Dashboard
+                </h1>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
 
-        {activeTab === "manageAccount" && (
-          <ManageAccountSection
-            form={manageAccountForm}
-            loading={manageAccountLoading}
-            error={manageAccountError}
-            success={manageAccountSuccess}
-            onChange={handleManageAccountFormChange}
-            onSubmit={handleManageAccountSubmit}
+      {/* Shell layout like SWMO */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Overlay for mobile */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
           />
         )}
 
-        {activeTab === "inputSchedule" && (
-          <div className="group relative rounded-3xl ...">
-            <div className="absolute inset-0 ..." />
-            <div className="relative z-10">
-              <ScheduleFormWithCalendar
-                barangays={barangays}
-                trucks={trucks}
-                gcps={gcps}
-              />
-            </div>
-          </div>
-        )}
+        {/* Sidebar – Secretary items */}
+        <aside
+          className={`
+          fixed z-40 inset-y-0 left-0 w-72 ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }
+          md:static md:translate-x-0 md:w-64
+          bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-green-800/40
+          flex flex-col py-6 px-4 transition-all duration-300 backdrop-blur-2xl shadow-2xl shadow-green-900/20
+        `}
+        >
+          <nav
+            className="flex-1 space-y-2 text-sm font-semibold text-slate-200"
+            aria-label="Main Navigation"
+          >
+            {[
+              { label: "Dashboard", icon: "📊", tab: "dashboard" },
+              { label: "Create Schedules", icon: "📝", tab: "inputSchedule" },
+              { label: "Garbage Trucks", icon: "🚚", tab: "garbageTrucks" },
+              { label: "View Schedules", icon: "📅", tab: "schedules" },
+              { label: "Passed Incidents", icon: "🚨", tab: "passedIncidents" },
+              { label: "GCP Responses", icon: "💬", tab: "gcpResponses" },
+              { label: "Manage Account", icon: "👤", tab: "manageAccount" },
+            ].map((item) => (
+              <button
+                key={item.tab}
+                onClick={() => {
+                  setActiveTab(item.tab as SecretaryActiveTab);
+                  setSidebarOpen(false);
+                }}
+                className={`group relative w-full flex items-center gap-3 rounded-2xl border ${
+                  activeTab === item.tab
+                    ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-xl shadow-green-500/30 border-green-500/50"
+                    : "border-green-800/50 bg-slate-800/80 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25"
+                } px-4 py-3 text-left transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-[1.02] ${
+                  activeTab === item.tab ? "!text-emerald-100" : ""
+                }`}
+              >
+                <span className="text-xl">{item.icon}</span>
+                <span className="font-bold">{item.label}</span>
+                {activeTab === item.tab && (
+                  <div className="absolute right-3 w-2 h-6 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full animate-pulse" />
+                )}
+              </button>
+            ))}
 
-        {activeTab === "garbageTrucks" && (
-          <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-            <div className="relative z-10">
-              <GarbageTrucksSection gcps={gcps} />
+            <div className="pt-6 mt-6 border-t border-green-800/40">
+              <button
+                onClick={handleLogout}
+                className="group relative w-full rounded-2xl bg-gradient-to-r from-red-600/90 to-orange-600/90 px-4 py-3 text-sm font-bold text-slate-100 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg overflow-hidden"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  ⎋ Logout
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              </button>
             </div>
-          </div>
-        )}
+          </nav>
+        </aside>
 
-        {activeTab === "schedules" && (
-          <div className="group relative max-w-6xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-            <div className="relative z-10">
-              <h2 className="text-3xl font-black mb-8 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-2xl">
-                Schedules Overview
-              </h2>
-              <SchedulesSidebarItem barangays={barangays} />
-            </div>
-          </div>
-        )}
+        {/* Main content – SWMO dashboard layout reused */}
+        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10">
+          {/* DASHBOARD (now identical to SWMO) */}
+          {activeTab === "dashboard" && (
+            <>
+              {/* Summary cards – same SWMO style */}
+              <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {summaryCards.map((card, idx) => (
+                  <div
+                    key={idx}
+                    className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70"
+                    role="region"
+                    aria-label={card.label}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
+                    <div className="flex items-start justify-between gap-4 relative z-10 h-full flex-col">
+                      <div className="flex items-start justify-between w-full gap-3">
+                        <div className="space-y-2">
+                          <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold">
+                            {card.label}
+                          </p>
+                          <p className="text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg">
+                            {card.count}
+                          </p>
+                        </div>
+                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-2xl border border-green-800/50 shadow-lg group-hover:scale-110 transition-all duration-300 relative z-10 flex-shrink-0">
+                          {card.icon}
+                        </div>
+                      </div>
+                      <div className="w-full">
+                        <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50 relative z-10">
+                          <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
+                        </div>
+                        <p className="mt-3 text-xs text-slate-400 text-center relative z-10">
+                          Auto-updated from collection data
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </section>
 
-        {/* Passed Incidents */}
-        {activeTab === "passedIncidents" && (
-          <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-            <div className="relative z-10">
-              <SecretaryReportsSection />
-            </div>
-          </div>
-        )}
+              {/* Map layout – same as SWMO */}
+              <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
+                <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                        Collection Coverage Map
+                      </h2>
+                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                        Live vehicles
+                      </span>
+                    </div>
+                    <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[500px] md:h-[600px] relative z-10">
+                      <LeafletMap />
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </>
+          )}
 
-        {/* GCP Responses */}
-        {activeTab === "gcpResponses" && (
-          <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-            <div className="relative z-10">
-              <SecretaryGcpResponsesSection />
+          {/* Manage Account */}
+          {activeTab === "manageAccount" && (
+            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 max-w-2xl mx-auto">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+              <div className="relative z-10">
+                <ManageAccountSection
+                  form={manageAccountForm}
+                  loading={manageAccountLoading}
+                  error={manageAccountError}
+                  success={manageAccountSuccess}
+                  onChange={handleManageAccountFormChange}
+                  onSubmit={handleManageAccountSubmit}
+                />
+              </div>
             </div>
-          </div>
-        )}
-      </main>
+          )}
+
+          {/* Create Schedules */}
+          {activeTab === "inputSchedule" && (
+            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+              <div className="relative z-10">
+                <ScheduleFormWithCalendar
+                  barangays={barangays}
+                  trucks={trucks}
+                  gcps={gcps}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Garbage Trucks */}
+          {activeTab === "garbageTrucks" && (
+            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+              <div className="relative z-10">
+                <GarbageTrucksSection gcps={gcps} />
+              </div>
+            </div>
+          )}
+
+          {/* Schedules */}
+          {activeTab === "schedules" && (
+            <div className="group relative max-w-6xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+              <div className="relative z-10">
+                <h2 className="text-3xl font-black mb-8 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-2xl">
+                  Schedules Overview
+                </h2>
+                <SchedulesSidebarItem barangays={barangays} />
+              </div>
+            </div>
+          )}
+
+          {/* Passed Incidents */}
+          {activeTab === "passedIncidents" && (
+            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+              <div className="relative z-10">
+                <SecretaryReportsSection />
+              </div>
+            </div>
+          )}
+
+          {/* GCP Responses */}
+          {activeTab === "gcpResponses" && (
+            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+              <div className="relative z-10">
+                <SecretaryGcpResponsesSection />
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

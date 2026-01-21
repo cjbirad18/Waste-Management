@@ -150,6 +150,7 @@ export default function BWMCdashboard() {
     | "pendingAccounts"
     | "processedAccounts"
     | "reports"
+    | "generateReports"
     | "manageAccount"
   >("dashboard");
 
@@ -1744,591 +1745,780 @@ export default function BWMCdashboard() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-900 text-slate-100">
-      {/* Sidebar */}
-      {/* Sidebar */}
-      <aside
-        className={`bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-2xl border-r border-green-800/40 shadow-2xl shadow-green-900/20 flex flex-col pt-8 px-6 md:px-5 fixed top-0 left-0 h-full transition-all duration-500 z-50 ${
-          sidebarOpen
-            ? "w-4/5 max-w-sm opacity-100 translate-x-0"
-            : "w-0 opacity-0 -translate-x-full overflow-hidden"
-        } md:w-72 md:max-w-none md:opacity-100 md:translate-x-0 md:overflow-visible`}
-      >
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 mx-auto mb-4 hover:scale-110 transition-all duration-300">
-            🚛
-          </div>
-          <h1 className="text-2xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl mb-2 text-center tracking-tight">
-            BWMC Dashboard
-          </h1>
-          <p className="text-xs font-semibold text-emerald-400 leading-snug text-center tracking-wide">
-            Barangay Waste Management Committee
-          </p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
+      {/* Subtle background animation */}
+      <div className="fixed inset-0 opacity-30 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 animate-pulse" />
+      </div>
 
-        {/* Navigation */}
-        <nav
-          className="flex-1 space-y-2 text-sm font-bold text-emerald-300"
-          aria-label="Main Navigation"
-        >
-          {[
-            { label: "Dashboard", icon: "🏠", tab: "dashboard" },
-            { label: "Pending Accounts", icon: "⏳", tab: "pendingAccounts" },
-            {
-              label: "Processed Accounts",
-              icon: "✅",
-              tab: "processedAccounts",
-            },
-            { label: "View Reports", icon: "📄", tab: "viewReports" },
-            { label: "Schedules", icon: "📅", tab: "schedules" },
-            { label: "Generate Reports", icon: "📈", tab: "reports" },
-
-            { label: "Manage Account", icon: "🛠️", tab: "manageAccount" },
-          ].map((item) => (
+      {/* Top navigation (same as SWMO, BWMC text) */}
+      <header className="sticky top-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
+        <div className="flex items-center justify-between px-4 md:px-8 py-4">
+          <div className="flex items-center gap-4">
             <button
-              key={item.tab}
-              onClick={() => {
-                setActiveTab(item.tab as any);
-                setSidebarOpen(false);
-              }}
-              className={`group relative w-full flex items-center gap-4 rounded-3xl border ${
-                activeTab === item.tab
-                  ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-xl shadow-green-500/30 border-green-500/50"
-                  : "border-green-800/50 bg-slate-800/80 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25"
-              } px-5 py-4 text-left transition-all duration-500 backdrop-blur-xl shadow-md hover:scale-[1.02] ${
-                activeTab === item.tab ? "!text-emerald-100" : ""
-              }`}
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="md:hidden inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
+              aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
-              <span className="text-2xl flex-shrink-0">{item.icon}</span>
-              <span className="font-black">{item.label}</span>
-              {activeTab === item.tab && (
-                <div className="absolute right-4 w-2 h-8 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full animate-pulse shadow-lg" />
-              )}
+              {sidebarOpen ? "✖" : "☰"}
             </button>
-          ))}
-
-          {/* Logout */}
-          <div className="pt-8 mt-8 border-t border-green-800/40">
-            <button
-              onClick={handleLogout}
-              className="group relative w-full rounded-3xl bg-gradient-to-r from-red-600/90 to-orange-600/90 px-5 py-4 text-sm font-black text-slate-100 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg overflow-hidden"
-            >
-              <span className="relative z-10 flex items-center justify-center gap-2">
-                ⎋ Logout
-              </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            </button>
-          </div>
-        </nav>
-      </aside>
-
-      {/* Main content */}
-      <main className="flex-1 p-6 md:p-12 md:ml-64 relative z-10">
-        {activeTab === "dashboard" && (
-          <>
-            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 ">
-              {summaryCards.map((sc, i) => (
-                <div
-                  key={i}
-                  className={`relative rounded-3xl border border-emerald-800/50 bg-gradient-to-br from-slate-800/90 to-gray-800/90 
-                            shadow-2xl shadow-emerald-900/40 flex flex-col items-center py-6 px-4
-                            backdrop-blur-xl overflow-hidden`}
-                  role="region"
-                  aria-label={sc.label}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 opacity-60" />
-                  <div className="relative z-10 flex flex-col items-center">
-                    <span
-                      className="text-4xl mb-2 drop-shadow-lg"
-                      aria-hidden="true"
-                    >
-                      {sc.icon}
-                    </span>
-                    <span className={`text-2xl font-black text-emerald-300`}>
-                      {sc.count}
-                    </span>
-                    <span className="text-slate-300 text-sm mt-1">
-                      {sc.label}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </section>
-
-            <section
-              aria-label="Map of collection area and vehicles"
-              className=" rounded-3xl border border-emerald-800/60 bg-slate-900/80 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl p-6"
-            >
-              <LeafletMap />
-            </section>
-          </>
-        )}
-        {activeTab === "pendingAccounts" && (
-          <section className="my-8 space-y-4 px-2 md:px-10">
-            <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 hover:scale-110 transition-all duration-300">
+                🗑️
+              </div>
               <div>
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent">
-                  Pending Resident Accounts
-                </h2>
-                <p className="text-sm md:text-base text-slate-300">
-                  Review and approve or reject new resident registrations.
+                <p className="text-xs uppercase tracking-[0.3em] bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-bold">
+                  Track-the-Truck
                 </p>
+                <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                  BWMC Dashboard
+                </h1>
               </div>
             </div>
+          </div>
+        </div>
+      </header>
 
-            {loadingPending ? (
-              <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/80 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl p-6">
-                <TruckLoader />
-              </div>
-            ) : pendingRequests.length === 0 ? (
-              <div className="mt-4 p-6 rounded-3xl border border-slate-700/80 bg-slate-900/80 text-center text-slate-300 shadow-xl shadow-slate-900/40">
-                No pending accounts.
-              </div>
-            ) : (
-              <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl overflow-hidden">
-                <div className="px-5 py-3 border-b border-emerald-700/60 bg-slate-900/95 flex items-center justify-between">
-                  <span className="text-emerald-200 font-semibold text-lg">
-                    Pending Accounts
-                  </span>
-                  <span className="text-sm text-emerald-300">
-                    Total {pendingRequests.length}
-                  </span>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-emerald-900/80 text-emerald-100">
-                      <tr>
-                        <th className="px-3 py-2 text-left font-semibold">
-                          Name
-                        </th>
-                        <th className="px-3 py-2 text-left font-semibold">
-                          Email
-                        </th>
-                        <th className="px-3 py-2 text-left font-semibold">
-                          Contact
-                        </th>
-                        <th className="px-3 py-2 text-left font-semibold">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pendingRequests.map((user, idx) => (
-                        <tr
-                          key={user.user_id}
-                          className={
-                            idx % 2 === 0
-                              ? "bg-slate-900/80"
-                              : "bg-slate-800/80"
-                          }
-                        >
-                          <td className="px-3 py-2 text-slate-100">
-                            {user.first_name} {user.last_name}
-                          </td>
-                          <td className="px-3 py-2 text-slate-200">
-                            {user.email}
-                          </td>
-                          <td className="px-3 py-2 text-slate-200">
-                            {user.contact_number}
-                          </td>
-                          <td className="px-3 py-2 text-slate-100">
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => {
-                                  const confirmed = window.confirm(
-                                    "Are you sure you want to APPROVE this account?",
-                                  );
-                                  if (!confirmed) return;
-                                  handleApproveReject(user.user_id, "approved");
-                                }}
-                                className="px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 text-xs font-semibold shadow-md shadow-emerald-600/40 hover:from-emerald-500 hover:to-teal-500"
-                              >
-                                Approve
-                              </button>
+      {/* Shell layout */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Overlay for mobile */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
 
-                              <button
-                                onClick={() => {
-                                  const confirmed = window.confirm(
-                                    "Are you sure you want to REJECT this account?",
-                                  );
-                                  if (!confirmed) return;
-                                  setSelectedUserId(user.user_id);
-                                  setRejectAccountReason("");
-                                  setRejectAccountModalOpen(true);
-                                }}
-                                className="px-3 py-1 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 text-xs font-semibold shadow-md shadow-red-600/40 hover:from-red-500 hover:to-rose-500"
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {rejectAccountModalOpen && selectedUserId && (
-              <div
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center"
-                onClick={() => setRejectAccountModalOpen(false)}
+        {/* Sidebar – same sizing as SWMO, BWMC items */}
+        <aside
+          className={`
+            fixed z-40 inset-y-0 left-0 w-72 ${
+              sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            }
+            md:static md:translate-x-0 md:w-64
+            bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-green-800/40
+            flex flex-col py-6 px-4 transition-all duration-300 backdrop-blur-2xl shadow-2xl shadow-green-900/20
+          `}
+        >
+          <nav
+            className="flex-1 space-y-2 text-sm font-semibold text-slate-200"
+            aria-label="Main Navigation"
+          >
+            {[
+              { label: "Dashboard", icon: "📊", tab: "dashboard" },
+              { label: "Pending Accounts", icon: "⏳", tab: "pendingAccounts" },
+              {
+                label: "Processed Accounts",
+                icon: "✅",
+                tab: "processedAccounts",
+              },
+              { label: "View Reports", icon: "📈", tab: "viewReports" },
+              { label: "Schedules", icon: "📅", tab: "schedules" },
+              { label: "Generate Reports", icon: "📊", tab: "generateReports" },
+              { label: "Manage Account", icon: "⚙️", tab: "manageAccount" },
+            ].map((item) => (
+              <button
+                key={item.tab}
+                onClick={() => {
+                  setActiveTab(
+                    item.tab as
+                      | "dashboard"
+                      | "pendingAccounts"
+                      | "processedAccounts"
+                      | "viewReports"
+                      | "schedules"
+                      | "generateReports"
+                      | "manageAccount",
+                  );
+                  setSidebarOpen(false);
+                }}
+                className={`group relative w-full flex items-center gap-3 rounded-2xl border ${
+                  activeTab === item.tab
+                    ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-xl shadow-green-500/30 border-green-500/50"
+                    : "border-green-800/50 bg-slate-800/80 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25"
+                } px-4 py-3 text-left transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-[1.02] ${
+                  activeTab === item.tab ? "!text-emerald-100" : ""
+                }`}
               >
-                <div
-                  className="relative max-w-md w-full text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-red-700/80 bg-slate-900/95"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Title bar */}
-                  <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 px-4 py-2 border-b border-red-700/70">
-                    <div className="flex items-center gap-2">
-                      <span className="flex gap-1">
-                        <span className="h-2.5 w-2.5 rounded-full bg-red-500/90 shadow-sm shadow-red-900" />
-                        <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80 shadow-sm shadow-amber-900" />
-                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80 shadow-sm shadow-emerald-900" />
-                      </span>
-                      <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
-                        Reject Resident Account
+                <span className="text-xl">{item.icon}</span>
+                <span className="font-bold">{item.label}</span>
+                {activeTab === item.tab && (
+                  <div className="absolute right-3 w-2 h-6 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full animate-pulse" />
+                )}
+              </button>
+            ))}
+
+            <div className="pt-6 mt-6 border-t border-green-800/40">
+              <button
+                onClick={handleLogout}
+                className="group relative w-full rounded-2xl bg-gradient-to-r from-red-600/90 to-orange-600/90 px-4 py-3 text-sm font-bold text-slate-100 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg overflow-hidden"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  ⎋ Logout
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              </button>
+            </div>
+          </nav>
+        </aside>
+
+        {/* Main content – same paddings, structure as SWMO */}
+        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10">
+          {/* DASHBOARD */}
+          {activeTab === "dashboard" && (
+            <>
+              {/* Summary cards */}
+              <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {summaryCards.map((card, idx) => (
+                  <div
+                    key={idx}
+                    className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70"
+                    role="region"
+                    aria-label={card.label}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
+                    <div className="flex items-start justify-between gap-4 relative z-10 h-full flex-col">
+                      <div className="flex items-start justify-between w-full gap-3">
+                        <div className="space-y-2">
+                          <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold">
+                            {card.label}
+                          </p>
+                          <p className="text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg">
+                            {card.count}
+                          </p>
+                        </div>
+                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-2xl border border-green-800/50 shadow-lg group-hover:scale-110 transition-all duration-300 relative z-10 flex-shrink-0">
+                          {card.icon}
+                        </div>
+                      </div>
+                      <div className="w-full">
+                        <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50 relative z-10">
+                          <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
+                        </div>
+                        <p className="mt-3 text-xs text-slate-400 text-center relative z-10">
+                          Auto-updated from collection data
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </section>
+
+              {/* Map layout */}
+              <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
+                <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                        Collection Coverage Map
+                      </h2>
+                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                        Live vehicles
                       </span>
                     </div>
-
-                    <button
-                      onClick={() => setRejectAccountModalOpen(false)}
-                      className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
-                      aria-label="Close"
-                    >
-                      ✕
-                    </button>
+                    <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[500px] md:h-[600px] relative z-10">
+                      <LeafletMap />
+                    </div>
                   </div>
+                </div>
+              </section>
+            </>
+          )}
 
-                  {/* Content */}
-                  <div className="p-5">
-                    <p className="text-xs uppercase tracking-[0.18em] text-red-400/80 mb-1">
-                      REJECTION REASON
-                    </p>
-                    <p className="text-sm mb-3 text-slate-200">
-                      Please provide a clear explanation for rejecting this
-                      resident&apos;s account request.
-                    </p>
+          {activeTab === "pendingAccounts" && (
+            <section className="my-8 space-y-4 px-2 md:px-10">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent">
+                    Pending Resident Accounts
+                  </h2>
+                  <p className="text-sm md:text-base text-slate-300">
+                    Review and approve or reject new resident registrations.
+                  </p>
+                </div>
+              </div>
 
-                    <textarea
-                      className="w-full border border-slate-700 rounded-xl px-2.5 py-2 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
-                      rows={3}
-                      value={rejectAccountReason}
-                      onChange={(e) => setRejectAccountReason(e.target.value)}
-                      placeholder="Reason for rejection..."
-                      required
-                    />
+              {loadingPending ? (
+                <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/80 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl p-6">
+                  <TruckLoader />
+                </div>
+              ) : pendingRequests.length === 0 ? (
+                <div className="mt-4 p-6 rounded-3xl border border-slate-700/80 bg-slate-900/80 text-center text-slate-300 shadow-xl shadow-slate-900/40">
+                  No pending accounts.
+                </div>
+              ) : (
+                <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl overflow-hidden">
+                  <div className="px-5 py-3 border-b border-emerald-700/60 bg-slate-900/95 flex items-center justify-between">
+                    <span className="text-emerald-200 font-semibold text-lg">
+                      Pending Accounts
+                    </span>
+                    <span className="text-sm text-emerald-300">
+                      Total {pendingRequests.length}
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-emerald-900/80 text-emerald-100">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-semibold">
+                            Name
+                          </th>
+                          <th className="px-3 py-2 text-left font-semibold">
+                            Email
+                          </th>
+                          <th className="px-3 py-2 text-left font-semibold">
+                            Contact
+                          </th>
+                          <th className="px-3 py-2 text-left font-semibold">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingRequests.map((user, idx) => (
+                          <tr
+                            key={user.user_id}
+                            className={
+                              idx % 2 === 0
+                                ? "bg-slate-900/80"
+                                : "bg-slate-800/80"
+                            }
+                          >
+                            <td className="px-3 py-2 text-slate-100">
+                              {user.first_name} {user.last_name}
+                            </td>
+                            <td className="px-3 py-2 text-slate-200">
+                              {user.email}
+                            </td>
+                            <td className="px-3 py-2 text-slate-200">
+                              {user.contact_number}
+                            </td>
+                            <td className="px-3 py-2 text-slate-100">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    const confirmed = window.confirm(
+                                      "Are you sure you want to APPROVE this account?",
+                                    );
+                                    if (!confirmed) return;
+                                    handleApproveReject(
+                                      user.user_id,
+                                      "approved",
+                                    );
+                                  }}
+                                  className="px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 text-xs font-semibold shadow-md shadow-emerald-600/40 hover:from-emerald-500 hover:to-teal-500"
+                                >
+                                  Approve
+                                </button>
 
-                    {/* Footer */}
-                    <div className="flex justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
+                                <button
+                                  onClick={() => {
+                                    const confirmed = window.confirm(
+                                      "Are you sure you want to REJECT this account?",
+                                    );
+                                    if (!confirmed) return;
+                                    setSelectedUserId(user.user_id);
+                                    setRejectAccountReason("");
+                                    setRejectAccountModalOpen(true);
+                                  }}
+                                  className="px-3 py-1 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 text-xs font-semibold shadow-md shadow-red-600/40 hover:from-red-500 hover:to-rose-500"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {rejectAccountModalOpen && selectedUserId && (
+                <div
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center"
+                  onClick={() => setRejectAccountModalOpen(false)}
+                >
+                  <div
+                    className="relative max-w-md w-full text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-red-700/80 bg-slate-900/95"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Title bar */}
+                    <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 px-4 py-2 border-b border-red-700/70">
+                      <div className="flex items-center gap-2">
+                        <span className="flex gap-1">
+                          <span className="h-2.5 w-2.5 rounded-full bg-red-500/90 shadow-sm shadow-red-900" />
+                          <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80 shadow-sm shadow-amber-900" />
+                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80 shadow-sm shadow-emerald-900" />
+                        </span>
+                        <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
+                          Reject Resident Account
+                        </span>
+                      </div>
+
                       <button
                         onClick={() => setRejectAccountModalOpen(false)}
-                        className="px-3 py-1.5 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 transition-colors"
+                        className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
+                        aria-label="Close"
                       >
-                        Cancel
+                        ✕
                       </button>
-                      <button
-                        onClick={async () => {
-                          if (!selectedUserId) return;
-                          if (!rejectAccountReason.trim()) {
-                            alert("Please enter a reason for rejection.");
-                            return;
-                          }
-                          await handleApproveReject(
-                            selectedUserId,
-                            "rejected",
-                            rejectAccountReason.trim(),
-                          );
-                          setRejectAccountModalOpen(false);
-                          setSelectedUserId(null);
-                          setRejectAccountReason("");
-                        }}
-                        className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 border border-red-500/80 shadow-sm shadow-red-700/60 hover:from-red-500 hover:to-rose-500 transition-colors"
-                      >
-                        Submit rejection
-                      </button>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-5">
+                      <p className="text-xs uppercase tracking-[0.18em] text-red-400/80 mb-1">
+                        REJECTION REASON
+                      </p>
+                      <p className="text-sm mb-3 text-slate-200">
+                        Please provide a clear explanation for rejecting this
+                        resident&apos;s account request.
+                      </p>
+
+                      <textarea
+                        className="w-full border border-slate-700 rounded-xl px-2.5 py-2 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                        rows={3}
+                        value={rejectAccountReason}
+                        onChange={(e) => setRejectAccountReason(e.target.value)}
+                        placeholder="Reason for rejection..."
+                        required
+                      />
+
+                      {/* Footer */}
+                      <div className="flex justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
+                        <button
+                          onClick={() => setRejectAccountModalOpen(false)}
+                          className="px-3 py-1.5 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!selectedUserId) return;
+                            if (!rejectAccountReason.trim()) {
+                              alert("Please enter a reason for rejection.");
+                              return;
+                            }
+                            await handleApproveReject(
+                              selectedUserId,
+                              "rejected",
+                              rejectAccountReason.trim(),
+                            );
+                            setRejectAccountModalOpen(false);
+                            setSelectedUserId(null);
+                            setRejectAccountReason("");
+                          }}
+                          className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 border border-red-500/80 shadow-sm shadow-red-700/60 hover:from-red-500 hover:to-rose-500 transition-colors"
+                        >
+                          Submit rejection
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </section>
-        )}
+              )}
+            </section>
+          )}
 
-        {activeTab === "viewReports" && <ViewReportsSection />}
+          {activeTab === "viewReports" && <ViewReportsSection />}
 
-        {activeTab === "processedAccounts" && (
-          <section className="my-8 space-y-4 px-2 md:px-10">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent">
-                  Processed Resident Accounts
-                </h2>
-                <p className="text-sm md:text-base text-slate-300">
-                  Review residents whose registrations have already been
-                  approved or rejected.
-                </p>
+          {activeTab === "processedAccounts" && (
+            <section className="my-8 space-y-4 px-2 md:px-10">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent">
+                    Processed Resident Accounts
+                  </h2>
+                  <p className="text-sm md:text-base text-slate-300">
+                    Review residents whose registrations have already been
+                    approved or rejected.
+                  </p>
+                </div>
+                <div className="flex gap-3 text-xs md:text-sm">
+                  <span className="px-3 py-1 rounded-2xl bg-slate-800/90 text-emerald-200 border border-emerald-700/60 font-extrabold shadow-md shadow-emerald-900/40 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span>Approved:</span>
+                    <span className="font-extrabold text-emerald-300">
+                      {approvedAccounts.length}
+                    </span>
+                  </span>
+                  <span className="px-3 py-1 rounded-2xl bg-slate-800/90 text-red-200 border border-red-700/60 font-extrabold shadow-md shadow-red-900/40 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+                    <span>Rejected:</span>
+                    <span className="font-extrabold text-red-300">
+                      {rejectedAccounts.length}
+                    </span>
+                  </span>
+                </div>
               </div>
-              <div className="flex gap-3 text-xs md:text-sm">
-                <span className="px-3 py-1 rounded-2xl bg-slate-800/90 text-emerald-200 border border-emerald-700/60 font-extrabold shadow-md shadow-emerald-900/40 flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  <span>Approved:</span>
-                  <span className="font-extrabold text-emerald-300">
-                    {approvedAccounts.length}
-                  </span>
-                </span>
-                <span className="px-3 py-1 rounded-2xl bg-slate-800/90 text-red-200 border border-red-700/60 font-extrabold shadow-md shadow-red-900/40 flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
-                  <span>Rejected:</span>
-                  <span className="font-extrabold text-red-300">
-                    {rejectedAccounts.length}
-                  </span>
-                </span>
+
+              {loadingProcessed ? (
+                <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/80 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl p-6">
+                  <TruckLoader />
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {/* Approved */}
+                  <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 overflow-hidden backdrop-blur-xl">
+                    <div className="flex items-center justify-between px-5 py-3 bg-slate-900/95 border-b border-emerald-800/60">
+                      <h3 className="text-2xl font-semibold text-emerald-200">
+                        Approved Accounts
+                      </h3>
+                      <span className="text-xs md:text-sm font-semibold uppercase tracking-wide text-emerald-300">
+                        Total {approvedAccounts.length}
+                      </span>
+                    </div>
+
+                    {approvedAccounts.length === 0 ? (
+                      <p className="px-5 py-6 text-base md:text-xl text-slate-300">
+                        No approved accounts yet.
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                          <thead>
+                            <tr className="bg-emerald-900/80 text-emerald-100 border-b border-emerald-800/70">
+                              <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
+                                Name
+                              </th>
+                              <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
+                                Email
+                              </th>
+                              <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
+                                Contact
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {approvedAccounts.map((user, idx) => (
+                              <tr
+                                key={user.user_id}
+                                className={`${
+                                  idx % 2 === 0
+                                    ? "bg-slate-900/80"
+                                    : "bg-emerald-900/40"
+                                } hover:bg-emerald-500/10 transition-colors`}
+                              >
+                                <td className="px-4 py-2 whitespace-nowrap align-middle">
+                                  <span className="font-medium text-slate-50 text-sm md:text-base">
+                                    {user.first_name} {user.last_name}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2 text-slate-200 text-sm md:text-base align-middle">
+                                  {user.email}
+                                </td>
+                                <td className="px-4 py-2 text-slate-200 text-sm md:text-base align-middle">
+                                  {user.contact_number}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Rejected */}
+                  <div className="rounded-3xl border border-red-800/60 bg-slate-900/90 shadow-2xl shadow-red-900/40 overflow-hidden backdrop-blur-xl">
+                    <div className="flex items-center justify-between px-5 py-3 bg-slate-900/95 border-b border-red-800/60">
+                      <h3 className="text-2xl font-semibold text-red-200">
+                        Rejected Accounts
+                      </h3>
+                      <span className="text-xs md:text-sm font-semibold uppercase tracking-wide text-red-300">
+                        Total {rejectedAccounts.length}
+                      </span>
+                    </div>
+
+                    {rejectedAccounts.length === 0 ? (
+                      <p className="px-5 py-6 text-base md:text-xl text-slate-300">
+                        No rejected accounts yet.
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                          <thead>
+                            <tr className="bg-red-900/80 text-red-100 border-b border-red-800/70">
+                              <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
+                                Name
+                              </th>
+                              <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
+                                Email
+                              </th>
+                              <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
+                                Contact
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rejectedAccounts.map((user, idx) => (
+                              <tr
+                                key={user.user_id}
+                                className={`${
+                                  idx % 2 === 0
+                                    ? "bg-slate-900/80"
+                                    : "bg-red-900/40"
+                                } hover:bg-red-500/10 transition-colors`}
+                              >
+                                <td className="px-4 py-2 whitespace-nowrap align-middle">
+                                  <span className="font-medium text-slate-50 text-sm md:text-base">
+                                    {user.first_name} {user.last_name}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2 text-slate-200 text-sm md:text-base align-middle">
+                                  {user.email}
+                                </td>
+                                <td className="px-4 py-2 text-slate-200 text-sm md:text-base align-middle">
+                                  {user.contact_number}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeTab === "schedules" && (
+            <section className="my-6">
+              <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent ">
+                Collection Schedules
+              </h2>
+              <BWMCCollectionSchedulesFeature
+                defaultBarangayId={defaultBarangayId}
+              />
+            </section>
+          )}
+
+          {activeTab === "reports" && currentUser?.barangay?.barangay_id && (
+            <ReportsAnalytics barangayId={currentUser.barangay.barangay_id} />
+          )}
+
+          {activeTab === "manageAccount" && (
+            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 max-w-2xl mx-auto">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+              <div className="relative z-10">
+                <ManageAccountSection
+                  form={manageAccountForm}
+                  loading={manageAccountLoading}
+                  error={manageAccountError}
+                  success={manageAccountSuccess}
+                  onChange={handleManageAccountFormChange}
+                  onSubmit={handleManageAccountSubmit}
+                />
               </div>
             </div>
-
-            {loadingProcessed ? (
-              <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/80 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl p-6">
-                <TruckLoader />
-              </div>
-            ) : (
-              <div className="space-y-8">
-                {/* Approved */}
-                <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 overflow-hidden backdrop-blur-xl">
-                  <div className="flex items-center justify-between px-5 py-3 bg-slate-900/95 border-b border-emerald-800/60">
-                    <h3 className="text-2xl font-semibold text-emerald-200">
-                      Approved Accounts
-                    </h3>
-                    <span className="text-xs md:text-sm font-semibold uppercase tracking-wide text-emerald-300">
-                      Total {approvedAccounts.length}
-                    </span>
-                  </div>
-
-                  {approvedAccounts.length === 0 ? (
-                    <p className="px-5 py-6 text-base md:text-xl text-slate-300">
-                      No approved accounts yet.
-                    </p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full text-sm">
-                        <thead>
-                          <tr className="bg-emerald-900/80 text-emerald-100 border-b border-emerald-800/70">
-                            <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
-                              Name
-                            </th>
-                            <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
-                              Email
-                            </th>
-                            <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
-                              Contact
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {approvedAccounts.map((user, idx) => (
-                            <tr
-                              key={user.user_id}
-                              className={`${
-                                idx % 2 === 0
-                                  ? "bg-slate-900/80"
-                                  : "bg-emerald-900/40"
-                              } hover:bg-emerald-500/10 transition-colors`}
-                            >
-                              <td className="px-4 py-2 whitespace-nowrap align-middle">
-                                <span className="font-medium text-slate-50 text-sm md:text-base">
-                                  {user.first_name} {user.last_name}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2 text-slate-200 text-sm md:text-base align-middle">
-                                {user.email}
-                              </td>
-                              <td className="px-4 py-2 text-slate-200 text-sm md:text-base align-middle">
-                                {user.contact_number}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-
-                {/* Rejected */}
-                <div className="rounded-3xl border border-red-800/60 bg-slate-900/90 shadow-2xl shadow-red-900/40 overflow-hidden backdrop-blur-xl">
-                  <div className="flex items-center justify-between px-5 py-3 bg-slate-900/95 border-b border-red-800/60">
-                    <h3 className="text-2xl font-semibold text-red-200">
-                      Rejected Accounts
-                    </h3>
-                    <span className="text-xs md:text-sm font-semibold uppercase tracking-wide text-red-300">
-                      Total {rejectedAccounts.length}
-                    </span>
-                  </div>
-
-                  {rejectedAccounts.length === 0 ? (
-                    <p className="px-5 py-6 text-base md:text-xl text-slate-300">
-                      No rejected accounts yet.
-                    </p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full text-sm">
-                        <thead>
-                          <tr className="bg-red-900/80 text-red-100 border-b border-red-800/70">
-                            <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
-                              Name
-                            </th>
-                            <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
-                              Email
-                            </th>
-                            <th className="px-4 py-2 text-left font-semibold text-xs md:text-sm uppercase tracking-wide">
-                              Contact
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rejectedAccounts.map((user, idx) => (
-                            <tr
-                              key={user.user_id}
-                              className={`${
-                                idx % 2 === 0
-                                  ? "bg-slate-900/80"
-                                  : "bg-red-900/40"
-                              } hover:bg-red-500/10 transition-colors`}
-                            >
-                              <td className="px-4 py-2 whitespace-nowrap align-middle">
-                                <span className="font-medium text-slate-50 text-sm md:text-base">
-                                  {user.first_name} {user.last_name}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2 text-slate-200 text-sm md:text-base align-middle">
-                                {user.email}
-                              </td>
-                              <td className="px-4 py-2 text-slate-200 text-sm md:text-base align-middle">
-                                {user.contact_number}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </section>
-        )}
-
-        {activeTab === "schedules" && (
-          <section className="my-6">
-            <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent ">
-              Collection Schedules
-            </h2>
-            <BWMCCollectionSchedulesFeature
-              defaultBarangayId={defaultBarangayId}
-            />
-          </section>
-        )}
-
-        {activeTab === "reports" && currentUser?.barangay?.barangay_id && (
-          <ReportsAnalytics barangayId={currentUser.barangay.barangay_id} />
-        )}
-
-        {activeTab === "manageAccount" && (
-          <section className="max-w-2xl mx-auto mt-2 rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 p-8 backdrop-blur-xl">
-            <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent">
-              Manage Account
-            </h2>
-            {manageAccountError && (
-              <div
-                role="alert"
-                className="mb-4 px-4 py-2 rounded-xl bg-red-900/40 text-red-200 border border-red-700/70"
-              >
-                {manageAccountError}
-              </div>
-            )}
-            {manageAccountSuccess && (
-              <div
-                role="status"
-                className="mb-4 px-4 py-2 rounded-xl bg-emerald-900/40 text-emerald-200 border border-emerald-700/70"
-              >
-                {manageAccountSuccess}
-              </div>
-            )}
-            {manageAccountLoading ? (
-              <TruckLoader />
-            ) : (
-              <form onSubmit={handleManageAccountSubmit} noValidate>
-                <InputField
-                  label="First Name"
-                  name="first_name"
-                  type="text"
-                  value={manageAccountForm.first_name}
-                  onChange={handleManageAccountFormChange}
-                  required
-                />
-                <InputField
-                  label="Last Name"
-                  name="last_name"
-                  type="text"
-                  value={manageAccountForm.last_name}
-                  onChange={handleManageAccountFormChange}
-                  required
-                />
-                <InputField
-                  label="Username"
-                  name="username"
-                  type="text"
-                  value={manageAccountForm.username}
-                  onChange={handleManageAccountFormChange}
-                  required
-                />
-                <InputField
-                  label="Email"
-                  name="email"
-                  type="email"
-                  value={manageAccountForm.email}
-                  onChange={handleManageAccountFormChange}
-                  required
-                />
-                <InputField
-                  label="Contact Number"
-                  name="contact_number"
-                  type="tel"
-                  value={manageAccountForm.contact_number}
-                  onChange={handleManageAccountFormChange}
-                  required
-                />
-                <InputField
-                  label="New Password"
-                  name="password"
-                  type="password"
-                  value={manageAccountForm.password}
-                  onChange={handleManageAccountFormChange}
-                  placeholder="Leave blank to keep current password"
-                />
-                <InputField
-                  label="Confirm New Password"
-                  name="confirm_password"
-                  type="password"
-                  value={manageAccountForm.confirm_password}
-                  onChange={handleManageAccountFormChange}
-                  placeholder="Confirm your new password"
-                />
-                <div className="flex justify-end mt-6">
-                  <button
-                    type="submit"
-                    className="px-6 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 font-bold hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/40"
-                  >
-                    Update Account
-                  </button>
-                </div>
-              </form>
-            )}
-          </section>
-        )}
-      </main>
+          )}
+        </main>
+      </div>
     </div>
+  );
+}
+
+type ManageAccountSectionProps = {
+  form: {
+    username: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    contact_number: string;
+    password: string;
+    confirm_password: string;
+  };
+  loading: boolean;
+  error: string | null;
+  success: string | null;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onSubmit: (e: FormEvent) => void;
+};
+
+function ManageAccountSection(props: ManageAccountSectionProps) {
+  const { form, loading, error, success, onChange, onSubmit } = props;
+
+  if (loading) return <TruckLoader />;
+
+  return (
+    <section className="max-w-5xl mx-auto rounded-3xl bg-slate-900/95 border border-slate-800 px-10 py-8 shadow-2xl">
+      <h2 className="text-3xl font-bold mb-1 text-emerald-400">
+        Manage Account
+      </h2>
+      <p className="text-[11px] text-slate-400 mb-6">
+        Update your profile details and sign-in credentials.
+      </p>
+
+      {error && (
+        <div
+          role="alert"
+          className="mb-4 rounded-lg bg-red-500/10 border border-red-500/50 px-4 py-2 text-xs text-red-200"
+        >
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div
+          role="status"
+          className="mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/50 px-4 py-2 text-xs text-emerald-200"
+        >
+          {success}
+        </div>
+      )}
+
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        {/* Username */}
+        <div>
+          <label
+            htmlFor="username"
+            className="block text-xs font-semibold text-slate-100 mb-1"
+          >
+            Username
+          </label>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            value={form.username}
+            onChange={onChange}
+            required
+            className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            placeholder="Enter your username"
+          />
+        </div>
+
+        {/* First / Last */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label
+              htmlFor="first_name"
+              className="block text-xs font-semibold text-slate-100 mb-1"
+            >
+              First Name
+            </label>
+            <input
+              id="first_name"
+              name="first_name"
+              type="text"
+              value={form.first_name}
+              onChange={onChange}
+              required
+              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Enter your first name"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="last_name"
+              className="block text-xs font-semibold text-slate-100 mb-1"
+            >
+              Last Name
+            </label>
+            <input
+              id="last_name"
+              name="last_name"
+              type="text"
+              value={form.last_name}
+              onChange={onChange}
+              required
+              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Enter your last name"
+            />
+          </div>
+        </div>
+
+        {/* Contact / Email */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label
+              htmlFor="contact_number"
+              className="block text-xs font-semibold text-slate-100 mb-1"
+            >
+              Contact Number
+            </label>
+            <input
+              id="contact_number"
+              name="contact_number"
+              type="tel"
+              value={form.contact_number}
+              onChange={onChange}
+              required
+              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="09123456789"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="email"
+              className="block text-xs font-semibold text-slate-100 mb-1"
+            >
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={onChange}
+              required
+              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="user@tagbilaran.gov.ph"
+            />
+          </div>
+        </div>
+
+        {/* Passwords */}
+        <div>
+          <label
+            htmlFor="password"
+            className="block text-xs font-semibold text-slate-100 mb-1"
+          >
+            Password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            value={form.password}
+            onChange={onChange}
+            className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            placeholder="Leave blank to keep current password"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="confirm_password"
+            className="block text-xs font-semibold text-slate-100 mb-1"
+          >
+            Confirm Password
+          </label>
+          <input
+            id="confirm_password"
+            name="confirm_password"
+            type="password"
+            value={form.confirm_password}
+            onChange={onChange}
+            className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            placeholder="Confirm your new password"
+          />
+        </div>
+
+        <div className="flex justify-end pt-3">
+          <button
+            type="submit"
+            className="inline-flex items-center rounded-md bg-emerald-600 px-6 py-2.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
+          >
+            Update Account
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }
 

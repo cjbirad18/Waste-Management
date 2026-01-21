@@ -773,6 +773,8 @@ export default function AdminDashboard() {
     }
   };
 
+  // SWMO ManageAccountSection – copy of the TCEMO design
+  // SWMO ManageAccountSection – make this card identical to TCEMO's inner card
   function ManageAccountSection({
     form,
     loading,
@@ -788,21 +790,21 @@ export default function AdminDashboard() {
     onChange: (e: ChangeEvent<HTMLInputElement>) => void;
     onSubmit: (e: FormEvent) => void;
   }) {
+    if (loading) return <TruckLoader />;
+
     return (
-      <section className="max-w-2xl mx-auto rounded-2xl bg-slate-900/90 border border-slate-800/70 p-6 md:p-8 shadow-xl backdrop-blur-sm">
-        <h2 className="text-2xl font-bold mb-2 text-emerald-400">
+      <section className="max-w-5xl mx-auto rounded-3xl bg-slate-900/95 border border-slate-800 px-10 py-8 shadow-2xl">
+        <h2 className="text-3xl font-bold mb-1 text-emerald-400">
           Manage Account
         </h2>
-        <p className="text-[11px] text-slate-400 mb-4">
-          Update your profile details and sign‑in credentials.
+        <p className="text-[11px] text-slate-400 mb-6">
+          Update your profile details and sign-in credentials.
         </p>
-
-        {loading && <TruckLoader />}
 
         {error && (
           <div
-            className="px-4 py-2 mb-3 rounded-lg bg-red-500/10 border border-red-500/50 text-xs text-red-200"
             role="alert"
+            className="mb-4 rounded-lg bg-red-500/10 border border-red-500/50 px-4 py-2 text-xs text-red-200"
           >
             {error}
           </div>
@@ -810,83 +812,160 @@ export default function AdminDashboard() {
 
         {success && (
           <div
-            className="px-4 py-2 mb-3 rounded-lg bg-emerald-500/10 border border-emerald-500/50 text-xs text-emerald-200"
             role="status"
+            className="mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/50 px-4 py-2 text-xs text-emerald-200"
           >
             {success}
           </div>
         )}
 
-        {!loading && (
-          <form onSubmit={onSubmit} className="space-y-3" noValidate>
-            {/* make all labels white via utility */}
-            <div className="[&_label]:text-slate-100 [&_label]:text-xs [&_label]:font-semibold space-y-3">
-              <InputField
-                label="Username"
-                name="username"
-                type="text"
-                value={form.username}
-                onChange={onChange}
-                required
-              />
-              <InputField
-                label="First Name"
+        <form onSubmit={onSubmit} className="space-y-4" noValidate>
+          {/* Username */}
+          <div>
+            <label
+              htmlFor="username"
+              className="block text-xs font-semibold text-slate-100 mb-1"
+            >
+              Username
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              value={form.username}
+              onChange={onChange}
+              required
+              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Enter your username"
+            />
+          </div>
+
+          {/* First / Last */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="first_name"
+                className="block text-xs font-semibold text-slate-100 mb-1"
+              >
+                First Name
+              </label>
+              <input
+                id="first_name"
                 name="first_name"
                 type="text"
                 value={form.first_name}
                 onChange={onChange}
                 required
+                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Enter your first name"
               />
-              <InputField
-                label="Last Name"
+            </div>
+            <div>
+              <label
+                htmlFor="last_name"
+                className="block text-xs font-semibold text-slate-100 mb-1"
+              >
+                Last Name
+              </label>
+              <input
+                id="last_name"
                 name="last_name"
                 type="text"
                 value={form.last_name}
                 onChange={onChange}
                 required
+                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Enter your last name"
               />
-              <InputField
-                label="Contact Number"
+            </div>
+          </div>
+
+          {/* Contact / Email */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="contact_number"
+                className="block text-xs font-semibold text-slate-100 mb-1"
+              >
+                Contact Number
+              </label>
+              <input
+                id="contact_number"
                 name="contact_number"
                 type="tel"
                 value={form.contact_number}
                 onChange={onChange}
                 required
+                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="09123456789"
               />
-              <InputField
-                label="Email"
+            </div>
+            <div>
+              <label
+                htmlFor="email"
+                className="block text-xs font-semibold text-slate-100 mb-1"
+              >
+                Email
+              </label>
+              <input
+                id="email"
                 name="email"
                 type="email"
                 value={form.email}
                 onChange={onChange}
                 required
-              />
-              <InputField
-                label="Password"
-                name="password"
-                type="password"
-                value={form.password}
-                onChange={onChange}
-              />
-              <InputField
-                label="Confirm Password"
-                name="confirm_password"
-                type="password"
-                value={form.confirm_password}
-                onChange={onChange}
+                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="user@tagbilaran.gov.ph"
               />
             </div>
+          </div>
 
-            <div className="flex justify-end pt-2">
-              <button
-                type="submit"
-                className="inline-flex items-center rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
-              >
-                Update Account
-              </button>
-            </div>
-          </form>
-        )}
+          {/* Passwords */}
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-xs font-semibold text-slate-100 mb-1"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={form.password}
+              onChange={onChange}
+              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Leave blank to keep current password"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="confirm_password"
+              className="block text-xs font-semibold text-slate-100 mb-1"
+            >
+              Confirm Password
+            </label>
+            <input
+              id="confirm_password"
+              name="confirm_password"
+              type="password"
+              value={form.confirm_password}
+              onChange={onChange}
+              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Confirm your new password"
+            />
+          </div>
+
+          <div className="flex justify-end pt-3">
+            <button
+              type="submit"
+              className="inline-flex items-center rounded-md bg-emerald-600 px-6 py-2.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
+            >
+              Update Account
+            </button>
+          </div>
+        </form>
       </section>
     );
   }
@@ -1075,7 +1154,6 @@ export default function AdminDashboard() {
               </section>
             </>
           )}
-
           {/* USER ADMIN */}
           {activeTab === "userAdmin" && (
             <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -1279,7 +1357,6 @@ export default function AdminDashboard() {
               </div>
             </section>
           )}
-
           {/* REPORTS */}
           {activeTab === "reports" && (
             <section className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
@@ -1483,10 +1560,8 @@ export default function AdminDashboard() {
               </div>
             </section>
           )}
-
-          {/* MANAGE ACCOUNT */}
           {activeTab === "manageAccount" && (
-            <section className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 max-w-2xl mx-auto">
               <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
               <div className="relative z-10">
                 <ManageAccountSection
@@ -1498,7 +1573,7 @@ export default function AdminDashboard() {
                   onSubmit={handleManageAccountSubmit}
                 />
               </div>
-            </section>
+            </div>
           )}
         </main>
       </div>
