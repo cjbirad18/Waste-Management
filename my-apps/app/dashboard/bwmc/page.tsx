@@ -741,9 +741,10 @@ export default function BWMCdashboard() {
     );
 
     return (
-      <section className="max-w-5xl mx-auto mt-10 rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 p-6 md:p-8 backdrop-blur-xl space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <p className="text-sm text-slate-300">
+      <section className="w-full max-w-5xl mx-auto mt-6 md:mt-10 rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 px-4 py-5 md:p-8 backdrop-blur-xl space-y-5">
+        {/* Top row: text + select */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
+          <p className="text-xs md:text-sm text-slate-300">
             View barangay collection schedules assigned to GCPs.
           </p>
 
@@ -758,9 +759,9 @@ export default function BWMCdashboard() {
               id="bwmc-barangay-select"
               value={selectedBarangayId}
               onChange={(e) => setSelectedBarangayId(e.target.value)}
-              className="w-full rounded-lg bg-slate-900/80 border border-emerald-700/60 px-3 py-2 text-sm text-slate-100 
-                       focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500
-                       [&:invalid]:text-slate-400 [&:invalid]:bg-slate-900/95 appearance-none"
+              className="block w-full rounded-lg bg-slate-900/80 border border-emerald-700/60 px-3 py-2 text-sm text-slate-100
+                     focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500
+                     appearance-none"
             >
               {barangays.map((b) => (
                 <option key={b.barangay_id} value={b.barangay_id}>
@@ -776,25 +777,26 @@ export default function BWMCdashboard() {
             <TruckLoader />
           </div>
         ) : error ? (
-          <div className="mt-4 rounded-2xl border border-red-700/70 bg-red-900/40 p-4 text-sm text-red-100">
+          <div className="mt-4 rounded-2xl border border-red-700/70 bg-red-900/40 p-4 text-xs md:text-sm text-red-100">
             Error: {error}
           </div>
         ) : activeSchedule ? (
           <div className="mt-2 space-y-4">
+            {/* Schedule header + calendar */}
             <div className="rounded-2xl border border-emerald-800/60 bg-slate-900/80 p-4 md:p-5 shadow-lg shadow-emerald-900/40">
-              <h3 className="font-semibold text-lg text-emerald-300 mb-1">
+              <h3 className="font-semibold text-base md:text-lg text-emerald-300 mb-1">
                 Barangay:{" "}
                 <span className="text-slate-100">
                   {activeSchedule.barangay?.barangay_name || "N/A"}
                 </span>
               </h3>
-              <p className="text-sm text-slate-300">
+              <p className="text-xs md:text-sm text-slate-300">
                 Days:{" "}
                 <span className="font-medium text-emerald-200">
                   {activeSchedule.days || "N/A"}
                 </span>
               </p>
-              <p className="text-sm text-slate-300 mt-1">
+              <p className="text-xs md:text-sm text-slate-300 mt-1">
                 Assigned GCP:{" "}
                 <span className="font-medium text-slate-100">
                   {activeSchedule.gcp_user
@@ -803,15 +805,21 @@ export default function BWMCdashboard() {
                 </span>
               </p>
 
-              <div className="mt-4 rounded-xl border border-emerald-800/60 bg-slate-900/80 p-3">
-                <ScheduleCalendar schedule={activeSchedule} />
+              <div className="mt-4 rounded-xl border border-emerald-800/60 bg-slate-900/80 p-2 md:p-3">
+                {/* Allow horizontal scroll for the calendar on very small screens */}
+                <div className="w-full overflow-x-auto">
+                  <div className="min-w-[280px]">
+                    <ScheduleCalendar schedule={activeSchedule} />
+                  </div>
+                </div>
               </div>
             </div>
 
+            {/* Upcoming collections list */}
             {Array.isArray(activeSchedule.collection_details) &&
             activeSchedule.collection_details.length > 0 ? (
               <div className="rounded-2xl border border-emerald-800/60 bg-slate-900/80 p-4 md:p-5 shadow-lg shadow-emerald-900/40">
-                <h4 className="text-sm font-semibold text-emerald-300 mb-3">
+                <h4 className="text-xs md:text-sm font-semibold text-emerald-300 mb-3">
                   Upcoming Collections
                 </h4>
                 <ul className="space-y-3 text-xs md:text-sm text-slate-200">
@@ -820,7 +828,7 @@ export default function BWMCdashboard() {
                       key={detail.collectiondetails_id}
                       className="border border-slate-700/70 rounded-xl px-3 py-2 bg-slate-900/80 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
                     >
-                      <div>
+                      <div className="space-y-1">
                         <div>
                           <span className="font-semibold text-slate-100">
                             Truck:
@@ -840,26 +848,24 @@ export default function BWMCdashboard() {
                             : "N/A"}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div>
-                          <span className="font-semibold text-slate-100">
-                            Status:
-                          </span>{" "}
-                          {detail.status || "N/A"}
-                        </div>
+                      <div className="text-left md:text-right">
+                        <span className="font-semibold text-slate-100">
+                          Status:
+                        </span>{" "}
+                        {detail.status || "N/A"}
                       </div>
                     </li>
                   ))}
                 </ul>
               </div>
             ) : (
-              <p className="text-sm text-slate-400">
+              <p className="text-xs md:text-sm text-slate-400">
                 No collection details for this barangay.
               </p>
             )}
           </div>
         ) : (
-          <p className="mt-4 text-sm text-slate-400">
+          <p className="mt-4 text-xs md:text-sm text-slate-400">
             No schedule found for this barangay.
           </p>
         )}

@@ -361,15 +361,16 @@ function ResidentSchedulesFeature({
   );
 
   return (
-    <section className="max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 md:p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl">
-      <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+    <section className="w-full max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 px-4 py-5 md:p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl">
+      <h2 className="text-2xl md:text-3xl font-bold mb-4 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
         Schedules Overview
       </h2>
 
-      <div className="mb-6">
+      {/* Barangay selector */}
+      <div className="mb-4 md:mb-6">
         <label
           htmlFor="barangay-select"
-          className="block text-sm font-semibold mb-2 text-slate-100"
+          className="block text-xs md:text-sm font-semibold mb-2 text-slate-100"
         >
           See other barangay schedules
         </label>
@@ -377,7 +378,7 @@ function ResidentSchedulesFeature({
           id="barangay-select"
           value={selectedBarangayId}
           onChange={(e) => setSelectedBarangayId(e.target.value)}
-          className="p-2 rounded-lg w-full max-w-xs bg-slate-900/80 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+          className="block w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
         >
           {barangays.map((b) => (
             <option
@@ -392,74 +393,90 @@ function ResidentSchedulesFeature({
       </div>
 
       {loading ? (
-        <TruckLoader />
+        <div className="flex justify-center py-6">
+          <TruckLoader />
+        </div>
       ) : error ? (
-        <p className="text-red-300">Error: {error}</p>
+        <p className="text-red-300 text-sm md:text-base">Error: {error}</p>
       ) : schedule ? (
-        <div className="mb-4">
-          <h3 className="font-semibold text-lg text-slate-100">
-            Barangay: {schedule.barangay?.barangay_name || "N/A"}
-          </h3>
-          <div className="text-sm text-slate-200 mb-2">
-            <span className="font-semibold text-emerald-300">
-              Assigned GCP:
-            </span>{" "}
-            {schedule.gcp_user
-              ? `${schedule.gcp_user.first_name} ${schedule.gcp_user.last_name}`
-              : "None"}
+        <div className="space-y-4 md:space-y-5">
+          {/* Header info */}
+          <div>
+            <h3 className="font-semibold text-lg md:text-xl text-slate-100">
+              Barangay: {schedule.barangay?.barangay_name || "N/A"}
+            </h3>
+            <div className="text-xs md:text-sm text-slate-200 mt-1">
+              <span className="font-semibold text-emerald-300">
+                Assigned GCP:
+              </span>{" "}
+              {schedule.gcp_user
+                ? `${schedule.gcp_user.first_name} ${schedule.gcp_user.last_name}`
+                : "None"}
+            </div>
           </div>
 
-          <div className="mt-3 mb-4 rounded-2xl border border-green-800/40 bg-slate-900/70 p-3">
-            <ScheduleCalendar schedule={schedule} />
+          {/* Calendar wrapper */}
+          <div className="rounded-2xl border border-green-800/40 bg-slate-900/70 p-2 md:p-3">
+            {/* Make the calendar scrollable horizontally on very narrow screens */}
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[280px]">
+                <ScheduleCalendar schedule={schedule} />
+              </div>
+            </div>
           </div>
 
+          {/* Collection details list */}
           {Array.isArray(schedule.collection_details) &&
           schedule.collection_details.length > 0 ? (
             <ul className="space-y-3 text-slate-200">
               {schedule.collection_details.map((detail) => (
                 <li
                   key={detail.collectiondetails_id}
-                  className="border border-green-800/40 rounded-2xl p-3 bg-slate-900/80"
+                  className="border border-green-800/40 rounded-2xl p-3 bg-slate-900/80 text-xs md:text-sm"
                 >
-                  <div className="text-sm">
-                    <span className="font-semibold text-emerald-300">
-                      Truck:
-                    </span>{" "}
-                    {detail.truck?.plate_number || "N/A"}
-                  </div>
-                  <div className="text-sm">
-                    <span className="font-semibold text-emerald-300">
-                      Collection Date:
-                    </span>{" "}
-                    {detail.collection_date
-                      ? new Date(detail.collection_date).toLocaleDateString()
-                      : "N/A"}
-                  </div>
-                  <div className="text-sm">
-                    <span className="font-semibold text-emerald-300">
-                      Status:
-                    </span>{" "}
-                    {detail.status}
-                  </div>
-                  <div className="text-sm">
-                    <span className="font-semibold text-emerald-300">
-                      Assigned User:
-                    </span>{" "}
-                    {detail.gcp_assignment?.user
-                      ? `${detail.gcp_assignment.user.first_name} ${detail.gcp_assignment.user.last_name}`
-                      : "Unassigned"}
+                  <div className="flex flex-col gap-1">
+                    <div>
+                      <span className="font-semibold text-emerald-300">
+                        Truck:
+                      </span>{" "}
+                      {detail.truck?.plate_number || "N/A"}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-emerald-300">
+                        Collection Date:
+                      </span>{" "}
+                      {detail.collection_date
+                        ? new Date(detail.collection_date).toLocaleDateString()
+                        : "N/A"}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-emerald-300">
+                        Status:
+                      </span>{" "}
+                      {detail.status}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-emerald-300">
+                        Assigned User:
+                      </span>{" "}
+                      {detail.gcp_assignment?.user
+                        ? `${detail.gcp_assignment.user.first_name} ${detail.gcp_assignment.user.last_name}`
+                        : "Unassigned"}
+                    </div>
                   </div>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-slate-400 text-sm">
+            <p className="text-slate-400 text-xs md:text-sm">
               No collection details for this schedule.
             </p>
           )}
         </div>
       ) : (
-        <p className="text-slate-400">No schedule found for this barangay.</p>
+        <p className="text-slate-400 text-xs md:text-sm">
+          No schedule found for this barangay.
+        </p>
       )}
     </section>
   );

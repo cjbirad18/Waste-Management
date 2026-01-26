@@ -854,9 +854,9 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
         </label>
         <select
           id="barangay_select"
-          className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 
+          className="block w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 
                    focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500 
-                   [&:invalid]:text-slate-400 [&:invalid]:bg-slate-900/95 appearance-none pr-8"
+                   appearance-none pr-8"
           value={selectedBarangay}
           onChange={(e) => setSelectedBarangay(e.target.value)}
           required
@@ -890,8 +890,8 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
         </div>
       )}
 
-      {/* Full Month Calendar - Fixed height */}
-      <div className="max-h-[75vh] overflow-hidden rounded-xl bg-gradient-to-br from-slate-800/90 to-gray-800/90 border border-green-800/50 shadow-xl backdrop-blur-xl">
+      {/* Full Month Calendar container */}
+      <div className="max-h-[75vh] overflow-y-auto rounded-xl bg-gradient-to-br from-slate-800/90 to-gray-800/90 border border-green-800/50 shadow-xl backdrop-blur-xl">
         {schedules.map((schedule, index) => (
           <div
             key={schedule.schedule_id}
@@ -900,35 +900,38 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
             }`}
           >
             {/* Compact Header */}
-            <div className="flex justify-between items-center mb-2 pb-2 border-b border-green-800/20">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2 pb-2 border-b border-green-800/20">
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-black text-slate-100 truncate">
                   {schedule.barangay?.barangay_name}
                 </div>
-                <div className="text-xs text-emerald-400">{schedule.days}</div>
+                <div className="text-xs text-emerald-400 break-words">
+                  {schedule.days}
+                </div>
               </div>
-              {/* Perfect Action Buttons - Text instead of X */}
-              <div className="flex-shrink-0 ml-3 flex gap-2">
+
+              {/* Action Buttons – wrap on small screens */}
+              <div className="flex flex-wrap justify-end gap-2">
                 {editScheduleId === schedule.schedule_id ? (
                   <>
                     <input
                       value={editPattern}
                       onChange={(e) => setEditPattern(e.target.value)}
-                      className="w-20 h-8 rounded-lg bg-slate-900/80 border border-slate-600/50 px-2 py-1 text-xs text-slate-200 placeholder-slate-500 
-                   focus:outline-none focus:ring-1 focus:ring-emerald-400/50 focus:border-emerald-500/70 
-                   transition-all backdrop-blur-sm shadow-sm"
+                      className="w-full xs:w-24 sm:w-28 h-8 rounded-lg bg-slate-900/80 border border-slate-600/50 px-2 py-1 text-xs text-slate-200 placeholder-slate-500 
+                               focus:outline-none focus:ring-1 focus:ring-emerald-400/50 focus:border-emerald-500/70 
+                               transition-all backdrop-blur-sm shadow-sm"
                       placeholder="Pattern"
                     />
                     <button
                       className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white rounded-lg shadow-md 
-                   hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
+                               hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
                       onClick={() => handleSaveEdit(schedule.schedule_id)}
                     >
                       Save
                     </button>
                     <button
                       className="h-8 px-3 bg-slate-600 hover:bg-slate-700 text-xs font-bold text-white rounded-lg shadow-md 
-                   hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
+                               hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
                       onClick={() => setEditScheduleId(null)}
                     >
                       Cancel
@@ -938,14 +941,14 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
                   <>
                     <button
                       className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white rounded-lg shadow-md 
-                   hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
+                               hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
                       onClick={() => handleEdit(schedule)}
                     >
                       Edit
                     </button>
                     <button
                       className="h-8 px-3 bg-red-600 hover:bg-red-700 text-xs font-bold text-white rounded-lg shadow-md 
-                   hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
+                               hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
                       onClick={() => handleDelete(schedule.schedule_id)}
                     >
                       Delete
@@ -956,7 +959,9 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
             </div>
 
             {/* Full Calendar */}
-            <div className="w-full">{renderCalendar(schedule)}</div>
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[280px]">{renderCalendar(schedule)}</div>
+            </div>
           </div>
         ))}
       </div>
