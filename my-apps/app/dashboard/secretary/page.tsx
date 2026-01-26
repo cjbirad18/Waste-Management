@@ -2594,7 +2594,7 @@ export default function SecretaryDashboard() {
                   Track-the-Truck
                 </p>
                 <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
-                  Secretary Dashboard
+                  TCEMO Dashboard
                 </h1>
               </div>
             </div>
@@ -2673,12 +2673,20 @@ export default function SecretaryDashboard() {
           </nav>
         </aside>
 
-        {/* Main content – SWMO dashboard layout reused */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Main content */}
         <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10">
-          {/* DASHBOARD (now identical to SWMO) */}
+          {/* DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
-              {/* Summary cards – same SWMO style */}
+              {/* Responsive metrics grid */}
               <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {summaryCards.map((card, idx) => (
                   <div

@@ -2297,9 +2297,10 @@ export default function BWMCdashboard() {
             </section>
           )}
 
-          {activeTab === "reports" && currentUser?.barangay?.barangay_id && (
-            <ReportsAnalytics barangayId={currentUser.barangay.barangay_id} />
-          )}
+          {activeTab === "generateReports" &&
+            currentUser?.barangay?.barangay_id && (
+              <ReportsAnalytics barangayId={currentUser.barangay.barangay_id} />
+            )}
 
           {activeTab === "manageAccount" && (
             <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 max-w-2xl mx-auto">

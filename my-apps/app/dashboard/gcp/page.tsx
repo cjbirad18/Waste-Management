@@ -1168,34 +1168,37 @@ export default function GCPDashboard() {
         <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10">
           {activeTab === "dashboard" && (
             <>
-              <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                {summaryCards.map((sc, i) => (
+              <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {summaryCards.map((card, idx) => (
                   <div
-                    key={i}
-                    className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70 flex flex-col items-center"
+                    key={idx}
+                    className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70"
                     role="region"
-                    aria-label={sc.label}
+                    aria-label={card.label}
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
-                    <span
-                      className="text-4xl mb-3 relative z-10"
-                      aria-hidden="true"
-                    >
-                      {sc.icon}
-                    </span>
-                    <span className="text-2xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg relative z-10">
-                      {sc.count}
-                    </span>
-                    <span className="text-xs uppercase tracking-wide text-emerald-300 font-semibold mt-1 relative z-10">
-                      {sc.label}
-                    </span>
-                    <div className="w-full mt-4 relative z-10">
-                      <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50">
-                        <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
+                    <div className="flex items-start justify-between gap-4 relative z-10 h-full flex-col">
+                      <div className="flex items-start justify-between w-full gap-3">
+                        <div className="space-y-2">
+                          <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold">
+                            {card.label}
+                          </p>
+                          <p className="text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg">
+                            {card.count}
+                          </p>
+                        </div>
+                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-2xl border border-green-800/50 shadow-lg group-hover:scale-110 transition-all duration-300 relative z-10 flex-shrink-0">
+                          {card.icon}
+                        </div>
                       </div>
-                      <p className="mt-3 text-[11px] text-slate-400 text-center">
-                        Auto-updated from collection data
-                      </p>
+                      <div className="w-full">
+                        <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50 relative z-10">
+                          <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
+                        </div>
+                        <p className="mt-3 text-xs text-slate-400 text-center relative z-10">
+                          Auto-updated from collection data
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ))}

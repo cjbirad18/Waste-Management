@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  Legend, // <-- added
+  Legend,
 } from "recharts";
 import TruckLoader from "../loading/TruckLoader";
 
@@ -130,7 +130,7 @@ export default function BarangayConcernsAnalytics({
         }
 
         const statsArr: ConcernStatsPoint[] = MONTHS.filter(
-          (m) => byMonth[m]
+          (m) => byMonth[m],
         ).map((m) => ({
           month: m,
           total: byMonth[m].total,
@@ -177,7 +177,7 @@ export default function BarangayConcernsAnalytics({
   };
 
   const availableMonths = MONTHS.filter((m) =>
-    allStats.some((s) => s.month === m)
+    allStats.some((s) => s.month === m),
   );
 
   return (

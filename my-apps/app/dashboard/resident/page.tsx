@@ -63,6 +63,19 @@ interface SubmitReportSectionProps {
   onReportSubmit?: () => void;
 }
 
+type ResidentActiveTab =
+  | "dashboard"
+  | "schedule"
+  | "submitIncidentReport"
+  | "myReports"
+  | "manageAccount";
+
+type SidebarItem = {
+  label: string;
+  icon: string;
+  tab: ResidentActiveTab;
+};
+
 function SidebarItem({
   label,
   icon,
@@ -1082,15 +1095,9 @@ export default function ResidentDashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState("");
   const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
-  useResidentTracking(setGps);
+  const [activeTab, setActiveTab] = useState<ResidentActiveTab>("dashboard");
 
-  const [activeTab, setActiveTab] = useState<
-    | "dashboard"
-    | "manageAccount"
-    | "schedules"
-    | "submitIncidentReport"
-    | "myReports"
-  >("dashboard");
+  useResidentTracking(setGps);
 
   // Manage Account States
   const [manageAccountForm, setManageAccountForm] = useState<ManageAccountForm>(
@@ -1433,12 +1440,56 @@ export default function ResidentDashboard() {
     }
   };
 
+  const sidebarItems: {
+    label: string;
+    icon: string;
+    tab: ResidentActiveTab;
+  }[] = [
+    { label: "Dashboard", icon: "📊", tab: "dashboard" },
+    { label: "Schedules", icon: "📝", tab: "schedule" },
+    {
+      label: "Submit Incident Report",
+      icon: "🚚",
+      tab: "submitIncidentReport",
+    },
+    { label: "My Reports", icon: "📅", tab: "myReports" },
+    { label: "Manage Account", icon: "🚨", tab: "manageAccount" },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
       {/* Subtle animated overlay */}
       <div className="fixed inset-0 opacity-30 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 animate-pulse" />
       </div>
+
+      {/* Top navigation (same as SWMO) */}
+      <header className="sticky top-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
+        <div className="flex items-center justify-between px-4 md:px-8 py-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="md:hidden inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
+              aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            >
+              {sidebarOpen ? "✖" : "☰"}
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 hover:scale-110 transition-all duration-300">
+                🚛
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-bold">
+                  Track-the-Truck
+                </p>
+                <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                  Residents Dashboard
+                </h1>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
 
       <div className="flex flex-1 overflow-hidden relative z-10">
         {/* Mobile overlay when sidebar is open */}
@@ -1460,87 +1511,68 @@ export default function ResidentDashboard() {
         </button>
 
         <aside
-          className={`bg-gradient-to-b from-slate-900/95 to-slate-950/95 backdrop-blur-2xl border-r border-green-800/40 shadow-2xl shadow-green-900/20 flex flex-col pt-6 px-5 md:px-4 fixed top-0 left-0 h-full transition-all duration-300 z-50 ${
-            sidebarOpen
-              ? "w-4/5 max-w-xs opacity-100"
-              : "w-0 opacity-0 overflow-hidden"
-          } md:w-64 md:max-w-none md:opacity-100 md:overflow-visible`}
+          className={`
+          fixed z-40 inset-y-0 left-0 w-72 ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }
+          md:static md:translate-x-0 md:w-64
+          bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-green-800/40
+          flex flex-col py-6 px-4 transition-all duration-300 backdrop-blur-2xl shadow-2xl shadow-green-900/20
+        `}
         >
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30">
-              🏠
-            </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.3em] bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-bold">
-                Track-the-Truck
-              </p>
-              <h1 className="text-lg font-extrabold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent tracking-tight drop-shadow-lg">
-                Resident Dashboard
-              </h1>
-            </div>
-          </div>
-
           <nav
-            className="flex-1 mt-4 text-sm font-semibold text-slate-200 space-y-2"
+            className="flex-1 space-y-2 text-sm font-semibold text-slate-200"
             aria-label="Main Navigation"
           >
-            <SidebarItem
-              label="Dashboard"
-              icon="🏠"
-              selected={activeTab === "dashboard"}
-              onClick={() => {
-                setActiveTab("dashboard");
-                setSidebarOpen(false);
-              }}
-            />
-            <SidebarItem
-              label="Schedules"
-              icon="📅"
-              selected={activeTab === "schedules"}
-              onClick={() => {
-                setActiveTab("schedules");
-                setSidebarOpen(false);
-              }}
-            />
-            <SidebarItem
-              label="Submit Incident Report"
-              icon="📷"
-              selected={activeTab === "submitIncidentReport"}
-              onClick={() => {
-                setActiveTab("submitIncidentReport");
-                setSidebarOpen(false);
-              }}
-            />
-            <SidebarItem
-              label="My Reports"
-              icon="🔔"
-              selected={activeTab === "myReports"}
-              onClick={() => {
-                setActiveTab("myReports");
-                setSidebarOpen(false);
-              }}
-            />
-            <SidebarItem
-              label="Manage Account"
-              icon="🛠️"
-              selected={activeTab === "manageAccount"}
-              onClick={() => {
-                setActiveTab("manageAccount");
-                setSidebarOpen(false);
-              }}
-            />
+            {[
+              { label: "Dashboard", icon: "📊", tab: "dashboard" },
+              { label: "Schedules", icon: "📝", tab: "schedule" },
+              {
+                label: "Submit Incident Report",
+                icon: "🚚",
+                tab: "submitIncidentReport",
+              },
+              { label: "My Reports", icon: "📅", tab: "myReports" },
+              { label: "Manage Account", icon: "🚨", tab: "manageAccount" },
+            ].map((item) => (
+              <button
+                key={item.tab}
+                onClick={() => {
+                  setActiveTab(item.tab as ResidentActiveTab);
+                  setSidebarOpen(false);
+                }}
+                className={`group relative w-full flex items-center gap-3 rounded-2xl border ${
+                  activeTab === item.tab
+                    ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-xl shadow-green-500/30 border-green-500/50"
+                    : "border-green-800/50 bg-slate-800/80 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25"
+                } px-4 py-3 text-left transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-[1.02] ${
+                  activeTab === item.tab ? "!text-emerald-100" : ""
+                }`}
+              >
+                <span className="text-xl">{item.icon}</span>
+                <span className="font-bold">{item.label}</span>
+                {activeTab === item.tab && (
+                  <div className="absolute right-3 w-2 h-6 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full animate-pulse" />
+                )}
+              </button>
+            ))}
 
-            <button
-              onClick={handleLogout}
-              className="mt-8 mb-4 px-6 py-2 text-sm font-bold text-slate-100 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-red-600/90 to-orange-600/90 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg"
-            >
-              ⎋ Logout
-            </button>
+            <div className="pt-6 mt-6 border-t border-green-800/40">
+              <button
+                onClick={handleLogout}
+                className="group relative w-full rounded-2xl bg-gradient-to-r from-red-600/90 to-orange-600/90 px-4 py-3 text-sm font-bold text-slate-100 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg overflow-hidden"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  ⎋ Logout
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              </button>
+            </div>
           </nav>
         </aside>
 
         {/* Main content area */}
-        <main className="flex-1 p-6 md:p-8 transition-all duration-300 md:ml-64 overflow-auto space-y-8">
+        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10">
           {/* Success modal */}
           {reportSuccessModalOpen && (
             <div
@@ -1579,19 +1611,25 @@ export default function ResidentDashboard() {
           {/* Dashboard */}
           {activeTab === "dashboard" && (
             <>
-              <section
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-                aria-label="Dashboard Stats"
-              >
-                {/* Dashboard cards omitted for brevity */}
-              </section>
-              <section
-                aria-label="Map of collection area and vehicles"
-                className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-                <div className="relative z-10 rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[500px] md:h-[600px]">
-                  <LeafletMap />
+              {/* Responsive metrics grid */}
+              {/* Map + small stats layout */}
+              <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
+                <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                        Collection Coverage Map
+                      </h2>
+                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                        Live vehicles
+                      </span>
+                    </div>
+                    <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[500px] md:h-[600px] relative z-10">
+                      <LeafletMap />
+                    </div>
+                  </div>
                 </div>
               </section>
             </>
@@ -1618,7 +1656,7 @@ export default function ResidentDashboard() {
           )}
 
           {/* Schedules */}
-          {activeTab === "schedules" && (
+          {activeTab === "schedule" && (
             <ResidentSchedulesFeature
               residentBarangayId={residentBarangayId}
               barangays={barangays}
