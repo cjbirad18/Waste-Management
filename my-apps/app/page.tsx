@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
+import TruckLoader from "@/app/loading/TruckLoader";
 
 interface FeatureCardProps {
   icon: React.ReactNode;
@@ -252,12 +253,7 @@ export default function LandingPage() {
                 </h3>
 
                 {loading || !counts ? (
-                  <div className="flex flex-col items-center gap-6 text-center">
-                    <div className="w-12 h-12 border-4 border-emerald-800/50 border-t-emerald-500 rounded-full animate-spin mx-auto shadow-lg" />
-                    <p className="text-lg text-emerald-400 font-semibold">
-                      Loading live data...
-                    </p>
-                  </div>
+                  <TruckLoader />
                 ) : (
                   <>
                     <div className="grid grid-cols-2 gap-6 mb-8">

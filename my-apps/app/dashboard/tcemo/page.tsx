@@ -32,8 +32,6 @@ interface User {
 
 type ReportOption = "wasteCollection" | "barangayConcerns";
 
-type ConcernStatus = "Needs Action" | "Ongoing" | "Resolved" | string;
-
 function InputField({
   label,
   name,
@@ -139,18 +137,10 @@ export default function TcemoDashboard() {
   const [wasteCollectionData, setWasteCollectionData] = useState<
     { month: string; tons: number }[]
   >([]);
-  const [performanceData, setPerformanceData] = useState<
-    { month: string; efficiency: number }[]
-  >([]);
-  const [barangayConcerns, setBarangayConcerns] = useState<any[]>([]);
-  const [showResponse, setShowResponse] = useState<{ [key: number]: boolean }>(
-    {},
-  );
+
   const [responseDetails, setResponseDetails] = useState<{
     [key: number]: string;
   }>({});
-  const [loadingReportData, setLoadingReportData] = useState(false);
-  const [errorReportData, setErrorReportData] = useState<string | null>(null);
 
   // Summary Counts
   const [counts, setCounts] = useState({
