@@ -1111,8 +1111,11 @@ export default function ResidentDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState("");
-  const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
   const [activeTab, setActiveTab] = useState<ResidentActiveTab>("dashboard");
+  const [gps, setGps] = useState<{ lat: number | null; lng: number | null }>({
+    lat: null,
+    lng: null,
+  });
 
   useResidentTracking(setGps);
 
@@ -1644,7 +1647,7 @@ export default function ResidentDashboard() {
                       </span>
                     </div>
                     <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[500px] md:h-[600px] relative z-10">
-                      <LeafletMap />
+                      <LeafletMap residentGps={gps} />
                     </div>
                   </div>
                 </div>

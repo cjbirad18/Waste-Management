@@ -8,6 +8,7 @@ import "leaflet/dist/leaflet.css";
 import { supabase } from "@/lib/supabaseClient";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { point, polygon } from "@turf/helpers";
+import { useMap } from "react-leaflet";
 
 const mapCenter: [number, number] = [9.6556, 123.8521];
 
@@ -137,13 +138,31 @@ function haversineKm(
   return R * c;
 }
 
+type ResidentGps = { lat: number | null; lng: number | null };
+
+interface LeafletMapProps {
+  residentGps?: ResidentGps;
+}
+
 function computeEtaMinutes(distanceKm: number, speedKmh: number): number {
   if (speedKmh <= 0) return Infinity;
   const hours = distanceKm / speedKmh;
   return Math.round(hours * 60);
 }
 
-export default function LeafletMap() {
+function RecenterOnGps({ gps }: { gps: ResidentGps }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (gps.lat != null && gps.lng != null) {
+      map.setView([gps.lat, gps.lng], map.getZoom());
+    }
+  }, [gps.lat, gps.lng, map]);
+
+  return null;
+}
+
+function LeafletMap({ residentGps }: LeafletMapProps) {
   const [geojson, setGeojson] = useState<GeoJSONType | null>(null);
   const [trucks, setTrucks] = useState<TruckRow[]>([]);
   const animStatesRef = useRef<Record<number, TruckAnimState>>({});
@@ -165,6 +184,7 @@ export default function LeafletMap() {
   const nightTileUrl =
     "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png";
 
+  // Load barangay polygons
   useEffect(() => {
     const load = async () => {
       const res = await fetch("/data/barangays.geojson", { cache: "no-store" });
@@ -174,6 +194,7 @@ export default function LeafletMap() {
     load();
   }, []);
 
+  // Load barangay name->id map
   useEffect(() => {
     const loadBarangays = async () => {
       const { data, error } = await supabase
@@ -189,6 +210,7 @@ export default function LeafletMap() {
     loadBarangays();
   }, []);
 
+  // Load logged-in user role + initial resident location from DB
   useEffect(() => {
     const loadUser = async () => {
       const {
@@ -224,6 +246,22 @@ export default function LeafletMap() {
     loadUser();
   }, []);
 
+  // Sync residentLocation with live GPS prop (so it moves without refresh)
+  useEffect(() => {
+    if (
+      residentGps &&
+      residentGps.lat != null &&
+      residentGps.lng != null &&
+      role === "Resident"
+    ) {
+      setResidentLocation({
+        lat: residentGps.lat,
+        lng: residentGps.lng,
+      });
+    }
+  }, [residentGps?.lat, residentGps?.lng, role]);
+
+  // ETA calculation for residents
   useEffect(() => {
     if (role !== "Resident" || !residentLocation || trucks.length === 0) {
       setEtaMinutes(null);
@@ -367,6 +405,7 @@ export default function LeafletMap() {
     }
   };
 
+  // Load trucks and subscribe to live updates
   useEffect(() => {
     async function loadTrucks() {
       const { data, error } = await supabase
@@ -445,6 +484,7 @@ export default function LeafletMap() {
     };
   }, [geojson, nameToId]);
 
+  // Truck animation loop
   useEffect(() => {
     const animate = () => {
       const now = performance.now();
@@ -483,10 +523,10 @@ export default function LeafletMap() {
     };
   }, []);
 
+  // Day/night theme switcher
   useEffect(() => {
     const updateThemeFromTime = () => {
-      const hour = new Date().getHours(); // 0–23
-      // Example: day = 6:00–17:59, night = 18:00–5:59
+      const hour = new Date().getHours();
       if (hour >= 6 && hour < 18) {
         setTheme("day");
       } else {
@@ -494,10 +534,16 @@ export default function LeafletMap() {
       }
     };
 
-    updateThemeFromTime(); // set on initial load
-    const id = setInterval(updateThemeFromTime, 60 * 1000); // check every minute
+    updateThemeFromTime();
+    const id = setInterval(updateThemeFromTime, 60 * 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Map center: follow resident if we have live GPS, else default
+  const currentCenter: [number, number] =
+    residentGps && residentGps.lat != null && residentGps.lng != null
+      ? [residentGps.lat, residentGps.lng]
+      : mapCenter;
 
   return (
     <div className="w-full mx-auto my-6">
@@ -512,7 +558,7 @@ export default function LeafletMap() {
         </div>
       </div>
 
-      {/* MOBILE ETA: separate bar above map so it never covers it */}
+      {/* MOBILE ETA */}
       {role === "Resident" && (
         <div className="mb-2 px-3 md:hidden">
           <div className="relative w-full rounded-2xl border border-emerald-700/60 bg-slate-900/95 px-4 py-3 text-xs text-emerald-50 shadow-xl shadow-emerald-900/50 backdrop-blur-xl">
@@ -564,9 +610,9 @@ export default function LeafletMap() {
         </div>
       )}
 
-      {/* Map card (container is same size as map) */}
+      {/* Map card */}
       <div className="mx-1 rounded-3xl border border-emerald-800/50 shadow-xl shadow-emerald-900/30 overflow-hidden bg-slate-800/80 backdrop-blur relative">
-        {/* DESKTOP/TABLET ETA: overlay inside map, left side */}
+        {/* DESKTOP/TABLET ETA */}
         {role === "Resident" && (
           <div
             className="
@@ -626,7 +672,11 @@ export default function LeafletMap() {
 
         {/* Map fills the whole container */}
         <div className="w-full h-[420px] sm:h-[520px] md:h-[620px]">
-          <MapContainer center={mapCenter} zoom={13} className="w-full h-full">
+          <MapContainer
+            center={currentCenter}
+            zoom={13}
+            className="w-full h-full"
+          >
             <TileLayer
               attribution={
                 theme === "day"
@@ -635,6 +685,9 @@ export default function LeafletMap() {
               }
               url={theme === "day" ? dayTileUrl : nightTileUrl}
             />
+
+            {/* Recenter map when live GPS changes */}
+            {residentGps && <RecenterOnGps gps={residentGps} />}
 
             {geojson && (
               <GeoJSON
@@ -729,3 +782,5 @@ export default function LeafletMap() {
     </div>
   );
 }
+
+export default LeafletMap;
