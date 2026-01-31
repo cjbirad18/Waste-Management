@@ -745,36 +745,35 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
               />
             )}
 
-            {/* GCP sees trucks */}
-            {role === "GCP" &&
-              trucks.map((t) => {
-                if (t.latitude == null || t.longitude == null) return null;
-                const pos: [number, number] = [t.latitude, t.longitude];
-                const key = t.id ?? `truck-${t.truck_id}`;
+            {/* Trucks — show to all users */}
+            {trucks.map((t) => {
+              if (t.latitude == null || t.longitude == null) return null;
+              const pos: [number, number] = [t.latitude, t.longitude];
+              const key = t.id ?? `truck-${t.truck_id}`;
 
-                return (
-                  <React.Fragment key={key}>
-                    <Marker
-                      position={pos}
-                      icon={truckShadowIcon}
-                      interactive={false}
-                    />
-                    <Marker position={pos} icon={truckIcon}>
-                      <Popup>
-                        <div className="text-sm">
-                          <div className="font-semibold">{`Truck ${t.truck_id}`}</div>
-                          {t.updated_at && (
-                            <div className="text-xs text-gray-600">
-                              Last update:{" "}
-                              {new Date(t.updated_at).toLocaleTimeString()}
-                            </div>
-                          )}
-                        </div>
-                      </Popup>
-                    </Marker>
-                  </React.Fragment>
-                );
-              })}
+              return (
+                <React.Fragment key={key}>
+                  <Marker
+                    position={pos}
+                    icon={truckShadowIcon}
+                    interactive={false}
+                  />
+                  <Marker position={pos} icon={truckIcon}>
+                    <Popup>
+                      <div className="text-sm">
+                        <div className="font-semibold">{`Truck ${t.truck_id}`}</div>
+                        {t.updated_at && (
+                          <div className="text-xs text-gray-600">
+                            Last update:{" "}
+                            {new Date(t.updated_at).toLocaleTimeString()}
+                          </div>
+                        )}
+                      </div>
+                    </Popup>
+                  </Marker>
+                </React.Fragment>
+              );
+            })}
 
             {/* Resident sees only their own location */}
             {role === "Resident" && residentLocation && (
