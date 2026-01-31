@@ -2580,7 +2580,7 @@ export default function SecretaryDashboard() {
       </div>
 
       {/* Top navigation (same as SWMO) */}
-      <header className="sticky top-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
         <div className="flex items-center justify-between px-4 md:px-8 py-4">
           <div className="flex items-center gap-4">
             <button
@@ -2589,6 +2589,16 @@ export default function SecretaryDashboard() {
               aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
               {sidebarOpen ? "✖" : "☰"}
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab("dashboard");
+                setSidebarOpen(false);
+              }}
+              className="inline-flex items-center justify-center h-10 w-10 ml-2 rounded-lg bg-slate-800/80 text-emerald-300 hover:bg-emerald-600/10 md:hidden"
+              aria-label="Go to Dashboard"
+            >
+              📊
             </button>
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 hover:scale-110 transition-all duration-300">
@@ -2599,7 +2609,7 @@ export default function SecretaryDashboard() {
                   Track-the-Truck
                 </p>
                 <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
-                  TCEMO Dashboard
+                  Secretary Dashboard
                 </h1>
               </div>
             </div>
@@ -2608,7 +2618,7 @@ export default function SecretaryDashboard() {
       </header>
 
       {/* Shell layout like SWMO */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden pt-16">
         {/* Overlay for mobile */}
         {sidebarOpen && (
           <div
@@ -2621,10 +2631,10 @@ export default function SecretaryDashboard() {
         {/* Sidebar – Secretary items */}
         <aside
           className={`
-          fixed z-40 inset-y-0 left-0 w-72 ${
+          fixed z-40 left-0 top-16 bottom-0 w-72 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
-          md:static md:translate-x-0 md:w-64
+          md:fixed md:translate-x-0 md:top-16 md:left-0 md:bottom-0 md:w-64
           bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-green-800/40
           flex flex-col py-6 px-4 transition-all duration-300 backdrop-blur-2xl shadow-2xl shadow-green-900/20
         `}
@@ -2646,7 +2656,7 @@ export default function SecretaryDashboard() {
                 key={item.tab}
                 onClick={() => {
                   setActiveTab(item.tab as SecretaryActiveTab);
-                  setSidebarOpen(false);
+                  if (item.tab !== "dashboard") setSidebarOpen(false);
                 }}
                 className={`group relative w-full flex items-center gap-3 rounded-2xl border ${
                   activeTab === item.tab
@@ -2687,7 +2697,7 @@ export default function SecretaryDashboard() {
         )}
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10">
+        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64">
           {/* DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
@@ -2742,7 +2752,7 @@ export default function SecretaryDashboard() {
                         Live vehicles
                       </span>
                     </div>
-                    <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[500px] md:h-[600px] relative z-10">
+                    <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px] relative z-10">
                       <LeafletMap />
                     </div>
                   </div>

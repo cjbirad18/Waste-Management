@@ -221,7 +221,7 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
         </span>
       </div>
 
-      <div className="mt-6 flex flex-row gap-6 justify-center max-w-[450px] mx-auto">
+      <div className="mt-6 flex flex-col sm:flex-row gap-6 justify-center max-w-[450px] mx-auto items-center">
         <div className="flex items-center gap-2">
           <div className="h-5 w-5 rounded bg-emerald-600 border border-emerald-500" />
           <span className="text-slate-200 text-sm">Scheduled</span>
@@ -1055,16 +1055,26 @@ export default function GCPDashboard() {
       </div>
 
       {/* Top navigation (SWMO style) */}
-      <header className="sticky top-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
         <div className="flex items-center justify-between px-4 md:px-8 py-4">
           <div className="flex items-center gap-4">
             {/* Mobile hamburger */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
+              className="inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
               aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
               {sidebarOpen ? "✖" : "☰"}
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab("dashboard");
+                setSidebarOpen(false);
+              }}
+              className="md:hidden inline-flex items-center justify-center h-10 w-10 ml-2 rounded-lg bg-slate-800/80 text-emerald-300 hover:bg-emerald-600/10 md:hidden"
+              aria-label="Go to Dashboard"
+            >
+              📊
             </button>
 
             <div className="flex items-center gap-3">
@@ -1088,7 +1098,7 @@ export default function GCPDashboard() {
       </header>
 
       {/* Shell layout */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden pt-16">
         {/* Overlay for mobile */}
         {sidebarOpen && (
           <div
@@ -1101,10 +1111,10 @@ export default function GCPDashboard() {
         {/* Sidebar (SWMO layout, using SidebarItem) */}
         <aside
           className={`
-          fixed z-40 inset-y-0 left-0 w-72 ${
+          fixed z-40 left-0 top-16 bottom-0 w-72 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
-          md:static md:translate-x-0 md:w-64
+          md:fixed md:translate-x-0 md:top-16 md:left-0 md:bottom-0 md:w-64
           bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-green-800/40
           flex flex-col py-6 px-4 transition-all duration-300 backdrop-blur-2xl shadow-2xl shadow-green-900/20
         `}
@@ -1119,7 +1129,7 @@ export default function GCPDashboard() {
               selected={activeTab === "dashboard"}
               onClick={() => {
                 setActiveTab("dashboard");
-                setSidebarOpen(false);
+                /* keep sidebar open on small screens when Dashboard selected */
               }}
             />
             <SidebarItem
@@ -1165,7 +1175,7 @@ export default function GCPDashboard() {
         </aside>
 
         {/* Main content (unchanged components) */}
-        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10">
+        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64">
           {activeTab === "dashboard" && (
             <>
               <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -1219,7 +1229,7 @@ export default function GCPDashboard() {
                       Live vehicles
                     </span>
                   </div>
-                  <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[500px] md:h-[600px]">
+                  <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px]">
                     <LeafletMap />
                   </div>
                 </div>

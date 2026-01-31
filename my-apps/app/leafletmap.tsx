@@ -226,7 +226,20 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
 
       if (profileErr || !profile) return;
 
-      setRole(profile.role as AppRole);
+      // Normalize role value from DB (case-insensitive) into our AppRole union.
+      // Accept variants like "SWMO Head", "TCEMO Head", and other labels that
+      // contain the canonical role name.
+      const rawRole = (profile.role || "").toString().toLowerCase().trim();
+      let normalizedRole: AppRole | null = null;
+
+      if (rawRole.includes("gcp")) normalizedRole = "GCP";
+      else if (rawRole.includes("resident")) normalizedRole = "Resident";
+      else if (rawRole.includes("swmo")) normalizedRole = "SWMO";
+      else if (rawRole.includes("tcemo")) normalizedRole = "TCEMO";
+      else if (rawRole.includes("bwmc")) normalizedRole = "BWMC";
+      else if (rawRole.includes("secretary")) normalizedRole = "Secretary";
+
+      setRole(normalizedRole);
       if (profile.role !== "Resident") return;
 
       const { data: live, error: liveErr } = await supabase

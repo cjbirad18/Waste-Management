@@ -37,12 +37,6 @@ body {
   border-radius: 10px;
 }
 
-@media (max-width: 640px) {
-  .leaflet-container {
-    height: 340px !important;
-  }
-}
-
 .truck-shadow-dot {
   width: 60px;
   height: 60px;
@@ -150,6 +144,36 @@ body {
 }
 
 .leaflet-container {
-  height: 600px;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 300px;
+  border-radius: 10px;
+}
+
+@media (max-width: 640px) {
+  .leaflet-container {
+    min-height: 260px;
+  }
+}
+
+/* Make media elements scale responsively */
+img,
+video,
+iframe {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Tables and other wide content wrappers */
+.table-responsive {
   width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Generic wrapper for components that may overflow */
+.responsive-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
 }

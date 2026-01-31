@@ -1758,7 +1758,7 @@ export default function BWMCdashboard() {
       </div>
 
       {/* Top navigation (same as SWMO, BWMC text) */}
-      <header className="sticky top-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
         <div className="flex items-center justify-between px-4 md:px-8 py-4">
           <div className="flex items-center gap-4">
             <button
@@ -1786,7 +1786,7 @@ export default function BWMCdashboard() {
       </header>
 
       {/* Shell layout */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden pt-16">
         {/* Overlay for mobile */}
         {sidebarOpen && (
           <div
@@ -1799,10 +1799,10 @@ export default function BWMCdashboard() {
         {/* Sidebar – same sizing as SWMO, BWMC items */}
         <aside
           className={`
-            fixed z-40 inset-y-0 left-0 w-72 ${
+            fixed z-40 left-0 top-16 bottom-0 w-72 ${
               sidebarOpen ? "translate-x-0" : "-translate-x-full"
             }
-            md:static md:translate-x-0 md:w-64
+            md:fixed md:translate-x-0 md:top-16 md:left-0 md:bottom-0 md:w-64
             bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-green-800/40
             flex flex-col py-6 px-4 transition-all duration-300 backdrop-blur-2xl shadow-2xl shadow-green-900/20
           `}
@@ -1870,7 +1870,7 @@ export default function BWMCdashboard() {
         </aside>
 
         {/* Main content – same paddings, structure as SWMO */}
-        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10">
+        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64">
           {/* DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
