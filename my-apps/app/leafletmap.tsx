@@ -613,7 +613,7 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
 
       {/* MOBILE ETA */}
       {role === "Resident" && (
-        <div className="mb-1 px-2 md:hidden">
+        <div className="mb-3 px-2 md:hidden">
           <div className="relative rounded-xl border border-emerald-600/50 bg-gradient-to-br from-slate-900/95 to-slate-900/90 px-3 py-2.5 text-emerald-50 shadow-xl shadow-emerald-900/60 backdrop-blur-xl overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-teal-500/5 pointer-events-none" />
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
@@ -720,7 +720,7 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
         )}
 
         {/* Map fills the whole container */}
-        <div className="w-full h-[420px] sm:h-[520px] md:h-[620px] lg:h-[700px] relative">
+        <div className="w-full h-[55vh] min-h-[320px] sm:h-[60vh] md:h-[65vh] lg:h-[70vh] xl:h-[75vh] max-h-[760px] relative">
           <MapContainer
             center={currentCenter}
             zoom={13}
