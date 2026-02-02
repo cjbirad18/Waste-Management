@@ -566,19 +566,19 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
       : mapCenter;
 
   return (
-    <div className="w-full mx-auto my-6">
+    <div className="w-full flex flex-col gap-3">
       {/* Enhanced Header with Theme Toggle */}
-      <div className="mb-4 px-2 md:px-6 z-[1000] relative">
-        <div className="group relative rounded-3xl bg-gradient-to-r from-slate-800/95 via-slate-800/90 to-gray-800/95 border border-emerald-700/50 overflow-hidden shadow-lg shadow-emerald-900/20 backdrop-blur-2xl">
+      <div className="px-2 md:px-6 z-[1000] relative">
+        <div className="group relative rounded-2xl md:rounded-3xl bg-gradient-to-r from-slate-800/95 via-slate-800/90 to-gray-800/95 border border-emerald-700/50 overflow-hidden shadow-lg shadow-emerald-900/20 backdrop-blur-2xl">
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 md:p-6">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/80 to-teal-600/80 text-lg shadow-lg shadow-emerald-500/30">
+              <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/80 to-teal-600/80 text-lg shadow-lg shadow-emerald-500/30">
                 🗺️
               </div>
               <div>
-                <h3 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent">
+                <h3 className="text-base md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent">
                   Collection Coverage Map
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -613,7 +613,7 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
 
       {/* MOBILE ETA */}
       {role === "Resident" && (
-        <div className="mb-3 px-2 md:hidden">
+        <div className="px-2 md:hidden">
           <div className="relative rounded-xl border border-emerald-600/50 bg-gradient-to-br from-slate-900/95 to-slate-900/90 px-3 py-2.5 text-emerald-50 shadow-xl shadow-emerald-900/60 backdrop-blur-xl overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-teal-500/5 pointer-events-none" />
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
@@ -662,7 +662,7 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
       )}
 
       {/* Map card */}
-      <div className="mx-1 rounded-3xl border border-emerald-800/50 shadow-xl shadow-emerald-900/40 overflow-hidden bg-slate-900/95 backdrop-blur relative">
+      <div className="mx-1 rounded-2xl md:rounded-3xl border border-emerald-800/50 shadow-xl shadow-emerald-900/40 overflow-hidden bg-slate-900/95 backdrop-blur relative">
         {/* DESKTOP/TABLET ETA */}
         {role === "Resident" && (
           <div
@@ -720,7 +720,7 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
         )}
 
         {/* Map fills the whole container */}
-        <div className="w-full h-[55vh] min-h-[320px] sm:h-[60vh] md:h-[65vh] lg:h-[70vh] xl:h-[75vh] max-h-[760px] relative">
+        <div className="w-full h-[50vh] min-h-[280px] sm:h-[56vh] md:h-[62vh] lg:h-[68vh] xl:h-[72vh] max-h-[740px] relative">
           <MapContainer
             center={currentCenter}
             zoom={13}

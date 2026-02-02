@@ -1713,7 +1713,7 @@ export default function ResidentDashboard() {
                         Live vehicles
                       </span>
                     </div>
-                    <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px] relative z-10">
+                    <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 relative z-10">
                       <LeafletMap residentGps={gps} />
                     </div>
                   </div>
