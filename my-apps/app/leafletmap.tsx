@@ -21,65 +21,72 @@ const barangayHallIcon = L.icon({
 
 const truckIcon = L.icon({
   iconUrl: "/truck.png",
-  iconSize: [80, 90],
-  iconAnchor: [25, 30],
-  popupAnchor: [0, -16],
+  iconSize: [85, 95],
+  iconAnchor: [27, 32],
+  popupAnchor: [0, -18],
+  shadowUrl: undefined,
 });
 
 const truckShadowIcon = L.divIcon({
   className: "",
   html: '<div class="truck-shadow-dot"></div>',
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
+  iconSize: [40, 40],
+  iconAnchor: [20, 20],
 });
 
 const residentIcon = L.divIcon({
   className: "",
   html: `
     <div class="resident-pulse-wrapper">
-      <div class="resident-pulse-ring"></div>
-      <div class="resident-pulse-dot"></div>
+      <div class="resident-pulse-ring pulse-1"></div>
+      <div class="resident-pulse-ring pulse-2"></div>
+      <div class="resident-pulse-dot">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" fill="white"/>
+          <path d="M6 20c0-3.31 2.69-6 6-6s6 2.69 6 6" fill="white" opacity="0.95"/>
+        </svg>
+      </div>
     </div>
   `,
-  iconSize: [26, 26],
-  iconAnchor: [13, 13],
-  popupAnchor: [0, -13],
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+  popupAnchor: [0, -16],
 });
 
 const getBarangayColor = (name?: string) => {
   switch (name) {
     case "Bool":
-      return "#ff6961";
+      return "#ef4444";
     case "Booy":
-      return "#77dd77";
+      return "#10b981";
     case "Cabawan":
-      return "#fdfd96";
+      return "#eab308";
     case "Cogon":
-      return "#84b6f4";
+      return "#3b82f6";
     case "Dampas":
-      return "#fdcae1";
+      return "#ec4899";
     case "Dao":
-      return "#ffb347";
+      return "#f97316";
     case "Manga":
-      return "#cfcfc4";
+      return "#8b5cf6";
     case "Mansasa":
-      return "#b39eb5";
+      return "#06b6d4";
     case "Poblacion I":
-      return "#03c4a1";
+      return "#14b8a6";
     case "Poblacion II":
-      return "#ffde7d";
+      return "#f59e0b";
     case "Poblacion III":
-      return "#ff9aa2";
+      return "#f43f5e";
     case "San Isidro":
-      return "#a0e7e5";
+      return "#06b6d4";
     case "Taloto":
-      return "#b4f8c8";
+      return "#84cc16";
     case "Tiptip":
-      return "#fbe7c6";
+      return "#fbbf24";
     case "Ubujan":
-      return "#cdb4db";
+      return "#a78bfa";
     default:
-      return "#cccccc";
+      return "#9ca3af";
   }
 };
 
@@ -560,63 +567,94 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
 
   return (
     <div className="w-full mx-auto my-6">
-      {/* Header row with theme toggle */}
-      <div className="mb-1 flex items-center justify-between gap-1 px-4 md:px-6 z-[1000] relative">
-        <h3 className="text-sm font-semibold text-emerald-200">
-          Collection Map
-        </h3>
-        <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-700/70 bg-slate-900/90 px-3 py-1 text-xs font-semibold text-emerald-200 shadow-md shadow-emerald-900/40">
-          <span className="text-base">{theme === "day" ? "🌙" : "☀️"}</span>
-          <span>{theme === "day" ? "Day mode" : "Night mode"}</span>
+      {/* Enhanced Header with Theme Toggle */}
+      <div className="mb-4 px-2 md:px-6 z-[1000] relative">
+        <div className="group relative rounded-3xl bg-gradient-to-r from-slate-800/95 via-slate-800/90 to-gray-800/95 border border-emerald-700/50 overflow-hidden shadow-lg shadow-emerald-900/20 backdrop-blur-2xl">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/80 to-teal-600/80 text-lg shadow-lg shadow-emerald-500/30">
+                🗺️
+              </div>
+              <div>
+                <h3 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent">
+                  Collection Coverage Map
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Real-time vehicle tracking &amp; service coverage
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Live Indicator */}
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-600/50 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300 shadow-md shadow-emerald-500/20">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                <span>Live Tracking Active</span>
+              </div>
+
+              {/* Theme Toggle */}
+              <button
+                onClick={() => setTheme(theme === "day" ? "night" : "day")}
+                className="group/theme inline-flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-slate-600 hover:bg-slate-800/80 transition-all duration-300 shadow-md hover:shadow-lg"
+              >
+                <span className="text-base group-hover/theme:scale-110 transition-transform">
+                  {theme === "day" ? "🌙" : "☀️"}
+                </span>
+                <span className="hidden sm:inline capitalize">
+                  {theme} Mode
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* MOBILE ETA */}
       {role === "Resident" && (
-        <div className="mb-2 px-3 md:hidden">
-          <div className="relative w-full rounded-2xl border border-emerald-700/60 bg-slate-900/95 px-4 py-3 text-xs text-emerald-50 shadow-xl shadow-emerald-900/50 backdrop-blur-xl">
-            <div className="absolute inset-x-0 -top-[1px] h-[2px] bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-400" />
+        <div className="mb-1 px-2 md:hidden">
+          <div className="relative rounded-xl border border-emerald-600/50 bg-gradient-to-br from-slate-900/95 to-slate-900/90 px-3 py-2.5 text-emerald-50 shadow-xl shadow-emerald-900/60 backdrop-blur-xl overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-teal-500/5 pointer-events-none" />
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
 
-            <div className="mb-1 flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-400/60">
-                <span className="text-[13px]">⏱️</span>
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold tracking-wide text-emerald-200 uppercase">
-                  Truck ETA
-                </p>
-                <p className="text-[10px] text-emerald-300/70">
-                  Nearest truck to your location
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-1">
-              {etaMinutes == null ? (
-                <p className="text-[11px] text-emerald-100/80">
-                  Live truck data is not available yet. Please wait while we
-                  locate the nearest collection vehicle.
-                </p>
-              ) : (
-                <>
-                  <p className="text-[24px] leading-none font-bold text-emerald-300">
-                    {etaMinutes}
-                    <span className="ml-1 text-[11px] font-semibold text-emerald-200/80">
-                      min{etaMinutes === 1 ? "" : "s"}
-                    </span>
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/30 to-teal-600/30 border border-emerald-400/40">
+                  <span className="text-xs">⏱️</span>
+                </div>
+                <div>
+                  <p className="text-xs font-bold tracking-wide text-emerald-300 uppercase">
+                    Arrival Time
                   </p>
-                  <p className="mt-1 text-[11px] text-emerald-100/80">
-                    Estimated arrival of the nearest garbage truck at your
-                    current location, assuming normal traffic conditions.
+                  <p className="text-[10px] text-emerald-200/60">
+                    Next collection vehicle
                   </p>
-                </>
-              )}
-            </div>
+                </div>
+              </div>
 
-            <div className="mt-2 border-t border-emerald-700/40 pt-1.5">
-              <p className="text-[10px] text-emerald-300/60">
-                Times are estimates based on live GPS and an average speed of
-                15–20 km/h.
+              <div className="rounded-lg bg-slate-800/50 border border-emerald-600/30 p-2 mb-2">
+                {etaMinutes == null ? (
+                  <p className="text-[10px] text-emerald-100/70">
+                    📡 Locating nearest truck...
+                  </p>
+                ) : (
+                  <div>
+                    <p className="text-2xl leading-none font-black text-emerald-300 mb-0.5">
+                      {etaMinutes}
+                      <span className="text-[10px] font-semibold text-emerald-200/70 ml-1.5">
+                        min{etaMinutes === 1 ? "" : "s"}
+                      </span>
+                    </p>
+                    <p className="text-[10px] text-emerald-100/60">
+                      Estimated arrival time
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-[9px] text-emerald-300/50 border-t border-emerald-700/30 pt-1.5">
+                ℹ️ Based on live GPS data and 15–20 km/h average speed
               </p>
             </div>
           </div>
@@ -624,59 +662,57 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
       )}
 
       {/* Map card */}
-      <div className="mx-1 rounded-3xl border border-emerald-800/50 shadow-xl shadow-emerald-900/30 overflow-hidden bg-slate-800/80 backdrop-blur relative">
+      <div className="mx-1 rounded-3xl border border-emerald-800/50 shadow-xl shadow-emerald-900/40 overflow-hidden bg-slate-900/95 backdrop-blur relative">
         {/* DESKTOP/TABLET ETA */}
         {role === "Resident" && (
           <div
             className="
             pointer-events-none absolute top-4 z-[500]
             hidden md:block
-            left-6
+            left-4
           "
           >
-            <div className="pointer-events-auto relative max-w-xs rounded-2xl border border-emerald-700/60 bg-slate-900/95 px-4 py-3 text-xs text-emerald-50 shadow-2xl shadow-emerald-900/50 backdrop-blur-xl">
-              <div className="absolute inset-x-0 -top-[1px] h-[2px] bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-400" />
+            <div className="pointer-events-auto relative max-w-[240px] rounded-xl border border-emerald-600/50 bg-gradient-to-br from-slate-900/95 to-slate-900/90 px-3.5 py-3 text-emerald-50 shadow-xl shadow-emerald-900/60 backdrop-blur-xl overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-teal-500/5 pointer-events-none" />
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
 
-              <div className="mb-1 flex items-center gap-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-400/60">
-                  <span className="text-[13px]">⏱️</span>
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold tracking-wide text-emerald-200 uppercase">
-                    Truck ETA
-                  </p>
-                  <p className="text-[10px] text-emerald-300/70">
-                    Nearest truck to your location
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-1">
-                {etaMinutes == null ? (
-                  <p className="text-[11px] text-emerald-100/80">
-                    Live truck data is not available yet. Please wait while we
-                    locate the nearest collection vehicle.
-                  </p>
-                ) : (
-                  <>
-                    <p className="text-[26px] leading-none font-bold text-emerald-300">
-                      {etaMinutes}
-                      <span className="ml-1 text-[11px] font-semibold text-emerald-200/80">
-                        min{etaMinutes === 1 ? "" : "s"}
-                      </span>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/30 to-teal-600/30 border border-emerald-400/40">
+                    <span className="text-sm">⏱️</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold tracking-wide text-emerald-300 uppercase">
+                      Arrival Time
                     </p>
-                    <p className="mt-1 text-[11px] text-emerald-100/80">
-                      Estimated arrival of the nearest garbage truck at your
-                      current location, assuming normal traffic conditions.
+                    <p className="text-[10px] text-emerald-200/60">
+                      Next collection vehicle
                     </p>
-                  </>
-                )}
-              </div>
+                  </div>
+                </div>
 
-              <div className="mt-2 border-t border-emerald-700/40 pt-1.5">
-                <p className="text-[10px] text-emerald-300/60">
-                  Times are estimates based on live GPS and an average speed of
-                  15–20 km/h.
+                <div className="rounded-lg bg-slate-800/50 border border-emerald-600/30 p-2.5 mb-2.5">
+                  {etaMinutes == null ? (
+                    <p className="text-xs text-emerald-100/70">
+                      📡 Locating nearest truck...
+                    </p>
+                  ) : (
+                    <div>
+                      <p className="text-3xl leading-none font-black text-emerald-300 mb-1">
+                        {etaMinutes}
+                        <span className="text-[10px] font-semibold text-emerald-200/70 ml-1.5">
+                          min{etaMinutes === 1 ? "" : "s"}
+                        </span>
+                      </p>
+                      <p className="text-[10px] text-emerald-100/60">
+                        Estimated arrival time
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-[9px] text-emerald-300/50 border-t border-emerald-700/30 pt-2">
+                  ℹ️ Based on live GPS data and 15–20 km/h average speed
                 </p>
               </div>
             </div>
@@ -684,11 +720,11 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
         )}
 
         {/* Map fills the whole container */}
-        <div className="w-full h-[420px] sm:h-[520px] md:h-[620px]">
+        <div className="w-full h-[420px] sm:h-[520px] md:h-[620px] lg:h-[700px] relative">
           <MapContainer
             center={currentCenter}
             zoom={13}
-            className="w-full h-full"
+            className="w-full h-full rounded-2xl"
           >
             <TileLayer
               attribution={

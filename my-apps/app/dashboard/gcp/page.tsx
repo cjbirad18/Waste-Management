@@ -240,12 +240,9 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-7 gap-2 min-w-[350px]">
+      <div className="mt-6 calendar-grid">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-          <div
-            key={d}
-            className="font-semibold py-1 text-center text-slate-200 text-xs uppercase tracking-wide"
-          >
+          <div key={d} className="calendar-weekday">
             {d}
           </div>
         ))}
@@ -263,7 +260,7 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
             const dayText = isCurrentMonth ? format(day, "d") : "";
 
             let cellClass =
-              "h-10 w-10 flex flex-col items-center justify-center text-xs rounded border transition";
+              "calendar-day h-10 w-10 flex flex-col items-center justify-center text-xs rounded border transition";
             if (!isCurrentMonth) {
               cellClass += " bg-slate-800/80 text-slate-500 border-slate-700";
             } else if (isToday) {
@@ -874,7 +871,9 @@ export default function GCPDashboard() {
   const router = useRouter();
   useTruckTracking();
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [statsVisible, setStatsVisible] = useState(true);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<
     | "dashboard"
     | "userAdmin"
@@ -1061,7 +1060,7 @@ export default function GCPDashboard() {
             {/* Mobile hamburger */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
+              className="md:hidden inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
               aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
               {sidebarOpen ? "✖" : "☰"}
@@ -1088,11 +1087,73 @@ export default function GCPDashboard() {
                 <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
                   GCP Dashboard
                 </h1>
-                <p className="text-[11px] font-semibold text-slate-400 leading-snug">
-                  Garbage Collection Personnel
-                </p>
               </div>
             </div>
+          </div>
+          {/* Profile Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-400/50 transition-all duration-300"
+            >
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm">
+                GC
+              </div>
+              <span className="hidden md:inline text-sm font-semibold text-emerald-300">
+                GCP
+              </span>
+              <svg
+                className={`w-4 h-4 text-emerald-300 transition-transform duration-300 ${profileDropdownOpen ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {profileDropdownOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setProfileDropdownOpen(false)}
+                />
+                <div className="absolute right-0 mt-2 w-56 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-emerald-500/30 shadow-2xl shadow-emerald-900/40 overflow-hidden z-50">
+                  <div className="p-3 border-b border-emerald-500/20">
+                    <p className="text-xs text-emerald-400 font-semibold">
+                      GCP Personnel
+                    </p>
+                  </div>
+                  <div className="py-2">
+                    <button
+                      onClick={() => {
+                        setActiveTab("manageAccount");
+                        setProfileDropdownOpen(false);
+                        setSidebarOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-200 hover:bg-emerald-500/10 transition-colors"
+                    >
+                      <span className="text-lg">⚙️</span>
+                      <span>Manage Account</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        handleLogout();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <span className="text-lg">🚪</span>
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -1111,10 +1172,10 @@ export default function GCPDashboard() {
         {/* Sidebar (SWMO layout, using SidebarItem) */}
         <aside
           className={`
-          fixed z-40 left-0 top-16 bottom-0 w-72 ${
+          fixed z-40 left-0 top-20 bottom-0 w-72 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
-          md:fixed md:translate-x-0 md:top-16 md:left-0 md:bottom-0 md:w-64
+          md:fixed md:translate-x-0 md:top-20 md:left-0 md:bottom-0 md:w-64
           bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-green-800/40
           flex flex-col py-6 px-4 transition-all duration-300 backdrop-blur-2xl shadow-2xl shadow-green-900/20
         `}
@@ -1150,27 +1211,8 @@ export default function GCPDashboard() {
                 setSidebarOpen(false);
               }}
             />
-            <SidebarItem
-              label="Manage Account"
-              icon="🛠️"
-              selected={activeTab === "manageAccount"}
-              onClick={() => {
-                setActiveTab("manageAccount");
-                setSidebarOpen(false);
-              }}
-            />
 
-            <div className="pt-6 mt-6 border-t border-green-800/40">
-              <button
-                onClick={handleLogout}
-                className="group relative w-full rounded-2xl bg-gradient-to-r from-red-600/90 to-orange-600/90 px-4 py-3 text-sm font-bold text-slate-100 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg overflow-hidden"
-              >
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  ⎋ Logout
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              </button>
-            </div>
+            <div className="pt-6 mt-6 border-t border-green-800/40"></div>
           </nav>
         </aside>
 
@@ -1178,41 +1220,50 @@ export default function GCPDashboard() {
         <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64">
           {activeTab === "dashboard" && (
             <>
-              <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {summaryCards.map((card, idx) => (
-                  <div
-                    key={idx}
-                    className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70"
-                    role="region"
-                    aria-label={card.label}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
-                    <div className="flex items-start justify-between gap-4 relative z-10 h-full flex-col">
-                      <div className="flex items-start justify-between w-full gap-3">
-                        <div className="space-y-2">
-                          <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold">
-                            {card.label}
+              {/* Collapsible Stats Section */}
+              <div
+                className={`transition-all duration-500 ease-in-out overflow-hidden ${
+                  statsVisible
+                    ? "max-h-[500px] opacity-100 mb-8"
+                    : "max-h-0 opacity-0 mb-0"
+                }`}
+              >
+                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+                  {summaryCards.map((card, idx) => (
+                    <div
+                      key={idx}
+                      className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-4 sm:p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70"
+                      role="region"
+                      aria-label={card.label}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
+                      <div className="flex items-start justify-between gap-4 relative z-10 h-full flex-col">
+                        <div className="flex items-start justify-between w-full gap-3">
+                          <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold">
+                              {card.label}
+                            </p>
+                            <p className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg">
+                              {card.count}
+                            </p>
+                          </div>
+                          <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-2xl border border-green-800/50 shadow-lg group-hover:scale-110 transition-all duration-300 relative z-10 flex-shrink-0">
+                            {card.icon}
+                          </div>
+                        </div>
+                        <div className="w-full">
+                          <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50 relative z-10">
+                            <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
+                          </div>
+                          <p className="mt-3 text-xs text-slate-400 text-center relative z-10">
+                            Auto-updated from collection data
                           </p>
-                          <p className="text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg">
-                            {card.count}
-                          </p>
                         </div>
-                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-2xl border border-green-800/50 shadow-lg group-hover:scale-110 transition-all duration-300 relative z-10 flex-shrink-0">
-                          {card.icon}
-                        </div>
-                      </div>
-                      <div className="w-full">
-                        <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50 relative z-10">
-                          <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
-                        </div>
-                        <p className="mt-3 text-xs text-slate-400 text-center relative z-10">
-                          Auto-updated from collection data
-                        </p>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </section>
+                  ))}
+                </section>
+              </div>
 
               <section
                 aria-label="Map of collection area and vehicles"
@@ -1224,10 +1275,27 @@ export default function GCPDashboard() {
                     <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
                       Collection Coverage Map
                     </h2>
-                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm">
-                      <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-                      Live vehicles
-                    </span>
+                    <div className="flex items-center gap-3">
+                      {/* Stats Toggle Button */}
+                      <button
+                        onClick={() => setStatsVisible(!statsVisible)}
+                        className="group/btn inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 text-emerald-300 border border-emerald-500/30 font-semibold text-xs backdrop-blur-sm hover:bg-emerald-500/20 hover:border-emerald-400/50 transition-all duration-300 relative z-10"
+                        title={
+                          statsVisible ? "Hide Statistics" : "Show Statistics"
+                        }
+                      >
+                        <span className="text-sm">
+                          {statsVisible ? "📊" : "📈"}
+                        </span>
+                        <span className="hidden sm:inline">
+                          {statsVisible ? "Hide Stats" : "Show Stats"}
+                        </span>
+                      </button>
+                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm">
+                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                        Live vehicles
+                      </span>
+                    </div>
                   </div>
                   <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px]">
                     <LeafletMap />

@@ -11,8 +11,8 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import dynamic from "next/dynamic";
 
+import ReportsAnalytics from "../../generatereport/generatereport";
 import BarangayConcernsAnalytics from "../../generatereport/barangayconcern";
-import ReportsAnalytics from "../../generatereport/barangayconcern";
 
 import TruckLoader from "../../loading/TruckLoader";
 
@@ -93,7 +93,19 @@ export default function TcemoDashboard() {
   }, []);
 
   // Layout state
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [statsVisible, setStatsVisible] = useState(true);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  // Confirmation modal state
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [confirmModalAction, setConfirmModalAction] = useState<
+    "activate" | "deactivate" | null
+  >(null);
+  const [confirmModalTarget, setConfirmModalTarget] = useState<{
+    userId: string;
+    name?: string;
+  } | null>(null);
+  const [confirmModalLoading, setConfirmModalLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [errorUsers, setErrorUsers] = useState<string | null>(null);
@@ -484,18 +496,58 @@ export default function TcemoDashboard() {
   };
 
   const handleDeactivateSWMOHead = async (userId: string) => {
-    const confirmed = window.confirm("Deactivate this SWMO Head account?");
-    if (!confirmed) return;
+    // open confirm modal for deactivation
+    setConfirmModalAction("deactivate");
+    setConfirmModalTarget({ userId });
+    setConfirmModalOpen(true);
+  };
 
-    const { error } = await supabase
-      .from("users")
-      .update({ status: "Inactive" })
-      .eq("user_id", userId);
+  const handleActivateSWMOHead = async (userId: string) => {
+    // open confirm modal for activation
+    setConfirmModalAction("activate");
+    setConfirmModalTarget({ userId });
+    setConfirmModalOpen(true);
+  };
 
-    if (!error) {
-      fetchUsers();
-      fetchSWMOHeads();
+  const performConfirmAction = async () => {
+    if (!confirmModalAction || !confirmModalTarget) return;
+    setConfirmModalLoading(true);
+    try {
+      if (confirmModalAction === "deactivate") {
+        const { error } = await supabase
+          .from("users")
+          .update({ status: "Inactive" })
+          .eq("user_id", confirmModalTarget.userId);
+        if (error) throw error;
+      } else if (confirmModalAction === "activate") {
+        const { error } = await supabase
+          .from("users")
+          .update({ status: "active" })
+          .eq("user_id", confirmModalTarget.userId);
+        if (error) throw error;
+      }
+      await fetchUsers();
+      await fetchSWMOHeads();
+    } catch (err) {
+      // fallback alert
+      if (typeof window !== "undefined")
+        window.alert("Action failed: " + (err as Error).message);
+    } finally {
+      setConfirmModalLoading(false);
+      setConfirmModalOpen(false);
+      setConfirmModalAction(null);
+      setConfirmModalTarget(null);
     }
+  };
+
+  const openConfirmModal = (
+    action: "activate" | "deactivate",
+    userId: string,
+    name?: string,
+  ) => {
+    setConfirmModalAction(action);
+    setConfirmModalTarget({ userId, name });
+    setConfirmModalOpen(true);
   };
 
   // ---------- Render ----------
@@ -542,6 +594,71 @@ export default function TcemoDashboard() {
               </div>
             </div>
           </div>
+          {/* Profile Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-400/50 transition-all duration-300"
+            >
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm">
+                TC
+              </div>
+              <span className="hidden md:inline text-sm font-semibold text-emerald-300">
+                TCEMO
+              </span>
+              <svg
+                className={`w-4 h-4 text-emerald-300 transition-transform duration-300 ${profileDropdownOpen ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {profileDropdownOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setProfileDropdownOpen(false)}
+                />
+                <div className="absolute right-0 mt-2 w-56 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-emerald-500/30 shadow-2xl shadow-emerald-900/40 overflow-hidden z-50">
+                  <div className="p-3 border-b border-emerald-500/20">
+                    <p className="text-xs text-emerald-400 font-semibold">
+                      TCEMO Head
+                    </p>
+                  </div>
+                  <div className="py-2">
+                    <button
+                      onClick={() => {
+                        setActiveTab("manageAccount");
+                        setProfileDropdownOpen(false);
+                        setSidebarOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-200 hover:bg-emerald-500/10 transition-colors"
+                    >
+                      <span className="text-lg">⚙️</span>
+                      <span>Manage Account</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        handleLogout();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <span className="text-lg">🚪</span>
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -559,10 +676,10 @@ export default function TcemoDashboard() {
         {/* Sidebar */}
         <aside
           className={`
-          fixed z-40 left-0 top-16 bottom-0 w-72 ${
+          fixed z-40 left-0 top-20 bottom-0 w-72 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
-          md:fixed md:translate-x-0 md:top-16 md:left-0 md:bottom-0 md:w-64
+          md:fixed md:translate-x-0 md:top-20 md:left-0 md:bottom-0 md:w-64
           bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-green-800/40
           flex flex-col py-6 px-4 transition-all duration-300 backdrop-blur-2xl shadow-2xl shadow-green-900/20
         `}
@@ -607,17 +724,7 @@ export default function TcemoDashboard() {
               </button>
             ))}
 
-            <div className="pt-6 mt-6 border-t border-green-800/40">
-              <button
-                onClick={handleLogout}
-                className="group relative w-full rounded-2xl bg-gradient-to-r from-red-600/90 to-orange-600/90 px-4 py-3 text-sm font-bold text-slate-100 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg overflow-hidden"
-              >
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  ⎋ Logout
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              </button>
-            </div>
+            <div className="pt-6 mt-6 border-t border-green-800/40"></div>
           </nav>
         </aside>
 
@@ -626,44 +733,52 @@ export default function TcemoDashboard() {
           {/* DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
-              {/* Responsive metrics grid */}
-              <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {summaryCards.map((card, idx) => (
-                  <div
-                    key={idx}
-                    className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70"
-                    role="region"
-                    aria-label={card.label}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
-                    <div className="flex items-start justify-between gap-4 relative z-10 h-full flex-col">
-                      <div className="flex items-start justify-between w-full gap-3">
-                        <div className="space-y-2">
-                          <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold">
-                            {card.label}
+              {/* Collapsible Stats Section */}
+              <div
+                className={`transition-all duration-500 ease-in-out overflow-hidden ${
+                  statsVisible
+                    ? "max-h-[500px] opacity-100 mb-8"
+                    : "max-h-0 opacity-0 mb-0"
+                }`}
+              >
+                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+                  {summaryCards.map((card, idx) => (
+                    <div
+                      key={idx}
+                      className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-4 sm:p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70"
+                      role="region"
+                      aria-label={card.label}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
+                      <div className="flex items-start justify-between gap-4 relative z-10 h-full flex-col">
+                        <div className="flex items-start justify-between w-full gap-3">
+                          <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold">
+                              {card.label}
+                            </p>
+                            <p className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg">
+                              {card.count}
+                            </p>
+                          </div>
+                          <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-2xl border border-green-800/50 shadow-lg group-hover:scale-110 transition-all duration-300 relative z-10 flex-shrink-0">
+                            {card.icon}
+                          </div>
+                        </div>
+                        <div className="w-full">
+                          <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50 relative z-10">
+                            <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
+                          </div>
+                          <p className="mt-3 text-xs text-slate-400 text-center relative z-10">
+                            Auto-updated from collection data
                           </p>
-                          <p className="text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg">
-                            {card.count}
-                          </p>
                         </div>
-                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-2xl border border-green-800/50 shadow-lg group-hover:scale-110 transition-all duration-300 relative z-10 flex-shrink-0">
-                          {card.icon}
-                        </div>
-                      </div>
-                      <div className="w-full">
-                        <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50 relative z-10">
-                          <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
-                        </div>
-                        <p className="mt-3 text-xs text-slate-400 text-center relative z-10">
-                          Auto-updated from collection data
-                        </p>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </section>
+                  ))}
+                </section>
+              </div>
 
-              {/* Map + small stats layout */}
+              {/* Map Section with Toggle Button */}
               <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
                 <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
@@ -672,10 +787,27 @@ export default function TcemoDashboard() {
                       <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
                         Collection Coverage Map
                       </h2>
-                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
-                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-                        Live vehicles
-                      </span>
+                      <div className="flex items-center gap-3">
+                        {/* Stats Toggle Button */}
+                        <button
+                          onClick={() => setStatsVisible(!statsVisible)}
+                          className="group/btn inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 text-emerald-300 border border-emerald-500/30 font-semibold text-xs backdrop-blur-sm hover:bg-emerald-500/20 hover:border-emerald-400/50 transition-all duration-300 relative z-10"
+                          title={
+                            statsVisible ? "Hide Statistics" : "Show Statistics"
+                          }
+                        >
+                          <span className="text-sm">
+                            {statsVisible ? "📊" : "📈"}
+                          </span>
+                          <span className="hidden sm:inline">
+                            {statsVisible ? "Hide Stats" : "Show Stats"}
+                          </span>
+                        </button>
+                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
+                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                          Live vehicles
+                        </span>
+                      </div>
                     </div>
                     <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px] relative z-10">
                       <LeafletMap />
@@ -797,10 +929,12 @@ export default function TcemoDashboard() {
                   ) : (
                     <div className="overflow-x-auto rounded-2xl border border-slate-700/60 bg-slate-900/70">
                       <table className="min-w-full text-sm">
-                        <thead className="bg-slate-800/90 text-slate-200">
+                        <thead className="bg-slate-800/90 text-slate-200 sticky top-0 z-10">
                           <tr>
                             <th className="px-3 py-2 text-left">Name</th>
-                            <th className="px-3 py-2 text-left">Email</th>
+                            <th className="px-3 py-2 text-left hidden sm:table-cell">
+                              Email
+                            </th>
                             <th className="px-3 py-2 text-left">Status</th>
                             <th className="px-3 py-2 text-left">Action</th>
                           </tr>
@@ -813,20 +947,42 @@ export default function TcemoDashboard() {
                             >
                               <td className="px-3 py-2">
                                 {user.first_name} {user.last_name}
+                                <div className="sm:hidden text-xs text-slate-400">
+                                  {user.email}
+                                </div>
                               </td>
-                              <td className="px-3 py-2">{user.email}</td>
+                              <td className="px-3 py-2 hidden sm:table-cell">
+                                {user.email}
+                              </td>
                               <td className="px-3 py-2 capitalize">
                                 {user.status}
                               </td>
                               <td className="px-3 py-2">
-                                {user.status.toLowerCase() === "active" && (
+                                {user.status.toLowerCase() === "active" ? (
                                   <button
                                     onClick={() =>
-                                      handleDeactivateSWMOHead(user.user_id)
+                                      openConfirmModal(
+                                        "deactivate",
+                                        user.user_id,
+                                        `${user.first_name} ${user.last_name}`,
+                                      )
                                     }
-                                    className="px-4 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold"
+                                    className="px-4 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold whitespace-nowrap"
                                   >
                                     Deactivate
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() =>
+                                      openConfirmModal(
+                                        "activate",
+                                        user.user_id,
+                                        `${user.first_name} ${user.last_name}`,
+                                      )
+                                    }
+                                    className="px-4 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold whitespace-nowrap"
+                                  >
+                                    Activate
                                   </button>
                                 )}
                               </td>
@@ -853,6 +1009,54 @@ export default function TcemoDashboard() {
               onChange={handleManageAccountFormChange}
               onSubmit={handleManageAccountSubmit}
             />
+          )}
+
+          {/* Confirmation Modal */}
+          {confirmModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div
+                className="fixed inset-0 bg-black/60"
+                onClick={() => setConfirmModalOpen(false)}
+                aria-hidden="true"
+              />
+              <div className="relative z-50 max-w-lg w-full mx-4">
+                <div className="bg-slate-900/95 border border-green-800/50 rounded-2xl p-6">
+                  <h3 className="text-lg font-bold mb-2 text-slate-100">
+                    {confirmModalAction === "activate"
+                      ? "Activate Account"
+                      : "Deactivate Account"}
+                  </h3>
+                  <p className="text-sm text-slate-300 mb-4">
+                    Are you sure you want to{" "}
+                    {confirmModalAction === "activate"
+                      ? "activate"
+                      : "deactivate"}{" "}
+                    {confirmModalTarget?.name ?? "this account"}?
+                  </p>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmModalOpen(false);
+                        setConfirmModalAction(null);
+                        setConfirmModalTarget(null);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-slate-700 text-slate-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={performConfirmAction}
+                      disabled={confirmModalLoading}
+                      className="px-4 py-2 rounded-lg bg-emerald-600 text-white disabled:opacity-60"
+                    >
+                      {confirmModalLoading ? "Please wait..." : "Confirm"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </main>
       </div>

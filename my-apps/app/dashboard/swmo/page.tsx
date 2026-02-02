@@ -10,19 +10,9 @@ import React, {
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import dynamic from "next/dynamic";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  LineChart,
-  Line,
-} from "recharts";
 import TruckLoader from "../../loading/TruckLoader";
+import ReportsAnalytics from "../../generatereport/generatereport";
+import BarangayConcernsAnalytics from "../../generatereport/barangayconcern";
 
 const LeafletMap = dynamic(() => import("../../leafletmap"), { ssr: false });
 
@@ -107,7 +97,7 @@ function InputField({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        className="w-full rounded-lg bg-slate-900/90 border border-slate-700 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+        className="w-full rounded-2xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/70 transition-shadow duration-200 shadow-sm"
       />
     </div>
   );
@@ -144,7 +134,7 @@ function SelectField({
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full rounded-lg bg-slate-900/90 border border-slate-700 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+        className="w-full rounded-2xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-shadow duration-200"
       >
         <option value="" disabled>
           {placeholder}
@@ -164,6 +154,8 @@ export default function AdminDashboard() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const isDark = theme === "dark";
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [statsVisible, setStatsVisible] = useState(true);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [errorUsers, setErrorUsers] = useState<string | null>(null);
@@ -1020,6 +1012,71 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+          {/* Profile Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-400/50 transition-all duration-300"
+            >
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm">
+                SA
+              </div>
+              <span className="hidden md:inline text-sm font-semibold text-emerald-300">
+                Admin
+              </span>
+              <svg
+                className={`w-4 h-4 text-emerald-300 transition-transform duration-300 ${profileDropdownOpen ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {profileDropdownOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setProfileDropdownOpen(false)}
+                />
+                <div className="absolute right-0 mt-2 w-56 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-emerald-500/30 shadow-2xl shadow-emerald-900/40 overflow-hidden z-50">
+                  <div className="p-3 border-b border-emerald-500/20">
+                    <p className="text-xs text-emerald-400 font-semibold">
+                      SWMO Admin
+                    </p>
+                  </div>
+                  <div className="py-2">
+                    <button
+                      onClick={() => {
+                        setActiveTab("manageAccount");
+                        setProfileDropdownOpen(false);
+                        setSidebarOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-200 hover:bg-emerald-500/10 transition-colors"
+                    >
+                      <span className="text-lg">⚙️</span>
+                      <span>Manage Account</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        handleLogout();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <span className="text-lg">🚪</span>
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -1037,10 +1094,10 @@ export default function AdminDashboard() {
         {/* Sidebar */}
         <aside
           className={`
-          fixed z-40 left-0 top-16 bottom-0 w-72 ${
+          fixed z-40 left-0 top-10 bottom-0 w-72 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
-          md:fixed md:translate-x-0 md:top-16 md:left-0 md:bottom-0 md:w-64
+          md:fixed md:translate-x-0 md:top-20 md:left-0 md:bottom-0 md:w-64
           bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-green-800/40
           flex flex-col py-6 px-4 transition-all duration-300 backdrop-blur-2xl shadow-2xl shadow-green-900/20
         `}
@@ -1055,7 +1112,6 @@ export default function AdminDashboard() {
               { label: "Collection Panel", icon: "🗺️", tab: "collection" },
               { label: "Manage Users", icon: "👥", tab: "userAdmin" },
               { label: "Reports", icon: "📈", tab: "reports" },
-              { label: "Account", icon: "⚙️", tab: "manageAccount" },
             ].map((item) => (
               <button
                 key={item.tab}
@@ -1086,17 +1142,7 @@ export default function AdminDashboard() {
               </button>
             ))}
 
-            <div className="pt-6 mt-6 border-t border-green-800/40">
-              <button
-                onClick={handleLogout}
-                className="group relative w-full rounded-2xl bg-gradient-to-r from-red-600/90 to-orange-600/90 px-4 py-3 text-sm font-bold text-slate-100 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg overflow-hidden"
-              >
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  ⎋ Logout
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              </button>
-            </div>
+            <div className="pt-6 mt-6 border-t border-green-800/40"></div>
           </nav>
         </aside>
 
@@ -1105,44 +1151,52 @@ export default function AdminDashboard() {
           {/* DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
-              {/* Responsive metrics grid */}
-              <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {summaryCards.map((card, idx) => (
-                  <div
-                    key={idx}
-                    className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70"
-                    role="region"
-                    aria-label={card.label}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
-                    <div className="flex items-start justify-between gap-4 relative z-10 h-full flex-col">
-                      <div className="flex items-start justify-between w-full gap-3">
-                        <div className="space-y-2">
-                          <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold">
-                            {card.label}
+              {/* Collapsible Stats Section */}
+              <div
+                className={`transition-all duration-500 ease-in-out overflow-hidden ${
+                  statsVisible
+                    ? "max-h-[500px] opacity-100 mb-8"
+                    : "max-h-0 opacity-0 mb-0"
+                }`}
+              >
+                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+                  {summaryCards.map((card, idx) => (
+                    <div
+                      key={idx}
+                      className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-4 sm:p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70"
+                      role="region"
+                      aria-label={card.label}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
+                      <div className="flex items-start justify-between gap-4 relative z-10 h-full flex-col">
+                        <div className="flex items-start justify-between w-full gap-3">
+                          <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold">
+                              {card.label}
+                            </p>
+                            <p className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg">
+                              {card.count}
+                            </p>
+                          </div>
+                          <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-2xl border border-green-800/50 shadow-lg group-hover:scale-110 transition-all duration-300 relative z-10 flex-shrink-0">
+                            {card.icon}
+                          </div>
+                        </div>
+                        <div className="w-full">
+                          <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50 relative z-10">
+                            <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
+                          </div>
+                          <p className="mt-3 text-xs text-slate-400 text-center relative z-10">
+                            Auto-updated from collection data
                           </p>
-                          <p className="text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg">
-                            {card.count}
-                          </p>
                         </div>
-                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-2xl border border-green-800/50 shadow-lg group-hover:scale-110 transition-all duration-300 relative z-10 flex-shrink-0">
-                          {card.icon}
-                        </div>
-                      </div>
-                      <div className="w-full">
-                        <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50 relative z-10">
-                          <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
-                        </div>
-                        <p className="mt-3 text-xs text-slate-400 text-center relative z-10">
-                          Auto-updated from collection data
-                        </p>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </section>
+                  ))}
+                </section>
+              </div>
 
-              {/* Map + small stats layout */}
+              {/* Map Section with Toggle Button */}
               <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
                 <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
@@ -1151,10 +1205,27 @@ export default function AdminDashboard() {
                       <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
                         Collection Coverage Map
                       </h2>
-                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
-                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-                        Live vehicles
-                      </span>
+                      <div className="flex items-center gap-3">
+                        {/* Stats Toggle Button */}
+                        <button
+                          onClick={() => setStatsVisible(!statsVisible)}
+                          className="group/btn inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 text-emerald-300 border border-emerald-500/30 font-semibold text-xs backdrop-blur-sm hover:bg-emerald-500/20 hover:border-emerald-400/50 transition-all duration-300 relative z-10"
+                          title={
+                            statsVisible ? "Hide Statistics" : "Show Statistics"
+                          }
+                        >
+                          <span className="text-sm">
+                            {statsVisible ? "📊" : "📈"}
+                          </span>
+                          <span className="hidden sm:inline">
+                            {statsVisible ? "Hide Stats" : "Show Stats"}
+                          </span>
+                        </button>
+                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
+                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                          Live vehicles
+                        </span>
+                      </div>
                     </div>
                     <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px] relative z-10">
                       <LeafletMap />
@@ -1211,6 +1282,7 @@ export default function AdminDashboard() {
                         value={userForm.first_name}
                         onChange={handleUserFormChange}
                         required
+                        placeholder="e.g. Juan"
                       />
                       <InputField
                         label="Last Name"
@@ -1219,6 +1291,7 @@ export default function AdminDashboard() {
                         value={userForm.last_name}
                         onChange={handleUserFormChange}
                         required
+                        placeholder="e.g. Dela Cruz"
                       />
                     </div>
 
@@ -1229,7 +1302,11 @@ export default function AdminDashboard() {
                       value={userForm.username}
                       onChange={handleUserFormChange}
                       required
+                      placeholder="e.g. collector01 or user@example.com"
                     />
+                    <p className="text-xs text-slate-400 mt-1 mb-3">
+                      This will be used for login.
+                    </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <InputField
@@ -1239,6 +1316,7 @@ export default function AdminDashboard() {
                         value={userForm.contact_number}
                         onChange={handleUserFormChange}
                         required
+                        placeholder="09xx-xxx-xxxx"
                       />
                       <InputField
                         label="Email"
@@ -1247,6 +1325,7 @@ export default function AdminDashboard() {
                         value={userForm.email}
                         onChange={handleUserFormChange}
                         required
+                        placeholder="name@example.com"
                       />
                     </div>
 
@@ -1278,6 +1357,7 @@ export default function AdminDashboard() {
                           value={userForm.password}
                           onChange={handleUserFormChange}
                           required
+                          placeholder="At least 8 characters"
                         />
                         <button
                           type="button"
@@ -1321,18 +1401,18 @@ export default function AdminDashboard() {
                   {!loadingUsers && (
                     <div className="overflow-x-auto rounded-2xl border border-green-800/50 max-h-[480px] bg-slate-900/50 backdrop-blur-xl shadow-inner">
                       <table className="min-w-full text-sm">
-                        <thead className="bg-gradient-to-r from-slate-900/95 to-gray-900/95 text-slate-300 border-b border-green-800/50">
+                        <thead className="bg-gradient-to-r from-slate-900/95 to-gray-900/95 text-slate-300 border-b border-green-800/50 sticky top-0 z-10">
                           <tr>
                             <th className="px-6 py-4 text-left font-semibold">
                               Name
                             </th>
-                            <th className="px-6 py-4 text-left font-semibold">
+                            <th className="px-6 py-4 text-left font-semibold hidden sm:table-cell">
                               Email
                             </th>
                             <th className="px-6 py-4 text-left font-semibold">
                               Role
                             </th>
-                            <th className="px-6 py-4 text-left font-semibold">
+                            <th className="px-6 py-4 text-left font-semibold hidden md:table-cell">
                               Barangay
                             </th>
                           </tr>
@@ -1345,8 +1425,11 @@ export default function AdminDashboard() {
                             >
                               <td className="px-6 py-4 font-semibold text-slate-200">
                                 {user.first_name} {user.last_name}
+                                <div className="sm:hidden text-xs text-slate-400 font-normal">
+                                  {user.email}
+                                </div>
                               </td>
-                              <td className="px-6 py-4 text-slate-300">
+                              <td className="px-6 py-4 text-slate-300 hidden sm:table-cell">
                                 {user.email}
                               </td>
                               <td className="px-6 py-4">
@@ -1354,7 +1437,7 @@ export default function AdminDashboard() {
                                   {user.role}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 text-slate-400">
+                              <td className="px-6 py-4 text-slate-400 hidden md:table-cell">
                                 {user.role === "BWMC" ? user.barangay_id : "-"}
                               </td>
                             </tr>
@@ -1369,206 +1452,9 @@ export default function AdminDashboard() {
           )}
           {/* REPORTS */}
           {activeTab === "reports" && (
-            <section className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-              <div className="relative z-10">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-                  <div>
-                    <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
-                      Reports & Analytics
-                    </h2>
-                    <p className="text-sm text-slate-400 mt-1">
-                      Visualize waste collection trends and barangay concerns.
-                    </p>
-                  </div>
-                  <div className="inline-flex rounded-2xl bg-slate-900/90 border border-green-800/50 p-1 text-sm backdrop-blur-sm shadow-lg">
-                    <button
-                      onClick={() => setActiveReportOption("wasteCollection")}
-                      className={`group/seg px-4 py-2.5 rounded-xl font-semibold transition-all duration-300 ${
-                        activeReportOption === "wasteCollection"
-                          ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-lg shadow-green-500/30"
-                          : "text-emerald-300 hover:bg-green-500/10 hover:shadow-md hover:shadow-green-500/20"
-                      }`}
-                    >
-                      Waste Collection
-                    </button>
-                    <button
-                      onClick={() => setActiveReportOption("barangayConcerns")}
-                      className={`group/seg px-4 py-2.5 rounded-xl font-semibold transition-all duration-300 ${
-                        activeReportOption === "barangayConcerns"
-                          ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-lg shadow-green-500/30"
-                          : "text-emerald-300 hover:bg-green-500/10 hover:shadow-md hover:shadow-green-500/20"
-                      }`}
-                    >
-                      Barangay Concerns
-                    </button>
-                  </div>
-                </div>
-
-                {activeReportOption === "wasteCollection" && (
-                  <>
-                    {loadingReportData ? (
-                      <TruckLoader />
-                    ) : errorReportData ? (
-                      <div className="rounded-2xl bg-gradient-to-r from-red-500/15 to-orange-500/15 border border-red-500/40 p-6 text-red-200 text-center text-sm backdrop-blur-xl shadow-lg">
-                        {errorReportData}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="group relative rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 border border-green-800/50 p-6 backdrop-blur-xl shadow-xl hover:shadow-2xl hover:shadow-green-500/30 transition-all duration-300 overflow-hidden">
-                          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 blur-sm transition-opacity" />
-                          <h3 className="text-lg font-bold mb-4 relative z-10 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent">
-                            Monthly waste collected (tons)
-                          </h3>
-                          <div className="h-80 relative z-10">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <BarChart data={wasteCollectionData}>
-                                <CartesianGrid
-                                  strokeDasharray="3 3"
-                                  stroke="#334155"
-                                />
-                                <XAxis dataKey="month" stroke="#9ca3af" />
-                                <YAxis stroke="#9ca3af" />
-                                <Tooltip
-                                  contentStyle={{
-                                    backgroundColor: "#0f172a",
-                                    borderColor: "#1e293b",
-                                    color: "#e2e8f0",
-                                    fontSize: 12,
-                                  }}
-                                />
-                                <Bar
-                                  dataKey="tons"
-                                  fill="#10b981"
-                                  radius={[8, 8, 0, 0]}
-                                />
-                              </BarChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </div>
-                        <div className="group relative rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 border border-green-800/50 p-6 backdrop-blur-xl shadow-xl hover:shadow-2xl hover:shadow-green-500/30 transition-all duration-300 overflow-hidden">
-                          <div className="absolute inset-0 bg-gradient-to-r from-sky-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 blur-sm transition-opacity" />
-                          <h3 className="text-lg font-bold mb-4 relative z-10 bg-gradient-to-r from-slate-100 to-sky-300 bg-clip-text text-transparent">
-                            Collection efficiency (%)
-                          </h3>
-                          <div className="h-80 relative z-10">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <LineChart data={performanceData}>
-                                <CartesianGrid
-                                  strokeDasharray="3 3"
-                                  stroke="#334155"
-                                />
-                                <XAxis dataKey="month" stroke="#9ca3af" />
-                                <YAxis stroke="#9ca3af" domain={[0, 100]} />
-                                <Tooltip
-                                  contentStyle={{
-                                    backgroundColor: "#0f172a",
-                                    borderColor: "#1e293b",
-                                    color: "#e2e8f0",
-                                    fontSize: 12,
-                                  }}
-                                />
-                                <Line
-                                  type="monotone"
-                                  dataKey="efficiency"
-                                  stroke="#0ea5e9"
-                                  strokeWidth={3}
-                                  dot={{
-                                    r: 4,
-                                    strokeWidth: 2,
-                                    stroke: "#0f172a",
-                                  }}
-                                />
-                              </LineChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {activeReportOption === "barangayConcerns" && (
-                  <>
-                    {loadingReportData ? (
-                      <TruckLoader />
-                    ) : errorReportData ? (
-                      <div className="rounded-2xl bg-gradient-to-r from-red-500/15 to-orange-500/15 border border-red-500/40 p-6 text-red-200 text-center text-sm backdrop-blur-xl shadow-lg">
-                        {errorReportData}
-                      </div>
-                    ) : (
-                      <div className="rounded-2xl border border-green-800/50 overflow-x-auto backdrop-blur-xl shadow-inner bg-slate-900/50">
-                        <table className="min-w-full text-sm">
-                          <thead className="bg-gradient-to-r from-slate-900/95 to-gray-900/95 text-slate-300 border-b border-green-800/50">
-                            <tr>
-                              <th className="px-6 py-4 text-left font-semibold">
-                                Barangay
-                              </th>
-                              <th className="px-6 py-4 text-left font-semibold">
-                                Issue
-                              </th>
-                              <th className="px-6 py-4 text-left font-semibold">
-                                Status
-                              </th>
-                              <th className="px-6 py-4 text-left font-semibold">
-                                Action
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {barangayConcerns.map((issue: any) => (
-                              <tr
-                                key={issue.report_id}
-                                className="border-t border-green-800/30 hover:bg-slate-800/60 transition-all duration-200"
-                              >
-                                <td className="px-6 py-4 font-semibold text-slate-200">
-                                  {issue.barangay_name}
-                                </td>
-                                <td className="px-6 py-4 max-w-md">
-                                  <p className="line-clamp-2 text-slate-300">
-                                    {issue.description}
-                                  </p>
-                                </td>
-                                <td className="px-6 py-4">
-                                  <span
-                                    className={`inline-flex px-3 py-1.5 rounded-2xl text-xs font-semibold border ${
-                                      issue.current_status === "Resolved"
-                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                                        : issue.current_status === "In Progress"
-                                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                                          : "bg-slate-500/20 text-slate-300 border-slate-500/40"
-                                    }`}
-                                  >
-                                    {issue.current_status}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4">
-                                  <button
-                                    className="group inline-flex items-center rounded-xl bg-gradient-to-r from-slate-100/90 to-slate-200/90 text-slate-900 px-4 py-2 text-xs font-semibold hover:from-emerald-500/90 hover:to-teal-500/90 hover:text-slate-100 hover:shadow-lg hover:shadow-emerald-500/30 transition-all duration-300 backdrop-blur-sm"
-                                    onClick={() =>
-                                      handleShowResponse(issue.report_id)
-                                    }
-                                  >
-                                    View response
-                                    <div className="ml-1 w-4 h-4 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full group-hover:animate-ping opacity-0 group-hover:opacity-100 transition-all ml-1" />
-                                  </button>
-                                  {showResponse[issue.report_id] && (
-                                    <div className="mt-3 rounded-xl border border-green-800/50 bg-slate-900/90 p-3 text-xs whitespace-pre-wrap text-slate-200 backdrop-blur-sm shadow-lg">
-                                      {responseDetails[issue.report_id] ||
-                                        "Loading..."}
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </section>
+            <>
+              <ReportsAnalytics />
+            </>
           )}
           {activeTab === "manageAccount" && (
             <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 max-w-2xl mx-auto">

@@ -202,12 +202,9 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-7 gap-2 text-center text-md text-slate-200 select-none min-w-[350px]">
+      <div className="mt-4 calendar-grid text-md text-slate-200 select-none">
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-          <div
-            key={d}
-            className="font-semibold py-1 text-center text-slate-200 text-xs uppercase tracking-wide"
-          >
+          <div key={d} className="calendar-weekday">
             {d}
           </div>
         ))}
@@ -224,7 +221,7 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
             const dayText = isCurrentMonth ? format(day, "d") : "";
 
             let cellClass =
-              "h-10 w-10 flex flex-col items-center justify-center text-lg rounded border transition";
+              "calendar-day h-10 w-10 flex flex-col items-center justify-center text-lg rounded border transition";
             if (!isCurrentMonth) {
               cellClass += " bg-slate-800/80 text-slate-500 border-slate-700";
             } else if (isToday) {
@@ -711,9 +708,9 @@ function SubmitReportSection({
   };
 
   return (
-    <section className="max-w-2xl mx-auto mt-1 rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-emerald-700/60 p-7 shadow-2xl shadow-emerald-900/40 backdrop-blur-2xl transition-all">
+    <section className="max-w-3xl mx-auto mt-4 rounded-3xl bg-gradient-to-br from-slate-900/95 to-gray-900/95 border border-emerald-800/30 p-8 md:p-10 shadow-2xl shadow-emerald-900/30 backdrop-blur-2xl transition-all">
       <div className="mb-4 flex items-center gap-3">
-        <span className="bg-emerald-500/20 text-emerald-300 rounded-2xl p-3 text-2xl border border-emerald-500/40 shadow-md shadow-emerald-900/50">
+        <span className="bg-emerald-700/10 text-emerald-300 rounded-2xl p-3 text-2xl border border-emerald-700/20 shadow-sm">
           📷
         </span>
         <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
@@ -721,8 +718,9 @@ function SubmitReportSection({
         </h2>
       </div>
 
-      <p className="mb-4 text-sm text-slate-300">
-        All required fields must be completed. Live camera capture is optional.
+      <p className="mb-5 text-sm text-slate-400 max-w-2xl">
+        All required fields must be completed. A photo is required before
+        submitting — use the live camera to capture evidence.
       </p>
 
       {fieldError && (
@@ -811,14 +809,14 @@ function SubmitReportSection({
             <button
               type="button"
               onClick={startCamera}
-              className="inline-flex items-center justify-center bg-sky-600 hover:bg-sky-500 text-white rounded-xl px-4 py-2 text-sm font-semibold shadow-lg shadow-sky-900/40 transition-colors"
+              className="inline-flex items-center justify-center bg-gradient-to-r from-sky-500 to-sky-400 text-white rounded-full px-5 py-2 text-sm font-semibold shadow-lg shadow-sky-900/40 transition-transform hover:scale-[1.02]"
             >
               Start Camera
             </button>
             <button
               type="button"
               onClick={toggleCameraFacing}
-              className="inline-flex items-center justify-center bg-slate-800/90 hover:bg-slate-700 text-emerald-300 rounded-xl px-4 py-2 text-xs font-semibold border border-emerald-500/50 shadow-md shadow-slate-900/50 transition-colors"
+              className="inline-flex items-center justify-center border border-emerald-500 text-emerald-300 bg-transparent rounded-full px-4 py-2 text-sm font-semibold shadow-sm hover:bg-emerald-700/5 transition"
             >
               Use {cameraFacing === "user" ? "Back" : "Front"} Camera
             </button>
@@ -829,30 +827,30 @@ function SubmitReportSection({
           <div className="flex flex-col gap-2 mt-2">
             <video
               ref={videoRef}
-              width={320}
-              height={240}
+              width={360}
+              height={270}
               autoPlay
-              className="rounded-xl border border-slate-700 shadow-lg shadow-slate-900/60 bg-black/60"
+              className="rounded-2xl border border-slate-700 shadow-lg shadow-slate-900/60 bg-black/60 w-full max-w-md"
             />
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-3 flex-wrap mt-2">
               <button
                 type="button"
                 onClick={capturePhoto}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl px-4 py-2 text-sm font-semibold shadow-lg shadow-emerald-900/50 transition-colors"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-5 py-2 text-sm font-semibold shadow-lg shadow-emerald-900/40 transition-transform hover:scale-[1.02]"
               >
                 Capture Photo
               </button>
               <button
                 type="button"
                 onClick={toggleCameraFacing}
-                className="bg-slate-800/90 hover:bg-slate-700 text-emerald-300 rounded-xl px-4 py-2 text-xs font-semibold border border-emerald-500/50 transition-colors"
+                className="border border-emerald-500 text-emerald-300 bg-transparent rounded-full px-4 py-2 text-sm font-semibold shadow-sm hover:bg-emerald-700/5 transition"
               >
-                Switch to {cameraFacing === "user" ? "Back" : "Front"} Camera
+                Switch Camera
               </button>
               <button
                 type="button"
                 onClick={stopCamera}
-                className="bg-slate-700/80 text-slate-200 rounded-xl px-4 py-2 text-sm font-semibold hover:bg-slate-600 transition-colors"
+                className="bg-slate-700/80 text-slate-200 rounded-full px-4 py-2 text-sm font-medium hover:bg-slate-600 transition"
               >
                 Cancel
               </button>
@@ -867,26 +865,29 @@ function SubmitReportSection({
         )}
 
         {photoUrl && (
-          <div className="mt-3 mb-2 flex flex-col items-center gap-3">
-            <img
-              src={photoUrl}
-              alt="Live Capture"
-              className="w-40 rounded-xl shadow-lg shadow-slate-900/60 border border-slate-700"
-            />
-            <button
-              type="button"
-              onClick={handleRetakePhoto}
-              className="inline-flex items-center justify-center bg-slate-800/90 hover:bg-slate-700 text-emerald-300 rounded-xl px-4 py-2 text-xs font-semibold border border-emerald-500/50 shadow-md shadow-slate-900/50 transition-colors"
-            >
-              Retake Photo
-            </button>
+          <div className="mt-4 mb-2 flex flex-col items-center gap-3">
+            <div className="w-44 rounded-2xl overflow-hidden border border-slate-700 shadow-lg">
+              <img src={photoUrl} alt="Live Capture" className="w-full block" />
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleRetakePhoto}
+                className="inline-flex items-center justify-center bg-slate-800/90 hover:bg-slate-700 text-emerald-300 rounded-full px-4 py-2 text-sm font-semibold border border-emerald-500/50 shadow-sm transition"
+              >
+                Retake Photo
+              </button>
+              <span className="text-xs text-slate-400 self-center">
+                Preview of captured image
+              </span>
+            </div>
           </div>
         )}
 
         <button
           type="submit"
           disabled={loading || !form.photoFile}
-          className="w-full py-3 text-sm font-semibold rounded-2xl ..."
+          className="w-full py-3 text-sm font-bold rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-xl hover:scale-[1.02] transition-transform disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {loading ? "Submitting..." : "Submit Report"}
         </button>
@@ -1108,10 +1109,11 @@ export default function ResidentDashboard() {
   const router = useRouter();
   const [reportSuccess, setReportSuccess] = useState<string | null>(null);
   const [reportSuccessModalOpen, setReportSuccessModalOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState("");
   const [activeTab, setActiveTab] = useState<ResidentActiveTab>("dashboard");
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [gps, setGps] = useState<{ lat: number | null; lng: number | null }>({
     lat: null,
     lng: null,
@@ -1518,6 +1520,71 @@ export default function ResidentDashboard() {
               </div>
             </div>
           </div>
+          {/* Profile Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-400/50 transition-all duration-300"
+            >
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm">
+                RD
+              </div>
+              <span className="hidden md:inline text-sm font-semibold text-emerald-300">
+                Resident
+              </span>
+              <svg
+                className={`w-4 h-4 text-emerald-300 transition-transform duration-300 ${profileDropdownOpen ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {profileDropdownOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setProfileDropdownOpen(false)}
+                />
+                <div className="absolute right-0 mt-2 w-56 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-emerald-500/30 shadow-2xl shadow-emerald-900/40 overflow-hidden z-50">
+                  <div className="p-3 border-b border-emerald-500/20">
+                    <p className="text-xs text-emerald-400 font-semibold">
+                      Resident Account
+                    </p>
+                  </div>
+                  <div className="py-2">
+                    <button
+                      onClick={() => {
+                        setActiveTab("manageAccount");
+                        setProfileDropdownOpen(false);
+                        setSidebarOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-200 hover:bg-emerald-500/10 transition-colors"
+                    >
+                      <span className="text-lg">⚙️</span>
+                      <span>Manage Account</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        handleLogout();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <span className="text-lg">🚪</span>
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -1587,17 +1654,7 @@ export default function ResidentDashboard() {
               </button>
             ))}
 
-            <div className="pt-6 mt-6 border-t border-green-800/40">
-              <button
-                onClick={handleLogout}
-                className="group relative w-full rounded-2xl bg-gradient-to-r from-red-600/90 to-orange-600/90 px-4 py-3 text-sm font-bold text-slate-100 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg overflow-hidden"
-              >
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  ⎋ Logout
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              </button>
-            </div>
+            <div className="pt-6 mt-6 border-t border-green-800/40"></div>
           </nav>
         </aside>
 
@@ -1764,45 +1821,57 @@ export default function ResidentDashboard() {
 
               {modalOpen && (
                 <div
-                  className="fixed inset-0 backdrop-blur-sm bg-black/60 z-50 flex justify-center items-center"
+                  className="pt-50 fixed inset-0 backdrop-blur-sm z-50 flex justify-center items-center"
                   onClick={() => setModalOpen(false)}
+                  onKeyDown={(e) => e.key === "Escape" && setModalOpen(false)}
+                  tabIndex={-1}
+                  role="presentation"
                 >
                   <div
-                    className="relative max-w-md w-full text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/60 bg-slate-900/95"
+                    className="relative max-w-lg w-full text-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.7)] rounded-2xl border border-emerald-700/60 bg-gradient-to-b from-slate-900/95 to-slate-800/90 transform transition-all duration-200 ease-out"
                     onClick={(e) => e.stopPropagation()}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="report-message-title"
                   >
                     {/* Title bar */}
-                    <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-2 border-b border-emerald-700/70">
-                      <div className="flex items-center gap-2">
-                        <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
-                          Report Message
+                    <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-3 border-b border-emerald-700/70">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-emerald-600/10 text-emerald-300 border border-emerald-700/30">
+                          💬
                         </span>
+                        <h3
+                          id="report-message-title"
+                          className="ml-1 text-sm font-semibold tracking-wide text-slate-100"
+                        >
+                          Report Message
+                        </h3>
                       </div>
 
                       <button
                         onClick={() => setModalOpen(false)}
-                        className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
-                        aria-label="Close"
+                        className="text-sm font-semibold text-slate-400 hover:text-red-400 px-2 py-1 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+                        aria-label="Close dialog"
                       >
                         ✕
                       </button>
                     </div>
 
                     {/* Content */}
-                    <div className="p-5">
-                      <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-2">
+                    <div className="p-6">
+                      <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-3">
                         MESSAGE
                       </p>
-                      <div className="rounded-lg bg-slate-900/80 border border-slate-700/70 px-3 py-2">
+                      <div className="rounded-lg bg-slate-900/80 border border-slate-700/70 px-4 py-3">
                         <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed break-words">
-                          {selectedMessage}
+                          {selectedMessage || "No message available."}
                         </p>
                       </div>
 
-                      <div className="mt-4 flex justify-end">
+                      <div className="mt-5 flex justify-end">
                         <button
                           onClick={() => setModalOpen(false)}
-                          className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 transition-colors"
+                          className="px-4 py-2 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 transition-colors"
                         >
                           Close
                         </button>

@@ -9,21 +9,43 @@ interface FeatureCardProps {
   icon: React.ReactNode;
   title: string;
   desc: string;
+  isDark: boolean;
 }
 
-function FeatureCard({ icon, title, desc }: FeatureCardProps) {
+function FeatureCard({ icon, title, desc, isDark }: FeatureCardProps) {
   return (
-    <div className="group relative bg-gradient-to-br from-slate-800/90 to-gray-800/90 border border-green-800/40 backdrop-blur-xl rounded-3xl shadow-2xl shadow-green-900/20 p-8 flex flex-col items-center text-center h-full min-h-[220px] transition-all duration-500 hover:-translate-y-3 hover:scale-[1.02] hover:shadow-3xl hover:shadow-green-600/30 hover:border-green-600/60 text-slate-200 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-r from-green-500/8 via-transparent to-emerald-500/8 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-
-      <div className="relative z-10 flex flex-col items-center space-y-4">
-        <div className="relative p-4 bg-gradient-to-br from-green-900/80 to-emerald-900/80 rounded-2xl shadow-xl group-hover:scale-110 transition-all duration-500 border border-green-700/50">
-          <span className="text-3xl drop-shadow-lg">{icon}</span>
-        </div>
-        <h3 className="font-bold text-xl bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent drop-shadow-sm">
+    <div
+      className={`group relative rounded-2xl shadow-lg p-8 flex flex-col items-center text-center h-full transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${
+        isDark
+          ? "bg-slate-800/80 border border-slate-700 hover:border-emerald-500/50 hover:bg-slate-800"
+          : "bg-white border border-gray-200 hover:border-emerald-400 hover:shadow-emerald-100"
+      }`}
+    >
+      <div
+        className="w-16 h-16 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300"
+        style={{
+          background: isDark
+            ? "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)"
+            : "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%)",
+        }}
+      >
+        <span className="text-4xl">{icon}</span>
+      </div>
+      <div className="space-y-3">
+        <h3
+          className={`font-bold text-xl group-hover:text-emerald-600 transition-colors ${
+            isDark ? "text-white" : "text-gray-900"
+          }`}
+        >
           {title}
         </h3>
-        <p className="text-base text-slate-300 leading-relaxed">{desc}</p>
+        <p
+          className={`text-sm leading-relaxed ${
+            isDark ? "text-slate-400" : "text-gray-600"
+          }`}
+        >
+          {desc}
+        </p>
       </div>
     </div>
   );
@@ -119,6 +141,7 @@ function useDashboardCountsInPage() {
 export default function LandingPage() {
   const { counts, loading } = useDashboardCountsInPage();
   const [now, setNow] = useState<Date>(new Date());
+  const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -126,6 +149,10 @@ export default function LandingPage() {
     }, 1000);
     return () => clearInterval(id);
   }, []);
+
+  const toggleTheme = () => {
+    setIsDark(!isDark);
+  };
 
   const roleLinks = [
     {
@@ -161,154 +188,420 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 font-sans">
-      {/* Dark subtle animated background */}
-      <div className="fixed inset-0 opacity-40">
-        <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 animate-pulse" />
+    <div
+      className={`min-h-screen flex flex-col font-sans transition-colors duration-300 ${
+        isDark
+          ? "bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 text-slate-200"
+          : "bg-gradient-to-br from-gray-50 via-white to-gray-100 text-gray-900"
+      }`}
+    >
+      {/* Background pattern */}
+      <div className="fixed inset-0 pointer-events-none opacity-30">
+        <div
+          className={`absolute inset-0 ${
+            isDark
+              ? "bg-gradient-to-br from-emerald-500/5 to-green-500/5"
+              : "bg-gradient-to-br from-emerald-500/3 to-green-500/3"
+          }`}
+        />
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-4 md:flex-row md:items-center md:justify-between md:gap-3">
+      <header
+        className={`sticky top-0 z-50 backdrop-blur-xl transition-colors duration-300 ${
+          isDark
+            ? "bg-slate-900/95 border-b border-slate-800 shadow-xl shadow-black/20"
+            : "bg-white/95 border-b border-gray-200 shadow-lg"
+        }`}
+      >
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
-            <div className="relative h-25 w-25 rounded-2xl ">
+            <div
+              className={`relative h-14 w-14 rounded-xl overflow-hidden ring-2 transition-all ${
+                isDark ? "ring-emerald-500/30" : "ring-emerald-500/20"
+              }`}
+            >
               <Image
                 src="/logo.png"
                 alt="Track-the-Truck logo"
-                width={100}
-                height={100}
+                width={56}
+                height={56}
                 className="object-contain"
                 priority
               />
             </div>
             <div>
-              <p className="text-sm uppercase tracking-wide font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-                Track‑the‑Truck
-              </p>
-              <p className="text-xs text-emerald-400 font-medium">
-                Tagbilaran City Waste Management and Community Reporting System
+              <h1 className="text-lg font-bold bg-gradient-to-r from-emerald-500 to-green-500 bg-clip-text text-transparent">
+                Track-the-Truck
+              </h1>
+              <p
+                className={`text-xs font-medium ${
+                  isDark ? "text-slate-400" : "text-gray-500"
+                }`}
+              >
+                Tagbilaran City Waste Management
               </p>
             </div>
           </div>
 
-          <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold justify-center md:justify-start">
-            {roleLinks.map((role) => (
+          <div className="flex items-center gap-4">
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              className={`p-3 rounded-xl transition-all duration-300 ${
+                isDark
+                  ? "bg-slate-800 hover:bg-slate-700 text-yellow-400 border border-slate-700"
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200"
+              }`}
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {isDark ? (
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" />
+                </svg>
+              ) : (
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                </svg>
+              )}
+            </button>
+
+            <nav className="hidden lg:flex items-center gap-2">
+              {roleLinks.slice(0, 3).map((role) => (
+                <a
+                  key={role.label}
+                  href={role.href}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    isDark
+                      ? "text-slate-300 hover:text-emerald-400 hover:bg-slate-800"
+                      : "text-gray-600 hover:text-emerald-600 hover:bg-emerald-50"
+                  }`}
+                  title={role.desc}
+                >
+                  {role.label}
+                </a>
+              ))}
               <a
-                key={role.label}
-                href={role.href}
-                className="group relative whitespace-nowrap rounded-2xl border-2 border-green-800/50 bg-slate-800/80 px-5 py-2.5 text-slate-200 hover:border-green-500/70 hover:text-emerald-300 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
-                title={role.desc}
+                href="/login"
+                className="ml-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-emerald-500 to-green-500 text-white text-sm font-semibold hover:shadow-lg hover:shadow-emerald-500/25 transition-all"
               >
-                <span className="relative z-10">{role.label}</span>
-                <div className="absolute -inset-1 bg-green-500/15 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
+                Sign In
               </a>
-            ))}
-          </nav>
+            </nav>
+          </div>
         </div>
       </header>
 
-      {/* Hero + Live Snapshot */}
-      <section className="relative z-10 w-full">
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-12 px-6 py-20 md:flex-row md:py-24 lg:gap-20">
-          <div className="w-full space-y-6 md:w-1/2">
-            <div className="inline-flex items-center rounded-2xl border border-green-800/50 bg-slate-800/90 px-6 py-3 text-sm font-semibold text-emerald-300 backdrop-blur-xl shadow-lg shadow-green-900/20">
-              📊 Live Data · 🚛 Real-time Tracking · 🔔 Smart Alerts
-            </div>
-            <h2 className="text-5xl font-bold leading-tight bg-gradient-to-r from-slate-100 via-green-300 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl md:text-6xl">
-              Smart Waste Collection
-              <span className="block bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-extrabold">
-                for Tagbilaran City
-              </span>
-            </h2>
-            <p className="max-w-lg text-xl text-slate-300 leading-relaxed">
-              Monitor garbage trucks in real-time, optimize collection routes,
-              and respond instantly to community reports—all from one modern
-              dashboard.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <a
-                href="/login?role=swmo"
-                className="group relative inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-green-600/90 to-emerald-600/90 px-8 py-4 text-lg font-bold text-slate-100 shadow-2xl shadow-green-500/30 hover:shadow-3xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl overflow-hidden"
+      {/* Hero Section */}
+      <section className="relative z-10 py-20 lg:py-28 px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+            {/* Left: Content */}
+            <div className="flex-1 text-center lg:text-left space-y-8">
+              {/* Badge */}
+              <div
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full transition-colors ${
+                  isDark
+                    ? "bg-emerald-500/10 border border-emerald-500/30"
+                    : "bg-emerald-50 border border-emerald-200"
+                }`}
               >
-                <span>Admin Dashboard →</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              </a>
-              <a
-                href="/login?role=resident"
-                className="inline-flex items-center justify-center rounded-xl border-2 border-emerald-500/60 bg-slate-800/90 px-8 py-4 text-lg font-semibold text-emerald-300 hover:bg-emerald-500/20 hover:border-emerald-400 backdrop-blur-xl transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/30"
+                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                <span
+                  className={`text-sm font-semibold ${
+                    isDark ? "text-emerald-400" : "text-emerald-700"
+                  }`}
+                >
+                  Live System Active
+                </span>
+              </div>
+
+              {/* Heading */}
+              <h1 className="text-5xl lg:text-7xl font-extrabold leading-tight">
+                <span className={isDark ? "text-white" : "text-gray-900"}>
+                  Smart Waste
+                </span>
+                <br />
+                <span className="bg-gradient-to-r from-emerald-500 to-green-600 bg-clip-text text-transparent">
+                  Management
+                </span>
+              </h1>
+
+              {/* Description */}
+              <p
+                className={`text-lg lg:text-xl max-w-2xl mx-auto lg:mx-0 leading-relaxed ${
+                  isDark ? "text-slate-400" : "text-gray-600"
+                }`}
               >
-                Resident Portal
-              </a>
+                Real-time garbage collection monitoring, intelligent route
+                optimization, and instant community reporting for Tagbilaran
+                City.
+              </p>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-2">
+                <a
+                  href="/login?role=swmo"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-green-500 text-white font-semibold text-lg hover:shadow-xl hover:shadow-emerald-500/30 transition-all"
+                >
+                  Get Started
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7l5 5m0 0l-5 5m5-5H6"
+                    />
+                  </svg>
+                </a>
+                <a
+                  href="/login?role=resident"
+                  className={`inline-flex items-center justify-center px-8 py-4 rounded-xl font-semibold text-lg transition-all ${
+                    isDark
+                      ? "border-2 border-slate-700 bg-slate-800/50 text-slate-200 hover:border-emerald-500/50 hover:bg-slate-800"
+                      : "border-2 border-gray-300 bg-white text-gray-700 hover:border-emerald-500 hover:text-emerald-600"
+                  }`}
+                >
+                  Resident Portal
+                </a>
+              </div>
+
+              {/* Stats */}
+              {!loading && counts && (
+                <div
+                  className={`flex flex-wrap gap-8 justify-center lg:justify-start pt-8 border-t transition-colors ${
+                    isDark ? "border-slate-800" : "border-gray-200"
+                  }`}
+                >
+                  <div>
+                    <p className="text-4xl font-bold bg-gradient-to-r from-emerald-500 to-green-500 bg-clip-text text-transparent">
+                      {counts.activeTrucks}
+                    </p>
+                    <p
+                      className={`text-sm font-medium mt-1 ${
+                        isDark ? "text-slate-500" : "text-gray-500"
+                      }`}
+                    >
+                      Active Trucks
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-4xl font-bold bg-gradient-to-r from-green-500 to-teal-500 bg-clip-text text-transparent">
+                      {counts.barangaysCovered}
+                    </p>
+                    <p
+                      className={`text-sm font-medium mt-1 ${
+                        isDark ? "text-slate-500" : "text-gray-500"
+                      }`}
+                    >
+                      Barangays
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-4xl font-bold bg-gradient-to-r from-teal-500 to-cyan-500 bg-clip-text text-transparent">
+                      {counts.residents + counts.gcps + counts.barangays}
+                    </p>
+                    <p
+                      className={`text-sm font-medium mt-1 ${
+                        isDark ? "text-slate-500" : "text-gray-500"
+                      }`}
+                    >
+                      Active Users
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
 
-          <div className="w-full md:w-1/2">
-            <div className="relative group">
-              <div className="w-full max-w-lg mx-auto rounded-3xl border border-green-800/50 bg-gradient-to-br from-slate-800/95 to-gray-800/95 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-500/8 to-emerald-500/8 rounded-3xl" />
-
-                <h3 className="mb-8 flex items-center gap-3 text-xl font-bold text-emerald-400 relative z-10">
-                  <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse shadow-md" />
-                  Live System Status
-                </h3>
-
-                {loading || !counts ? (
-                  <TruckLoader />
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 gap-6 mb-8">
-                      <div className="group relative p-6 rounded-2xl bg-gradient-to-b from-slate-700/90 to-gray-700/90 border border-green-800/50 hover:bg-green-500/10 transition-all duration-300 backdrop-blur-xl">
-                        <p className="text-sm text-emerald-400 uppercase tracking-wide font-semibold mb-2">
-                          Active Trucks
-                        </p>
-                        <p className="text-4xl font-black text-green-400 drop-shadow-lg">
-                          {counts.activeTrucks}
-                        </p>
-                      </div>
-                      <div className="group relative p-6 rounded-2xl bg-gradient-to-b from-slate-700/90 to-gray-700/90 border border-emerald-800/50 hover:bg-emerald-500/10 transition-all duration-300 backdrop-blur-xl">
-                        <p className="text-sm text-emerald-400 uppercase tracking-wide font-semibold mb-2">
-                          Barangays Covered
-                        </p>
-                        <p className="text-4xl font-black text-emerald-400 drop-shadow-lg">
-                          {counts.barangaysCovered}
-                        </p>
-                      </div>
+            {/* Right: Live Status Card */}
+            <div className="flex-1 w-full">
+              <div className="max-w-xl mx-auto lg:mx-0">
+                <div
+                  className={`rounded-2xl shadow-xl p-8 backdrop-blur-sm transition-colors ${
+                    isDark
+                      ? "bg-slate-800/80 border border-slate-700"
+                      : "bg-white border border-gray-200"
+                  }`}
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
+                      <h3
+                        className={`text-lg font-bold ${
+                          isDark ? "text-white" : "text-gray-900"
+                        }`}
+                      >
+                        Live Status
+                      </h3>
                     </div>
-                    <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-700/90 to-gray-700/90 border border-green-800/50 relative backdrop-blur-xl">
-                      <p className="text-sm text-slate-400 uppercase tracking-wide font-semibold mb-4">
-                        Today's Reports
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-2xl font-bold text-orange-400 drop-shadow-md">
-                            {counts.incidentReportsOpen}
+                    {!loading && counts && (
+                      <span
+                        className={`text-xs font-mono ${
+                          isDark ? "text-slate-500" : "text-gray-400"
+                        }`}
+                      >
+                        {now.toLocaleTimeString()}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  {loading || !counts ? (
+                    <TruckLoader />
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Stats Grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div
+                          className={`p-6 rounded-xl transition-colors ${
+                            isDark
+                              ? "bg-slate-700/50 border border-slate-600 hover:bg-slate-700"
+                              : "bg-emerald-50 border border-emerald-100 hover:bg-emerald-100"
+                          }`}
+                        >
+                          <p
+                            className={`text-xs uppercase tracking-wider font-bold mb-2 ${
+                              isDark ? "text-emerald-400" : "text-emerald-700"
+                            }`}
+                          >
+                            Trucks
                           </p>
-                          <p className="text-xs text-orange-300 font-medium">
-                            Open
+                          <p
+                            className={`text-4xl font-bold ${
+                              isDark ? "text-white" : "text-emerald-600"
+                            }`}
+                          >
+                            {counts.activeTrucks}
+                          </p>
+                          <p
+                            className={`text-xs mt-1 ${
+                              isDark ? "text-slate-500" : "text-gray-500"
+                            }`}
+                          >
+                            Active Now
                           </p>
                         </div>
-                        <div className="w-px h-12 bg-emerald-500/50 mx-6" />
-                        <div>
-                          <p className="text-2xl font-bold text-emerald-400 drop-shadow-md">
-                            {counts.incidentReportsResolved}
+                        <div
+                          className={`p-6 rounded-xl transition-colors ${
+                            isDark
+                              ? "bg-slate-700/50 border border-slate-600 hover:bg-slate-700"
+                              : "bg-green-50 border border-green-100 hover:bg-green-100"
+                          }`}
+                        >
+                          <p
+                            className={`text-xs uppercase tracking-wider font-bold mb-2 ${
+                              isDark ? "text-green-400" : "text-green-700"
+                            }`}
+                          >
+                            Coverage
                           </p>
-                          <p className="text-xs text-emerald-300 font-medium">
-                            Resolved
+                          <p
+                            className={`text-4xl font-bold ${
+                              isDark ? "text-white" : "text-green-600"
+                            }`}
+                          >
+                            {counts.barangaysCovered}
+                          </p>
+                          <p
+                            className={`text-xs mt-1 ${
+                              isDark ? "text-slate-500" : "text-gray-500"
+                            }`}
+                          >
+                            Barangays
                           </p>
                         </div>
                       </div>
-                    </div>
-                  </>
-                )}
 
-                {!loading && counts && (
-                  <p className="mt-6 text-sm text-emerald-400 text-center font-medium pt-4 border-t border-green-800/50 relative z-10">
-                    Time{" "}
-                    <span className="font-semibold text-emerald-300">
-                      {now.toLocaleTimeString()}
-                    </span>
-                  </p>
-                )}
+                      {/* Reports */}
+                      <div
+                        className={`p-6 rounded-xl transition-colors ${
+                          isDark
+                            ? "bg-slate-700/30 border border-slate-600"
+                            : "bg-gray-50 border border-gray-200"
+                        }`}
+                      >
+                        <p
+                          className={`text-xs uppercase tracking-wider font-bold mb-4 ${
+                            isDark ? "text-slate-400" : "text-gray-600"
+                          }`}
+                        >
+                          Community Reports
+                        </p>
+                        <div className="flex items-center justify-around">
+                          <div className="text-center">
+                            <div
+                              className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-2 ${
+                                isDark
+                                  ? "bg-orange-500/10 border-2 border-orange-500/30"
+                                  : "bg-orange-50 border-2 border-orange-200"
+                              }`}
+                            >
+                              <p
+                                className={`text-2xl font-bold ${
+                                  isDark ? "text-orange-400" : "text-orange-600"
+                                }`}
+                              >
+                                {counts.incidentReportsOpen}
+                              </p>
+                            </div>
+                            <p
+                              className={`text-xs font-medium ${
+                                isDark ? "text-slate-400" : "text-gray-600"
+                              }`}
+                            >
+                              Open
+                            </p>
+                          </div>
+                          <div
+                            className={`h-12 w-px ${
+                              isDark ? "bg-slate-600" : "bg-gray-300"
+                            }`}
+                          />
+                          <div className="text-center">
+                            <div
+                              className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-2 ${
+                                isDark
+                                  ? "bg-emerald-500/10 border-2 border-emerald-500/30"
+                                  : "bg-emerald-50 border-2 border-emerald-200"
+                              }`}
+                            >
+                              <p
+                                className={`text-2xl font-bold ${
+                                  isDark
+                                    ? "text-emerald-400"
+                                    : "text-emerald-600"
+                                }`}
+                              >
+                                {counts.incidentReportsResolved}
+                              </p>
+                            </div>
+                            <p
+                              className={`text-xs font-medium ${
+                                isDark ? "text-slate-400" : "text-gray-600"
+                              }`}
+                            >
+                              Resolved
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -316,134 +609,235 @@ export default function LandingPage() {
       </section>
 
       {/* Role Cards */}
-      <section className="mx-auto max-w-7xl px-6 py-5 relative z-10">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent drop-shadow-2xl mb-4">
-            Choose Your Role
-          </h2>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            Access your personalized dashboard for waste management operations
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-          {roleLinks.map((role, index) => (
-            <div
-              key={role.label}
-              className="group relative flex flex-col rounded-3xl border border-green-800/50 bg-gradient-to-br from-slate-800/90 to-gray-800/90 p-8 shadow-2xl shadow-green-900/20 backdrop-blur-xl hover:border-green-600/70 hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-4 transition-all duration-500 overflow-hidden"
-              style={{ animationDelay: `${index * 75}ms` }}
+      <section
+        className={`relative z-10 py-20 px-6 transition-colors ${
+          isDark ? "bg-slate-900/50" : "bg-gray-50"
+        }`}
+      >
+        <div className="mx-auto max-w-7xl">
+          <div className="text-center mb-12">
+            <span
+              className={`inline-block px-4 py-2 rounded-full text-sm font-semibold mb-4 transition-colors ${
+                isDark
+                  ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400"
+                  : "bg-emerald-50 border border-emerald-200 text-emerald-700"
+              }`}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/8 to-emerald-500/8 opacity-0 group-hover:opacity-100 transition-opacity" />
+              Quick Access
+            </span>
+            <h2
+              className={`text-4xl md:text-5xl font-bold mb-4 ${
+                isDark ? "text-white" : "text-gray-900"
+              }`}
+            >
+              Choose Your Role
+            </h2>
+            <p
+              className={`text-lg max-w-2xl mx-auto ${
+                isDark ? "text-slate-400" : "text-gray-600"
+              }`}
+            >
+              Secure portal access for all waste management stakeholders
+            </p>
+          </div>
 
-              <div className="relative z-10 flex flex-col items-center space-y-4 h-full justify-center">
-                <div className="text-4xl group-hover:scale-110 transition-transform duration-500 drop-shadow-lg">
-                  {getRoleIcon(role.label)}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {roleLinks.map((role, index) => (
+              <a
+                key={role.label}
+                href={role.href}
+                className={`group rounded-xl p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl ${
+                  isDark
+                    ? "bg-slate-800/80 border border-slate-700 hover:border-emerald-500/50 hover:bg-slate-800"
+                    : "bg-white border border-gray-200 hover:border-emerald-400 hover:shadow-emerald-100"
+                }`}
+              >
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div className="text-4xl transform group-hover:scale-110 transition-transform">
+                    {getRoleIcon(role.label)}
+                  </div>
+                  <div>
+                    <h3
+                      className={`text-base font-bold mb-1 transition-colors group-hover:text-emerald-600 ${
+                        isDark ? "text-white" : "text-gray-900"
+                      }`}
+                    >
+                      {role.label}
+                    </h3>
+                    <p
+                      className={`text-xs ${
+                        isDark ? "text-slate-500" : "text-gray-500"
+                      }`}
+                    >
+                      {role.desc}
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent drop-shadow-lg">
-                  {role.label}
-                </h3>
-                <p className="text-sm text-slate-300 text-center leading-relaxed">
-                  {role.desc}
-                </p>
-                <a
-                  href={role.href}
-                  className="mt-auto inline-flex items-center justify-center w-full rounded-2xl bg-gradient-to-r from-green-600/90 to-emerald-600/90 px-6 py-3 text-sm font-bold text-slate-100 shadow-xl shadow-green-500/30 hover:shadow-2xl hover:shadow-emerald-500/40 hover:scale-105 transition-all duration-300 backdrop-blur-xl"
-                >
-                  Login →
-                </a>
-              </div>
-            </div>
-          ))}
+              </a>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Features */}
-      <section className="mx-auto max-w-7xl px-6 py-5 relative z-10">
-        <div className="text-center mb-20">
-          <h2 className="text-5xl font-bold bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl mb-6">
-            Core Features
-          </h2>
-          <p className="max-w-3xl mx-auto text-xl text-slate-300">
-            Modern tools built for efficient waste collection and community
-            collaboration
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4">
-          <FeatureCard
-            icon="🚚"
-            title="Real-time Tracking"
-            desc="Live GPS locations, route optimization, and collection coverage."
-          />
-          <FeatureCard
-            icon="📱"
-            title="Role-based Dashboards"
-            desc="Custom interfaces for admins, collectors, and residents."
-          />
-          <FeatureCard
-            icon="🔒"
-            title="Secure Authentication"
-            desc="Supabase auth with role-based access control."
-          />
-          <FeatureCard
-            icon="📢"
-            title="Community Reports"
-            desc="Instant reporting for missed pickups and issues."
-          />
+      <section className="relative z-10 py-20 px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="text-center mb-12">
+            <span
+              className={`inline-block px-4 py-2 rounded-full text-sm font-semibold mb-4 transition-colors ${
+                isDark
+                  ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400"
+                  : "bg-emerald-50 border border-emerald-200 text-emerald-700"
+              }`}
+            >
+              Platform Features
+            </span>
+            <h2
+              className={`text-4xl md:text-5xl font-bold mb-4 ${
+                isDark ? "text-white" : "text-gray-900"
+              }`}
+            >
+              Everything You Need
+            </h2>
+            <p
+              className={`text-lg max-w-2xl mx-auto ${
+                isDark ? "text-slate-400" : "text-gray-600"
+              }`}
+            >
+              Comprehensive tools for modern waste management
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <FeatureCard
+              icon="🚚"
+              title="Real-time Tracking"
+              desc="Live GPS monitoring with route optimization and coverage analytics."
+              isDark={isDark}
+            />
+            <FeatureCard
+              icon="📱"
+              title="Role-based Access"
+              desc="Customized dashboards for admins, collectors, and residents."
+              isDark={isDark}
+            />
+            <FeatureCard
+              icon="🔒"
+              title="Secure Platform"
+              desc="Enterprise-grade authentication with role-based permissions."
+              isDark={isDark}
+            />
+            <FeatureCard
+              icon="📢"
+              title="Community Reports"
+              desc="Instant incident reporting with photo uploads and tracking."
+              isDark={isDark}
+            />
+          </div>
         </div>
       </section>
 
       {/* Advanced Features */}
-      <section className="mx-auto max-w-7xl px-6 py-24 relative z-10 bg-slate-800/50 backdrop-blur-2xl rounded-3xl border border-green-800/30 border-t-4 border-t-emerald-500/50">
-        <div className="text-center mb-20">
-          <h2 className="text-5xl font-bold bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl mb-6">
-            Advanced Tools
-          </h2>
-          <p className="max-w-3xl mx-auto text-xl text-slate-300">
-            Smart features powered by geospatial data and real-time analytics
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4">
-          <FeatureCard
-            icon="🔔"
-            title="Smart Notifications"
-            desc="Alerts for delays, schedule changes, and priority issues."
-          />
-          <FeatureCard
-            icon="🗺️"
-            title="Interactive Maps"
-            desc="Barangay zones, truck positions, and route visualization."
-          />
-          <FeatureCard
-            icon="📊"
-            title="Performance Analytics"
-            desc="Collection efficiency, trends, and operational insights."
-          />
-          <FeatureCard
-            icon="👥"
-            title="Community Dashboard"
-            desc="Resident feedback and barangay-level reporting."
-          />
+      <section
+        className={`relative z-10 py-20 px-6 transition-colors ${
+          isDark ? "bg-slate-900/50" : "bg-emerald-50/50"
+        }`}
+      >
+        <div className="mx-auto max-w-7xl">
+          <div className="text-center mb-12">
+            <span
+              className={`inline-block px-4 py-2 rounded-full text-sm font-semibold mb-4 transition-colors ${
+                isDark
+                  ? "bg-green-500/10 border border-green-500/30 text-green-400"
+                  : "bg-green-50 border border-green-200 text-green-700"
+              }`}
+            >
+              Advanced Capabilities
+            </span>
+            <h2
+              className={`text-4xl md:text-5xl font-bold mb-4 ${
+                isDark ? "text-white" : "text-gray-900"
+              }`}
+            >
+              Smart Solutions
+            </h2>
+            <p
+              className={`text-lg max-w-2xl mx-auto ${
+                isDark ? "text-slate-400" : "text-gray-600"
+              }`}
+            >
+              AI-powered insights and geospatial intelligence
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <FeatureCard
+              icon="🔔"
+              title="Smart Alerts"
+              desc="Automated notifications for delays, changes, and priority incidents."
+              isDark={isDark}
+            />
+            <FeatureCard
+              icon="🗺️"
+              title="Interactive Maps"
+              desc="Real-time visualization of zones, vehicles, and routes."
+              isDark={isDark}
+            />
+            <FeatureCard
+              icon="📊"
+              title="Analytics Dashboard"
+              desc="Performance metrics, trends, and operational insights."
+              isDark={isDark}
+            />
+            <FeatureCard
+              icon="👥"
+              title="Community Hub"
+              desc="Resident engagement with feedback and coordination tools."
+              isDark={isDark}
+            />
+          </div>
         </div>
       </section>
-      <br />
 
       {/* Footer */}
-      <footer className="bg-gradient-to-r from-slate-900 to-emerald-900/80 text-slate-200 border-t border-green-800/50 relative z-10">
-        <div className="mx-auto max-w-7xl px-6 py-1">
-          <div className="flex flex-col items-center justify-between gap-6 md:flex-row md:items-center">
-            <div className="flex items-center gap-3 text-emerald-300">
-              <Image
-                src="/logo.png"
-                alt="Track-the-Truck logo"
-                width={100}
-                height={100}
-                className="object-contain"
-                priority
-              />
-              <span>&copy; {new Date().getFullYear()} Track-the-Truck</span>
+      <footer
+        className={`relative z-10 mt-20 transition-colors ${
+          isDark
+            ? "bg-slate-900 border-t border-slate-800"
+            : "bg-gray-900 border-t border-gray-800"
+        }`}
+      >
+        <div className="mx-auto max-w-7xl px-6 py-12">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <div className="relative h-12 w-12 rounded-lg overflow-hidden shadow-md">
+                <Image
+                  src="/logo.png"
+                  alt="Track-the-Truck logo"
+                  width={48}
+                  height={48}
+                  className="object-cover"
+                  priority
+                />
+              </div>
+              <div>
+                <p className="text-base font-bold text-white">
+                  Track-the-Truck
+                </p>
+                <p className="text-sm text-gray-400">
+                  &copy; {new Date().getFullYear()} All rights reserved
+                </p>
+              </div>
             </div>
-            <p className="text-emerald-400/80 font-medium text-center md:text-right">
-              Serving Tagbilaran City Waste Management Operations
-            </p>
+
+            <div className="text-center md:text-right">
+              <p className="text-gray-300 font-medium">
+                Serving Tagbilaran City
+              </p>
+              <p className="text-sm text-gray-400 mt-1">
+                Smart Waste Management System
+              </p>
+            </div>
           </div>
         </div>
       </footer>

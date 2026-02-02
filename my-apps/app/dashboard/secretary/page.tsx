@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import dynamic from "next/dynamic";
 import TruckLoader from "../../loading/TruckLoader";
+import SharedCalendar from "../../components/SharedCalendar";
 import { start } from "repl";
 
 const LeafletMap = dynamic(() => import("../../leafletmap"), { ssr: false });
@@ -354,7 +355,7 @@ function ScheduleFormWithCalendar({
       {/* Schedule Input Form */}
       <form
         onSubmit={handleSubmit}
-        className="group relative flex-1 rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-8 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden"
+        className="group relative flex-1 rounded-3xl bg-gradient-to-br from-slate-900/95 to-slate-900/95 border border-emerald-800/20 p-8 backdrop-blur-md transition-all duration-400 overflow-hidden shadow-inner"
         style={{ maxWidth: 450 }}
       >
         {/* Glow effect */}
@@ -369,97 +370,177 @@ function ScheduleFormWithCalendar({
           <div>
             <label
               htmlFor="barangay_id"
-              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3"
             >
               Barangay
             </label>
-            <select
-              id="barangay_id"
-              name="barangay_id"
-              value={schedule.barangay_id}
-              onChange={handleChange}
-              className="w-full rounded-2xl bg-slate-900/80 border border-green-800/50 px-5 py-4 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20 appearance-none bg-no-repeat bg-right pr-10"
-              required
-            >
-              <option value="">Select Barangay</option>
-              {availableBarangays.map((b) => (
-                <option key={b.barangay_id} value={b.barangay_id}>
-                  {b.barangay_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id="barangay_id"
+                name="barangay_id"
+                value={schedule.barangay_id}
+                onChange={handleChange}
+                className="w-full rounded-2xl bg-slate-900/80 border border-emerald-800/20 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-shadow duration-200 backdrop-blur-md shadow-sm appearance-none pr-12"
+                required
+              >
+                <option value="">Select Barangay</option>
+                {availableBarangays.map((b) => (
+                  <option key={b.barangay_id} value={b.barangay_id}>
+                    {b.barangay_name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="opacity-70"
+                >
+                  <path
+                    d="M6 8l4 4 4-4"
+                    stroke="#86efac"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {/* Truck */}
           <div>
             <label
               htmlFor="truck_code"
-              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3"
             >
               Truck
             </label>
-            <select
-              id="truck_code"
-              name="truck_code"
-              value={schedule.truck_code}
-              onChange={handleChange}
-              className="w-full rounded-2xl bg-slate-900/80 border border-green-800/50 px-5 py-4 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20 appearance-none bg-no-repeat bg-right pr-10"
-              required
-            >
-              <option value="">Select Truck</option>
-              {trucks.map((t) => (
-                <option key={t.truck_id} value={t.truck_code}>
-                  {t.truck_code}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id="truck_code"
+                name="truck_code"
+                value={schedule.truck_code}
+                onChange={handleChange}
+                className="w-full rounded-2xl bg-slate-900/80 border border-emerald-800/20 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-shadow duration-200 backdrop-blur-md shadow-sm appearance-none pr-12"
+                required
+              >
+                <option value="">Select Truck</option>
+                {trucks.map((t) => (
+                  <option key={t.truck_id} value={t.truck_code}>
+                    {t.truck_code}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="opacity-70"
+                >
+                  <path
+                    d="M6 8l4 4 4-4"
+                    stroke="#86efac"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {/* GCP */}
           <div>
             <label
               htmlFor="gcp_user_id"
-              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3"
             >
               GCP
             </label>
-            <select
-              id="gcp_user_id"
-              name="gcp_user_id"
-              value={schedule.gcp_user_id}
-              onChange={handleChange}
-              className="w-full rounded-2xl bg-slate-900/80 border border-green-800/50 px-5 py-4 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20 appearance-none bg-no-repeat bg-right pr-10"
-              required
-            >
-              <option value="">Select GCP</option>
-              {gcps.map((g) => (
-                <option key={g.user_id} value={g.user_id}>
-                  {g.first_name} {g.last_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id="gcp_user_id"
+                name="gcp_user_id"
+                value={schedule.gcp_user_id}
+                onChange={handleChange}
+                className="w-full rounded-2xl bg-slate-900/80 border border-emerald-800/20 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-shadow duration-200 backdrop-blur-md shadow-sm appearance-none pr-12"
+                required
+              >
+                <option value="">Select GCP</option>
+                {gcps.map((g) => (
+                  <option key={g.user_id} value={g.user_id}>
+                    {g.first_name} {g.last_name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="opacity-70"
+                >
+                  <path
+                    d="M6 8l4 4 4-4"
+                    stroke="#86efac"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {/* Schedule Pattern */}
           <div>
             <label
               htmlFor="schedule_pattern"
-              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3"
             >
               Schedule Pattern
             </label>
-            <select
-              id="schedule_pattern"
-              name="schedule_pattern"
-              value={schedule.schedule_pattern}
-              onChange={handleChange}
-              className="w-full rounded-2xl bg-slate-900/80 border border-green-800/50 px-5 py-4 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20 appearance-none bg-no-repeat bg-right pr-10"
-              required
-            >
-              <option value="">Select Pattern</option>
-              <option value="MWF">Monday-Wednesday-Friday (MWF)</option>
-              <option value="TTH">Tuesday-Thursday (TTH)</option>
-            </select>
+            <div className="relative">
+              <select
+                id="schedule_pattern"
+                name="schedule_pattern"
+                value={schedule.schedule_pattern}
+                onChange={handleChange}
+                className="w-full rounded-2xl bg-slate-900/80 border border-emerald-800/20 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-shadow duration-200 backdrop-blur-md shadow-sm appearance-none pr-12"
+                required
+              >
+                <option value="">Select Pattern</option>
+                <option value="MWF">Monday-Wednesday-Friday (MWF)</option>
+                <option value="TTH">Tuesday-Thursday (TTH)</option>
+              </select>
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="opacity-70"
+                >
+                  <path
+                    d="M6 8l4 4 4-4"
+                    stroke="#86efac"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {/* Time */}
@@ -470,15 +551,43 @@ function ScheduleFormWithCalendar({
             >
               Time (for display/preview only)
             </label>
-            <input
-              id="start_time"
-              type="time"
-              name="start_time"
-              value={schedule.start_time}
-              onChange={handleChange}
-              className="w-full rounded-2xl bg-slate-900/80 border border-green-800/50 px-5 py-4 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20"
-              required
-            />
+            <div className="relative">
+              <input
+                id="start_time"
+                type="time"
+                name="start_time"
+                value={schedule.start_time}
+                onChange={handleChange}
+                className="w-full rounded-2xl bg-slate-900/80 border border-emerald-800/20 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-shadow duration-200 backdrop-blur-md shadow-sm pr-12"
+                required
+              />
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="opacity-70"
+                >
+                  <path
+                    d="M12 7v5l3 3"
+                    stroke="#86efac"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="9"
+                    stroke="#86efac"
+                    strokeWidth="1.2"
+                    opacity="0.3"
+                  />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {error && (
@@ -508,9 +617,9 @@ function ScheduleFormWithCalendar({
       </form>
 
       {/* Calendar View */}
-      <div className="group relative flex-1 rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-8 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden min-w-[350px]">
-        {/* Glow effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+      <div className="group relative flex-1 rounded-3xl bg-slate-900/95 border border-slate-800/30 shadow-md p-8 backdrop-blur-sm transition-all duration-300 overflow-hidden min-w-[350px]">
+        {/* Subtle glow effect (reduced) */}
+        <div className="absolute inset-0 bg-gradient-to-r from-green-500/3 via-transparent to-emerald-500/3 opacity-0 group-hover:opacity-30 transition-opacity pointer-events-none" />
 
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-8">
@@ -538,102 +647,15 @@ function ScheduleFormWithCalendar({
           </div>
 
           <div className="overflow-auto max-h-[500px]">
-            {monthsToShow.map(({ year, month }) => {
-              const patternDates = generatePatternDates(
-                schedule.schedule_pattern,
-                year,
-                month,
-              );
-
-              const weeks: Date[][] = [];
-              {
-                const start = startOfWeek(startOfMonth(new Date(year, month)), {
-                  weekStartsOn: 1,
-                });
-                const end = endOfWeek(endOfMonth(new Date(year, month)), {
-                  weekStartsOn: 1,
-                });
-                let currentWeekStart = start;
-                while (currentWeekStart <= end) {
-                  const weekDays = [];
-                  for (let i = 0; i < 7; i++) {
-                    weekDays.push(addDays(currentWeekStart, i));
-                  }
-                  weeks.push(weekDays);
-                  currentWeekStart = addWeeks(currentWeekStart, 1);
-                }
-              }
-
-              return (
-                <div key={`${year}-${month}`} className="mb-8">
-                  <div className="mb-4 flex justify-center">
-                    <span className="text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
-                      {format(new Date(year, month), "LLLL yyyy")}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-7 gap-2 text-center text-sm select-none min-w-[350px]">
-                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
-                      (d) => (
-                        <div
-                          key={d}
-                          className="font-bold py-3 text-emerald-300 uppercase tracking-wide text-xs"
-                        >
-                          {d}
-                        </div>
-                      ),
-                    )}
-                    {weeks.map((weekDays, weekIdx) =>
-                      weekDays.map((day) => {
-                        const isScheduled = patternDates.some(
-                          (d) => d.toDateString() === day.toDateString(),
-                        );
-                        const dayText =
-                          day.getMonth() === month ? format(day, "d") : "";
-                        const isCurrentMonth = day.getMonth() === month;
-                        const isSatOrSun =
-                          isCurrentMonth &&
-                          (day.getDay() === 6 || day.getDay() === 0);
-
-                        return (
-                          <div
-                            key={day.toISOString() + weekIdx}
-                            className={`
-                            h-14 w-14 rounded-2xl cursor-default flex flex-col items-center justify-center mx-auto transition-all duration-300 group
-                            text-sm font-bold border-2
-                            ${
-                              isScheduled && isCurrentMonth
-                                ? "bg-gradient-to-br from-emerald-500/90 to-teal-500/90 text-slate-100 shadow-lg shadow-emerald-500/40 scale-105 border-emerald-400/70 hover:scale-110"
-                                : isSatOrSun && isCurrentMonth
-                                  ? "bg-gradient-to-br from-slate-700/50 to-gray-700/50 text-slate-400 border-slate-600/50 hover:bg-slate-600/50"
-                                  : !isCurrentMonth
-                                    ? "bg-slate-800/30 text-slate-500 border-slate-700/50 hover:bg-slate-700/40"
-                                    : "bg-slate-900/50 text-slate-300 border-green-800/50 hover:bg-green-500/10 hover:border-green-600/70 hover:text-slate-200"
-                            }
-                          `}
-                            title={
-                              isScheduled && isCurrentMonth
-                                ? `Scheduled: ${format(
-                                    day,
-                                    "EEE, MMM d, yyyy",
-                                  )} at ${schedule.start_time}`
-                                : isSatOrSun && isCurrentMonth
-                                  ? "No working day"
-                                  : ""
-                            }
-                          >
-                            <span>{dayText}</span>
-                            {isScheduled && isCurrentMonth && (
-                              <div className="w-2 h-2 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full mt-1 animate-ping shadow-md" />
-                            )}
-                          </div>
-                        );
-                      }),
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {monthsToShow.map(({ year, month }) => (
+              <SharedCalendar
+                key={`${year}-${month}`}
+                year={year}
+                month={month}
+                pattern={schedule.schedule_pattern}
+                startTime={schedule.start_time}
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -667,6 +689,9 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
   const [editScheduleId, setEditScheduleId] = useState<string | null>(null);
   const [editPattern, setEditPattern] = useState("");
   const [schedules, setSchedules] = useState<SidebarSchedule[]>([]);
+  const [archivedOpen, setArchivedOpen] = useState(false);
+  const [archivedSchedules, setArchivedSchedules] = useState<any[]>([]);
+  const [archivedLoading, setArchivedLoading] = useState(false);
 
   useEffect(() => {
     if (!selectedBarangay) {
@@ -718,25 +743,65 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
     fetchSchedules();
   }, [selectedBarangay]);
 
-  // Remove schedule
-  const handleDelete = async (schedule_id: string) => {
+  const fetchArchivedSchedules = async () => {
+    setArchivedLoading(true);
+    try {
+      const res = await supabase
+        .from("collection_schedules")
+        .select(
+          `schedule_id, days, start_time, date_created, barangay:barangay_id ( barangay_id, barangay_name ), gcp_user:gcp_user_id ( user_id, first_name, last_name )`,
+        )
+        .eq("status", "Archived")
+        .order("date_created", { ascending: false });
+
+      if ((res as any).error) {
+        const err = (res as any).error;
+        console.error("Supabase error loading archived schedules:", err);
+        setArchivedSchedules([]);
+        throw new Error(err.message || JSON.stringify(err));
+      }
+
+      const data = (res as any).data || [];
+      setArchivedSchedules(data as any[]);
+    } catch (err) {
+      try {
+        console.error(
+          "Failed to load archived schedules:",
+          err,
+          JSON.stringify(err),
+        );
+      } catch (_e) {
+        console.error(
+          "Failed to load archived schedules (unserializable):",
+          err,
+        );
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      alert("Failed to load archived schedules: " + msg);
+    } finally {
+      setArchivedLoading(false);
+    }
+  };
+
+  // Archive schedule instead of deleting
+  const handleArchive = async (schedule_id: string) => {
     if (
       !window.confirm(
-        "Are you sure? This will permanently delete the schedule.",
+        "Archive this schedule? It will be hidden from active lists but kept in the system.",
       )
     )
       return;
     try {
       const { error } = await supabase
         .from("collection_schedules")
-        .delete()
+        .update({ status: "Archived" })
         .eq("schedule_id", schedule_id);
       if (error) throw error;
       setSchedules((s) =>
         s.filter((sc: any) => sc.schedule_id !== schedule_id),
       );
     } catch (err) {
-      alert("Failed to delete schedule.");
+      alert("Failed to archive schedule.");
     }
   };
 
@@ -768,26 +833,9 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
   };
 
   function renderCalendar(schedule: CalendarSchedule) {
-    const weeks: Date[][] = [];
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth();
-    const start = startOfWeek(startOfMonth(new Date(year, month)), {
-      weekStartsOn: 1,
-    });
-    const end = endOfWeek(endOfMonth(new Date(year, month)), {
-      weekStartsOn: 1,
-    });
-    const patternDates = generatePatternDates(schedule.days, year, month);
-    let currentWeekStart = start;
-    while (currentWeekStart <= end) {
-      const weekDays = [];
-      for (let i = 0; i < 7; i++) {
-        weekDays.push(addDays(currentWeekStart, i));
-      }
-      weeks.push(weekDays);
-      currentWeekStart = addWeeks(currentWeekStart, 1);
-    }
     return (
       <div className="my-4">
         <div className="flex justify-center mb-2">
@@ -795,184 +843,230 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
             {format(new Date(year, month), "LLLL yyyy")}
           </span>
         </div>
-        <div className=" grid grid-cols-7 gap-3 min-w-[350px]">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-            <div
-              key={d}
-              className="font-semibold py-1 text-center text-gray-800"
-            >
-              {d}
-            </div>
-          ))}
-          {weeks.map((weekDays, weekIdx) =>
-            weekDays.map((day, dayIdx) => {
-              const isScheduled = patternDates.some(
-                (d) => d.toDateString() === day.toDateString(),
-              );
-              const dayText = day.getMonth() === month ? format(day, "d") : "";
-              const isCurrentMonth = day.getMonth() === month;
-              return (
-                <div
-                  key={day.toISOString() + weekIdx}
-                  className={[
-                    "h-12 w-12 flex flex-col items-center justify-center text-md rounded border",
-                    isScheduled && isCurrentMonth
-                      ? "bg-green-600 text-black font-bold border-green-600"
-                      : "",
-                    !isScheduled && isCurrentMonth
-                      ? "bg-white border-green-300 text-black font-bold"
-                      : "",
-                    !isCurrentMonth
-                      ? "bg-gray-50 text-gray-300 border-gray-100"
-                      : "",
-                  ].join(" ")}
-                  title={
-                    isScheduled && isCurrentMonth
-                      ? `Scheduled: ${format(day, "EEE, MMM d, yyyy")}`
-                      : ""
-                  }
-                >
-                  <span>{dayText}</span>
-                </div>
-              );
-            }),
-          )}
+        <div className="min-w-[280px]">
+          <SharedCalendar
+            year={year}
+            month={month}
+            pattern={schedule.days as any}
+            startTime={schedule.start_time}
+          />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 h-fit max-h-[92vh]">
-      {/* Compact Barangay Select */}
-      <div>
-        <label
-          htmlFor="barangay_select"
-          className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text"
-        >
-          Barangay
-        </label>
-        <select
-          id="barangay_select"
-          className="block w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 
+    <>
+      <div className="space-y-4 h-fit max-h-[92vh]">
+        {/* Compact Barangay Select */}
+        <div>
+          <label
+            htmlFor="barangay_select"
+            className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text"
+          >
+            Barangay
+          </label>
+          <select
+            id="barangay_select"
+            className="block w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 
                    focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500 
                    appearance-none pr-8"
-          value={selectedBarangay}
-          onChange={(e) => setSelectedBarangay(e.target.value)}
-          required
-        >
-          <option value="">Select Barangay</option>
-          {barangays.map((b) => (
-            <option key={b.barangay_id} value={b.barangay_id}>
-              {b.barangay_name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Loading/Error - Minimal */}
-      {loading && (
-        <div className="flex items-center justify-center py-4 rounded-lg bg-slate-900/50 border border-green-800/50 text-xs text-slate-400">
-          <span className="animate-spin mr-2">📅</span>Loading...
-        </div>
-      )}
-      {error && (
-        <div className="rounded-lg bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/50 p-2.5 text-orange-200 text-xs flex items-center gap-1.5">
-          ⚠️ {error}
-        </div>
-      )}
-
-      {/* No schedules - Minimal */}
-      {selectedBarangay && schedules.length === 0 && !loading && (
-        <div className="text-center py-6 rounded-lg bg-slate-900/50 border border-green-800/50 text-slate-400 text-xs">
-          <div className="text-xl mb-1 opacity-50">📅</div>
-          No schedules
-        </div>
-      )}
-
-      {/* Full Month Calendar container */}
-      <div className="max-h-[75vh] overflow-y-auto rounded-xl bg-gradient-to-br from-slate-800/90 to-gray-800/90 border border-green-800/50 shadow-xl backdrop-blur-xl">
-        {schedules.map((schedule, index) => (
-          <div
-            key={schedule.schedule_id}
-            className={`p-4 border-b border-green-800/30 last:border-b-0 ${
-              index > 0 ? "pt-0 mt-0" : ""
-            }`}
+            value={selectedBarangay}
+            onChange={(e) => setSelectedBarangay(e.target.value)}
+            required
           >
-            {/* Compact Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2 pb-2 border-b border-green-800/20">
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-black text-slate-100 truncate">
-                  {schedule.barangay?.barangay_name}
-                </div>
-                <div className="text-xs text-emerald-400 break-words">
-                  {schedule.days}
-                </div>
-              </div>
+            <option value="">Select Barangay</option>
+            {barangays.map((b) => (
+              <option key={b.barangay_id} value={b.barangay_id}>
+                {b.barangay_name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-              {/* Action Buttons – wrap on small screens */}
-              <div className="flex flex-wrap justify-end gap-2">
-                {editScheduleId === schedule.schedule_id ? (
-                  <>
-                    <input
-                      value={editPattern}
-                      onChange={(e) => setEditPattern(e.target.value)}
-                      className="w-full xs:w-24 sm:w-28 h-8 rounded-lg bg-slate-900/80 border border-slate-600/50 px-2 py-1 text-xs text-slate-200 placeholder-slate-500 
+        {/* Loading/Error - Minimal */}
+        {loading && (
+          <div className="flex items-center justify-center py-4 rounded-lg bg-slate-900/50 border border-green-800/50 text-xs text-slate-400">
+            <span className="animate-spin mr-2">📅</span>Loading...
+          </div>
+        )}
+        {error && (
+          <div className="rounded-lg bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/50 p-2.5 text-orange-200 text-xs flex items-center gap-1.5">
+            ⚠️ {error}
+          </div>
+        )}
+
+        {/* No schedules - Minimal */}
+        {selectedBarangay && schedules.length === 0 && !loading && (
+          <div className="text-center py-6 rounded-lg bg-slate-900/50 border border-green-800/50 text-slate-400 text-xs">
+            <div className="text-xl mb-1 opacity-50">📅</div>
+            No schedules
+          </div>
+        )}
+
+        {/* Full Month Calendar container */}
+        <div className="max-h-[75vh] overflow-y-auto rounded-xl bg-gradient-to-br from-slate-800/90 to-gray-800/90 border border-green-800/50 shadow-xl backdrop-blur-xl">
+          <div className="flex items-center justify-end p-3 border-b border-green-800/20">
+            <button
+              className="inline-flex items-center gap-2 px-3 py-2 bg-slate-700/60 text-slate-100 rounded-2xl border border-green-800/40 hover:bg-slate-700/80 transition"
+              onClick={() => {
+                setArchivedOpen(true);
+                fetchArchivedSchedules();
+              }}
+              title="View archived schedules"
+            >
+              Archived
+              <span className="text-xs text-slate-300">
+                ({archivedSchedules.length})
+              </span>
+            </button>
+          </div>
+          {schedules.map((schedule, index) => (
+            <div
+              key={schedule.schedule_id}
+              className={`p-4 border-b border-green-800/30 last:border-b-0 ${
+                index > 0 ? "pt-0 mt-0" : ""
+              }`}
+            >
+              {/* Compact Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2 pb-2 border-b border-green-800/20">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-black text-slate-100 truncate">
+                    {schedule.barangay?.barangay_name}
+                  </div>
+                  <div className="text-xs text-emerald-400 break-words">
+                    {schedule.days}
+                  </div>
+                </div>
+
+                {/* Action Buttons – wrap on small screens */}
+                <div className="flex flex-wrap justify-end gap-2">
+                  {editScheduleId === schedule.schedule_id ? (
+                    <>
+                      <input
+                        value={editPattern}
+                        onChange={(e) => setEditPattern(e.target.value)}
+                        className="w-full xs:w-24 sm:w-28 h-8 rounded-lg bg-slate-900/80 border border-slate-600/50 px-2 py-1 text-xs text-slate-200 placeholder-slate-500 
                                focus:outline-none focus:ring-1 focus:ring-emerald-400/50 focus:border-emerald-500/70 
                                transition-all backdrop-blur-sm shadow-sm"
-                      placeholder="Pattern"
-                    />
-                    <button
-                      className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white rounded-lg shadow-md 
+                        placeholder="Pattern"
+                      />
+                      <button
+                        className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white rounded-lg shadow-md 
                                hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
-                      onClick={() => handleSaveEdit(schedule.schedule_id)}
-                    >
-                      Save
-                    </button>
-                    <button
-                      className="h-8 px-3 bg-slate-600 hover:bg-slate-700 text-xs font-bold text-white rounded-lg shadow-md 
+                        onClick={() => handleSaveEdit(schedule.schedule_id)}
+                      >
+                        Save
+                      </button>
+                      <button
+                        className="h-8 px-3 bg-slate-600 hover:bg-slate-700 text-xs font-bold text-white rounded-lg shadow-md 
                                hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
-                      onClick={() => setEditScheduleId(null)}
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white rounded-lg shadow-md 
+                        onClick={() => setEditScheduleId(null)}
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white rounded-lg shadow-md 
                                hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
-                      onClick={() => handleEdit(schedule)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="h-8 px-3 bg-red-600 hover:bg-red-700 text-xs font-bold text-white rounded-lg shadow-md 
+                        onClick={() => handleEdit(schedule)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="h-8 px-3 bg-amber-600 hover:bg-amber-700 text-xs font-bold text-white rounded-lg shadow-md 
                                hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
-                      onClick={() => handleDelete(schedule.schedule_id)}
-                    >
-                      Delete
-                    </button>
-                  </>
-                )}
+                        onClick={() => handleArchive(schedule.schedule_id)}
+                      >
+                        Archive
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Full Calendar */}
+              <div className="w-full overflow-x-auto">
+                <div className="min-w-[280px]">{renderCalendar(schedule)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Show more - Minimal */}
+        {schedules.length > 2 && (
+          <div className="text-center py-2 text-xs text-slate-400 border-t border-green-800/50 rounded-lg bg-slate-900/50">
+            +{schedules.length - 2} more
+          </div>
+        )}
+      </div>
+
+      {/* Archived schedules modal */}
+      {archivedOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setArchivedOpen(false)}
+        >
+          <div
+            className="w-full max-w-3xl max-h-[80vh] overflow-y-auto rounded-2xl bg-slate-900/98 border border-emerald-700/40 p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold text-slate-100">
+                Archived Schedules
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  className="px-3 py-1 rounded-2xl bg-slate-700/60 text-slate-200"
+                  onClick={() => {
+                    fetchArchivedSchedules();
+                  }}
+                >
+                  Refresh
+                </button>
+                <button
+                  className="px-3 py-1 rounded-2xl bg-red-600 text-white"
+                  onClick={() => setArchivedOpen(false)}
+                >
+                  Close
+                </button>
               </div>
             </div>
 
-            {/* Full Calendar */}
-            <div className="w-full overflow-x-auto">
-              <div className="min-w-[280px]">{renderCalendar(schedule)}</div>
-            </div>
+            {archivedLoading ? (
+              <div className="py-6 text-center text-slate-300">Loading...</div>
+            ) : archivedSchedules.length === 0 ? (
+              <div className="py-6 text-center text-slate-400">
+                No archived schedules.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {archivedSchedules.map((a) => (
+                  <div
+                    key={a.schedule_id}
+                    className="p-3 rounded-lg bg-slate-800/80 border border-green-800/30 flex items-center justify-between"
+                  >
+                    <div>
+                      <div className="font-semibold text-slate-100">
+                        {a.barangay?.barangay_name ?? "(No barangay)"}
+                      </div>
+                      <div className="text-xs text-slate-300">
+                        {a.days} • {a.start_time}
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        {new Date(a.date_created).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        ))}
-      </div>
-
-      {/* Show more - Minimal */}
-      {schedules.length > 2 && (
-        <div className="text-center py-2 text-xs text-slate-400 border-t border-green-800/50 rounded-lg bg-slate-900/50">
-          +{schedules.length - 2} more
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -2116,7 +2210,9 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
 
 export default function SecretaryDashboard() {
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [statsVisible, setStatsVisible] = useState(true);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<SecretaryActiveTab>("dashboard");
 
   useEffect(() => {
@@ -2614,10 +2710,75 @@ export default function SecretaryDashboard() {
               </div>
             </div>
           </div>
+          {/* Profile Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-400/50 transition-all duration-300"
+            >
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm">
+                SC
+              </div>
+              <span className="hidden md:inline text-sm font-semibold text-emerald-300">
+                Secretary
+              </span>
+              <svg
+                className={`w-4 h-4 text-emerald-300 transition-transform duration-300 ${profileDropdownOpen ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {profileDropdownOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setProfileDropdownOpen(false)}
+                />
+                <div className="absolute right-0 mt-2 w-56 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-emerald-500/30 shadow-2xl shadow-emerald-900/40 overflow-hidden z-50">
+                  <div className="p-3 border-b border-emerald-500/20">
+                    <p className="text-xs text-emerald-400 font-semibold">
+                      Secretary
+                    </p>
+                  </div>
+                  <div className="py-2">
+                    <button
+                      onClick={() => {
+                        setActiveTab("manageAccount");
+                        setProfileDropdownOpen(false);
+                        setSidebarOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-200 hover:bg-emerald-500/10 transition-colors"
+                    >
+                      <span className="text-lg">⚙️</span>
+                      <span>Manage Account</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        handleLogout();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <span className="text-lg">🚪</span>
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Shell layout like SWMO */}
+      {/* Shell layout */}
       <div className="flex flex-1 overflow-hidden pt-16">
         {/* Overlay for mobile */}
         {sidebarOpen && (
@@ -2631,10 +2792,10 @@ export default function SecretaryDashboard() {
         {/* Sidebar – Secretary items */}
         <aside
           className={`
-          fixed z-40 left-0 top-16 bottom-0 w-72 ${
+          fixed z-40 left-0 top-10 bottom-0 w-72 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
-          md:fixed md:translate-x-0 md:top-16 md:left-0 md:bottom-0 md:w-64
+          md:fixed md:translate-x-0 md:top-20 md:left-0 md:bottom-0 md:w-64
           bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-green-800/40
           flex flex-col py-6 px-4 transition-all duration-300 backdrop-blur-2xl shadow-2xl shadow-green-900/20
         `}
@@ -2650,7 +2811,6 @@ export default function SecretaryDashboard() {
               { label: "View Schedules", icon: "📅", tab: "schedules" },
               { label: "Passed Incidents", icon: "🚨", tab: "passedIncidents" },
               { label: "GCP Responses", icon: "💬", tab: "gcpResponses" },
-              { label: "Manage Account", icon: "👤", tab: "manageAccount" },
             ].map((item) => (
               <button
                 key={item.tab}
@@ -2674,17 +2834,7 @@ export default function SecretaryDashboard() {
               </button>
             ))}
 
-            <div className="pt-6 mt-6 border-t border-green-800/40">
-              <button
-                onClick={handleLogout}
-                className="group relative w-full rounded-2xl bg-gradient-to-r from-red-600/90 to-orange-600/90 px-4 py-3 text-sm font-bold text-slate-100 border border-red-500/40 hover:shadow-xl hover:shadow-red-500/30 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl shadow-lg overflow-hidden"
-              >
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  ⎋ Logout
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              </button>
-            </div>
+            <div className="pt-6 mt-6 border-t border-green-800/40"></div>
           </nav>
         </aside>
 
@@ -2701,44 +2851,52 @@ export default function SecretaryDashboard() {
           {/* DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
-              {/* Responsive metrics grid */}
-              <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {summaryCards.map((card, idx) => (
-                  <div
-                    key={idx}
-                    className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70"
-                    role="region"
-                    aria-label={card.label}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
-                    <div className="flex items-start justify-between gap-4 relative z-10 h-full flex-col">
-                      <div className="flex items-start justify-between w-full gap-3">
-                        <div className="space-y-2">
-                          <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold">
-                            {card.label}
+              {/* Collapsible Stats Section */}
+              <div
+                className={`transition-all duration-500 ease-in-out overflow-hidden ${
+                  statsVisible
+                    ? "max-h-[500px] opacity-100 mb-8"
+                    : "max-h-0 opacity-0 mb-0"
+                }`}
+              >
+                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+                  {summaryCards.map((card, idx) => (
+                    <div
+                      key={idx}
+                      className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-4 sm:p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70"
+                      role="region"
+                      aria-label={card.label}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
+                      <div className="flex items-start justify-between gap-4 relative z-10 h-full flex-col">
+                        <div className="flex items-start justify-between w-full gap-3">
+                          <div className="space-y-2">
+                            <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold">
+                              {card.label}
+                            </p>
+                            <p className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg">
+                              {card.count}
+                            </p>
+                          </div>
+                          <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-2xl border border-green-800/50 shadow-lg group-hover:scale-110 transition-all duration-300 relative z-10 flex-shrink-0">
+                            {card.icon}
+                          </div>
+                        </div>
+                        <div className="w-full">
+                          <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50 relative z-10">
+                            <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
+                          </div>
+                          <p className="mt-3 text-xs text-slate-400 text-center relative z-10">
+                            Auto-updated from collection data
                           </p>
-                          <p className="text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg">
-                            {card.count}
-                          </p>
                         </div>
-                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-2xl border border-green-800/50 shadow-lg group-hover:scale-110 transition-all duration-300 relative z-10 flex-shrink-0">
-                          {card.icon}
-                        </div>
-                      </div>
-                      <div className="w-full">
-                        <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50 relative z-10">
-                          <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
-                        </div>
-                        <p className="mt-3 text-xs text-slate-400 text-center relative z-10">
-                          Auto-updated from collection data
-                        </p>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </section>
+                  ))}
+                </section>
+              </div>
 
-              {/* Map layout – same as SWMO */}
+              {/* Map Section with Toggle Button */}
               <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
                 <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
@@ -2747,10 +2905,27 @@ export default function SecretaryDashboard() {
                       <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
                         Collection Coverage Map
                       </h2>
-                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
-                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-                        Live vehicles
-                      </span>
+                      <div className="flex items-center gap-3">
+                        {/* Stats Toggle Button */}
+                        <button
+                          onClick={() => setStatsVisible(!statsVisible)}
+                          className="group/btn inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 text-emerald-300 border border-emerald-500/30 font-semibold text-xs backdrop-blur-sm hover:bg-emerald-500/20 hover:border-emerald-400/50 transition-all duration-300 relative z-10"
+                          title={
+                            statsVisible ? "Hide Statistics" : "Show Statistics"
+                          }
+                        >
+                          <span className="text-sm">
+                            {statsVisible ? "📊" : "📈"}
+                          </span>
+                          <span className="hidden sm:inline">
+                            {statsVisible ? "Hide Stats" : "Show Stats"}
+                          </span>
+                        </button>
+                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
+                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                          Live vehicles
+                        </span>
+                      </div>
                     </div>
                     <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px] relative z-10">
                       <LeafletMap />
