@@ -676,7 +676,7 @@ export default function TcemoDashboard() {
         {/* Sidebar */}
         <aside
           className={`
-          fixed z-40 left-0 top-20 bottom-0 w-72 ${
+          fixed z-40 left-0 top-16 bottom-0 w-72 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
           md:fixed md:translate-x-0 md:top-20 md:left-0 md:bottom-0 md:w-64
@@ -745,30 +745,36 @@ export default function TcemoDashboard() {
                   {summaryCards.map((card, idx) => (
                     <div
                       key={idx}
-                      className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-4 sm:p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70"
+                      className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-lg shadow-green-900/20 p-3.5 sm:p-4 backdrop-blur-2xl hover:shadow-xl hover:shadow-green-600/30 transition-all duration-300 hover:border-green-600/70"
                       role="region"
                       aria-label={card.label}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
-                      <div className="flex items-start justify-between gap-4 relative z-10 h-full flex-col">
-                        <div className="flex items-start justify-between w-full gap-3">
-                          <div className="space-y-2">
-                            <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold">
-                              {card.label}
-                            </p>
-                            <p className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg">
-                              {card.count}
-                            </p>
+                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/6 via-transparent to-teal-500/6 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-lg border border-green-800/50 shadow">
+                              {card.icon}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[10px] uppercase tracking-wide text-emerald-400 font-semibold truncate">
+                                {card.label}
+                              </p>
+                              <p className="text-xl sm:text-2xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent leading-none">
+                                {card.count}
+                              </p>
+                            </div>
                           </div>
-                          <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-2xl border border-green-800/50 shadow-lg group-hover:scale-110 transition-all duration-300 relative z-10 flex-shrink-0">
-                            {card.icon}
+                          <div className="hidden sm:inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-300">
+                            Auto
                           </div>
                         </div>
-                        <div className="w-full">
-                          <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50 relative z-10">
-                            <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
+
+                        <div className="mt-2.5">
+                          <div className="h-1.5 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50">
+                            <div className="h-full w-[70%] bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow" />
                           </div>
-                          <p className="mt-3 text-xs text-slate-400 text-center relative z-10">
+                          <p className="mt-1.5 text-[9px] text-slate-400">
                             Auto-updated from collection data
                           </p>
                         </div>

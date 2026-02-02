@@ -568,46 +568,44 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
   return (
     <div className="w-full flex flex-col gap-3">
       {/* Enhanced Header with Theme Toggle */}
+
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 md:p-1">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/80 to-teal-600/80 text-lg shadow-lg shadow-emerald-500/30">
+            🗺️
+          </div>
+          <div>
+            <h3 className="text-base md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent">
+              Collection Coverage Map
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Real-time vehicle tracking &amp; service coverage
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Live Indicator */}
+          <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-600/50 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300 shadow-md shadow-emerald-500/20">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            <span>Live Tracking Active</span>
+          </div>
+
+          {/* Theme Toggle */}
+          <button
+            onClick={() => setTheme(theme === "day" ? "night" : "day")}
+            className="group/theme inline-flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-slate-600 hover:bg-slate-800/80 transition-all duration-300 shadow-md hover:shadow-lg"
+          >
+            <span className="text-base group-hover/theme:scale-110 transition-transform">
+              {theme === "day" ? "🌙" : "☀️"}
+            </span>
+            <span className="hidden sm:inline capitalize">{theme} Mode</span>
+          </button>
+        </div>
+      </div>
       <div className="px-2 md:px-6 z-[1000] relative">
         <div className="group relative rounded-2xl md:rounded-3xl bg-gradient-to-r from-slate-800/95 via-slate-800/90 to-gray-800/95 border border-emerald-700/50 overflow-hidden shadow-lg shadow-emerald-900/20 backdrop-blur-2xl">
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 md:p-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/80 to-teal-600/80 text-lg shadow-lg shadow-emerald-500/30">
-                🗺️
-              </div>
-              <div>
-                <h3 className="text-base md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent">
-                  Collection Coverage Map
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Real-time vehicle tracking &amp; service coverage
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Live Indicator */}
-              <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-600/50 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300 shadow-md shadow-emerald-500/20">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                <span>Live Tracking Active</span>
-              </div>
-
-              {/* Theme Toggle */}
-              <button
-                onClick={() => setTheme(theme === "day" ? "night" : "day")}
-                className="group/theme inline-flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-slate-600 hover:bg-slate-800/80 transition-all duration-300 shadow-md hover:shadow-lg"
-              >
-                <span className="text-base group-hover/theme:scale-110 transition-transform">
-                  {theme === "day" ? "🌙" : "☀️"}
-                </span>
-                <span className="hidden sm:inline capitalize">
-                  {theme} Mode
-                </span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 

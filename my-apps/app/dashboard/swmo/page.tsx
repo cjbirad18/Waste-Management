@@ -161,7 +161,12 @@ export default function AdminDashboard() {
   const [errorUsers, setErrorUsers] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "userAdmin" | "manageAccount" | "reports" | "collection"
+    | "dashboard"
+    | "userAdmin"
+    | "manageAccount"
+    | "reports"
+    | "manageUsers"
+    | "incidentReports"
   >("dashboard");
 
   const [hasLoadedManageAccount, setHasLoadedManageAccount] = useState(false);
@@ -196,6 +201,25 @@ export default function AdminDashboard() {
   const [manageAccountSuccess, setManageAccountSuccess] = useState<
     string | null
   >(null);
+
+  // Manage Users State
+  const [otherUsersList, setOtherUsersList] = useState<User[]>([]);
+  const [loadingOtherUsers, setLoadingOtherUsers] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editingUserForm, setEditingUserForm] = useState<any>(null);
+  const [otherUsersError, setOtherUsersError] = useState<string | null>(null);
+  const [otherUsersSuccess, setOtherUsersSuccess] = useState<string | null>(
+    null,
+  );
+
+  // Incident Reports State
+  const [incidentReports, setIncidentReports] = useState<any[]>([]);
+  const [selectedBarangay, setSelectedBarangay] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("date_desc");
+  const [loadingReports, setLoadingReports] = useState(false);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+  const [selectedReport, setSelectedReport] = useState<any | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const [activeReportOption, setActiveReportOption] = useState<
     "wasteCollection" | "barangayConcerns"
@@ -440,6 +464,100 @@ export default function AdminDashboard() {
     if (activeTab !== "manageAccount") setHasLoadedManageAccount(false);
   }, [activeTab]);
 
+  // Fetch other users (TCEMO, Secretary, BWMC, GCP)
+  const fetchOtherUsers = useCallback(async () => {
+    setLoadingOtherUsers(true);
+    setOtherUsersError(null);
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .in("role", ["TCEMO Head", "Secretary", "BWMC", "GCP"]);
+      if (error) throw error;
+      setOtherUsersList(data as User[]);
+    } catch (error) {
+      setOtherUsersError((error as Error).message);
+    } finally {
+      setLoadingOtherUsers(false);
+    }
+  }, []);
+
+  // Fetch other users when manageUsers tab is active
+  useEffect(() => {
+    if (activeTab === "manageUsers") {
+      fetchOtherUsers();
+    }
+  }, [activeTab, fetchOtherUsers]);
+
+  // Fetch incident reports with filters
+  const fetchIncidentReports = useCallback(async () => {
+    setLoadingReports(true);
+    setReportsError(null);
+    try {
+      let query = supabase.from("community_reports").select(`
+          *,
+          barangay:barangay_id (
+            barangay_name
+          )
+        `);
+
+      // Filter by barangay if not "all"
+      if (selectedBarangay !== "all") {
+        query = query.eq("barangay_id", selectedBarangay);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Sort the data
+      let sortedData = data || [];
+      switch (sortBy) {
+        case "date_desc":
+          sortedData.sort(
+            (a, b) =>
+              new Date(b.date_submitted).getTime() -
+              new Date(a.date_submitted).getTime(),
+          );
+          break;
+        case "date_asc":
+          sortedData.sort(
+            (a, b) =>
+              new Date(a.date_submitted).getTime() -
+              new Date(b.date_submitted).getTime(),
+          );
+          break;
+        case "status":
+          sortedData.sort((a, b) =>
+            a.current_status.localeCompare(b.current_status),
+          );
+          break;
+        case "barangay":
+          sortedData.sort((a, b) =>
+            (a.barangay?.barangay_name || "").localeCompare(
+              b.barangay?.barangay_name || "",
+            ),
+          );
+          break;
+        default:
+          break;
+      }
+
+      setIncidentReports(sortedData);
+    } catch (error) {
+      setReportsError((error as Error).message);
+    } finally {
+      setLoadingReports(false);
+    }
+  }, [selectedBarangay, sortBy]);
+
+  // Fetch incident reports when tab is active or filters change
+  useEffect(() => {
+    if (activeTab === "incidentReports") {
+      fetchIncidentReports();
+    }
+  }, [activeTab, fetchIncidentReports]);
+
   const handleLogout = () => {
     if (
       typeof window !== "undefined" &&
@@ -651,6 +769,108 @@ export default function AdminDashboard() {
     } catch (err) {
       setManageAccountError(`Unexpected error: ${(err as Error).message}`);
     }
+  };
+
+  // Fetch other users (TCEMO, Secretary, BWMC, GCP)
+  // Start editing a user
+  const handleEditUser = (user: User) => {
+    setEditingUserId(user.user_id);
+    setEditingUserForm({
+      username: user.username,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      contact_number: user.contact_number,
+      password: "",
+      confirm_password: "",
+    });
+    setOtherUsersError(null);
+    setOtherUsersSuccess(null);
+  };
+
+  // Cancel editing
+  const handleCancelEdit = () => {
+    setEditingUserId(null);
+    setEditingUserForm(null);
+  };
+
+  // Save user changes
+  const handleSaveUserEdit = async (userId: string) => {
+    if (!editingUserForm) return;
+
+    // Validate
+    if (
+      !editingUserForm.first_name.trim() ||
+      !editingUserForm.last_name.trim() ||
+      !editingUserForm.email.trim() ||
+      !editingUserForm.contact_number.trim()
+    ) {
+      setOtherUsersError("All fields are required.");
+      return;
+    }
+
+    if (editingUserForm.contact_number.length !== 11) {
+      setOtherUsersError("Contact number must be exactly 11 digits.");
+      return;
+    }
+
+    try {
+      // Update user profile
+      const { error: profileError } = await supabase
+        .from("users")
+        .update({
+          username: editingUserForm.username,
+          first_name: editingUserForm.first_name,
+          last_name: editingUserForm.last_name,
+          email: editingUserForm.email,
+          contact_number: editingUserForm.contact_number,
+        })
+        .eq("user_id", userId);
+
+      if (profileError) {
+        setOtherUsersError(`Update failed: ${profileError.message}`);
+        return;
+      }
+
+      setOtherUsersSuccess("User account updated successfully!");
+      setEditingUserId(null);
+      setEditingUserForm(null);
+      fetchOtherUsers();
+    } catch (err) {
+      setOtherUsersError(`Unexpected error: ${(err as Error).message}`);
+    }
+  };
+
+  // Archive user account
+  const handleArchiveUser = async (userId: string, userName: string) => {
+    if (
+      !window.confirm(`Archive account for ${userName}? This cannot be undone.`)
+    ) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("users")
+        .update({ status: "archived" })
+        .eq("user_id", userId);
+
+      if (error) {
+        setOtherUsersError(`Archive failed: ${error.message}`);
+        return;
+      }
+
+      setOtherUsersSuccess(`${userName} account archived successfully!`);
+      fetchOtherUsers();
+    } catch (err) {
+      setOtherUsersError(`Unexpected error: ${(err as Error).message}`);
+    }
+  };
+
+  // View report details
+  const handleViewReport = (report: any) => {
+    setSelectedReport(report);
+    setShowReportModal(true);
   };
 
   const fetchReportsData = useCallback(async () => {
@@ -964,8 +1184,8 @@ export default function AdminDashboard() {
 
   const sidebarItems = [
     { label: "Dashboard", icon: "📊", tab: "dashboard" },
-    { label: "Collection Panel", icon: "🗺️", tab: "collection" },
     { label: "Manage Users", icon: "👥", tab: "userAdmin" },
+    { label: "User Accounts", icon: "📋", tab: "manageUsers" },
     { label: "Reports", icon: "📈", tab: "reports" },
     { label: "Account", icon: "⚙️", tab: "manageAccount" },
   ] as const;
@@ -1094,7 +1314,7 @@ export default function AdminDashboard() {
         {/* Sidebar */}
         <aside
           className={`
-          fixed z-40 left-0 top-10 bottom-0 w-72 ${
+          fixed z-40 left-0 top-16 bottom-0 w-72 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
           md:fixed md:translate-x-0 md:top-20 md:left-0 md:bottom-0 md:w-64
@@ -1109,8 +1329,9 @@ export default function AdminDashboard() {
             {/* You'll need to replace SidebarItem with this inline version */}
             {[
               { label: "Dashboard", icon: "📊", tab: "dashboard" },
-              { label: "Collection Panel", icon: "🗺️", tab: "collection" },
               { label: "Manage Users", icon: "👥", tab: "userAdmin" },
+              { label: "User Accounts", icon: "📋", tab: "manageUsers" },
+              { label: "Incident Reports", icon: "🚨", tab: "incidentReports" },
               { label: "Reports", icon: "📈", tab: "reports" },
             ].map((item) => (
               <button
@@ -1119,8 +1340,9 @@ export default function AdminDashboard() {
                   setActiveTab(
                     item.tab as
                       | "dashboard"
-                      | "collection"
                       | "userAdmin"
+                      | "manageUsers"
+                      | "incidentReports"
                       | "reports"
                       | "manageAccount",
                   );
@@ -1163,30 +1385,36 @@ export default function AdminDashboard() {
                   {summaryCards.map((card, idx) => (
                     <div
                       key={idx}
-                      className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-2xl shadow-green-900/30 p-4 sm:p-6 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 hover:-translate-y-1 transition-all duration-500 hover:border-green-600/70"
+                      className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-lg shadow-green-900/20 p-3.5 sm:p-4 backdrop-blur-2xl hover:shadow-xl hover:shadow-green-600/30 transition-all duration-300 hover:border-green-600/70"
                       role="region"
                       aria-label={card.label}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
-                      <div className="flex items-start justify-between gap-4 relative z-10 h-full flex-col">
-                        <div className="flex items-start justify-between w-full gap-3">
-                          <div className="space-y-2">
-                            <p className="text-xs uppercase tracking-wide text-emerald-400 font-semibold">
-                              {card.label}
-                            </p>
-                            <p className="text-2xl sm:text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-lg">
-                              {card.count}
-                            </p>
+                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/6 via-transparent to-teal-500/6 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-lg border border-green-800/50 shadow">
+                              {card.icon}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[10px] uppercase tracking-wide text-emerald-400 font-semibold truncate">
+                                {card.label}
+                              </p>
+                              <p className="text-xl sm:text-2xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent leading-none">
+                                {card.count}
+                              </p>
+                            </div>
                           </div>
-                          <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-2xl border border-green-800/50 shadow-lg group-hover:scale-110 transition-all duration-300 relative z-10 flex-shrink-0">
-                            {card.icon}
+                          <div className="hidden sm:inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-300">
+                            Auto
                           </div>
                         </div>
-                        <div className="w-full">
-                          <div className="h-2 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50 relative z-10">
-                            <div className="h-full w-3/4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow-lg" />
+
+                        <div className="mt-2.5">
+                          <div className="h-1.5 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50">
+                            <div className="h-full w-[70%] bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow" />
                           </div>
-                          <p className="mt-3 text-xs text-slate-400 text-center relative z-10">
+                          <p className="mt-1.5 text-[9px] text-slate-400">
                             Auto-updated from collection data
                           </p>
                         </div>
@@ -1449,6 +1677,672 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </section>
+          )}
+          {/* MANAGE OTHER USERS */}
+          {activeTab === "manageUsers" && (
+            <div className="space-y-6">
+              {/* Header Section */}
+              <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 via-slate-800/90 to-emerald-900/40 border border-emerald-500/30 p-8 shadow-2xl shadow-emerald-900/20 backdrop-blur-2xl overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-green-500/10 opacity-50 blur-3xl animate-pulse" />
+                <div className="relative z-10 flex items-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/50">
+                    <span className="text-3xl">👥</span>
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-black bg-gradient-to-r from-emerald-300 via-teal-300 to-green-300 bg-clip-text text-transparent drop-shadow-2xl">
+                      User Account Management
+                    </h2>
+                    <p className="text-emerald-200/70 text-sm mt-1">
+                      Manage TCEMO Head, Secretary, BWMC, and GCP accounts
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Alerts */}
+              {otherUsersError && (
+                <div className="group relative rounded-2xl bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/40 p-4 shadow-lg backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-orange-500/5 opacity-50 blur-xl" />
+                  <div className="relative z-10 flex items-start gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                      <p className="text-sm font-semibold text-red-200">
+                        Error
+                      </p>
+                      <p className="text-sm text-red-300/90">
+                        {otherUsersError}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {otherUsersSuccess && (
+                <div className="group relative rounded-2xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/40 p-4 shadow-lg backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 opacity-50 blur-xl" />
+                  <div className="relative z-10 flex items-start gap-3">
+                    <span className="text-2xl">✅</span>
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-200">
+                        Success
+                      </p>
+                      <p className="text-sm text-emerald-300/90">
+                        {otherUsersSuccess}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {loadingOtherUsers && <TruckLoader />}
+
+              {!loadingOtherUsers && otherUsersList.length === 0 && (
+                <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/60 to-slate-900/60 border border-slate-700/50 p-12 text-center backdrop-blur-xl">
+                  <div className="absolute inset-0 bg-gradient-to-r from-slate-500/5 to-slate-600/5 opacity-50 blur-2xl" />
+                  <div className="relative z-10">
+                    <span className="text-6xl mb-4 block opacity-50">👤</span>
+                    <p className="text-xl font-semibold text-slate-300 mb-2">
+                      No Users Found
+                    </p>
+                    <p className="text-sm text-slate-400">
+                      There are currently no user accounts to manage
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!loadingOtherUsers && otherUsersList.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+                  {otherUsersList.map((user) => (
+                    <div
+                      key={user.user_id}
+                      className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-slate-900/95 border border-slate-700/50 p-6 shadow-xl hover:shadow-2xl hover:shadow-emerald-500/20 hover:border-emerald-500/50 transition-all duration-500 backdrop-blur-2xl overflow-hidden"
+                    >
+                      {/* Glow effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-teal-500/5 to-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl" />
+
+                      <div className="relative z-10">
+                        {editingUserId === user.user_id && editingUserForm ? (
+                          // Edit Mode - Enhanced
+                          <div className="space-y-4">
+                            {/* Edit Header */}
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-emerald-500/30">
+                              <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                                  <span className="text-xl">✏️</span>
+                                </div>
+                                <div>
+                                  <h3 className="text-lg font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent">
+                                    Editing Account
+                                  </h3>
+                                  <p className="text-xs text-slate-400">
+                                    {user.first_name} {user.last_name}
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-300 border border-blue-500/40 text-xs font-bold shadow-lg">
+                                {user.role}
+                              </span>
+                            </div>
+
+                            {/* Form Fields */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="group/input">
+                                <label className="block text-xs font-bold text-emerald-300 mb-2 uppercase tracking-wide">
+                                  First Name
+                                </label>
+                                <input
+                                  type="text"
+                                  value={editingUserForm.first_name}
+                                  onChange={(e) =>
+                                    setEditingUserForm({
+                                      ...editingUserForm,
+                                      first_name: e.target.value,
+                                    })
+                                  }
+                                  className="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 transition-all duration-300 shadow-inner"
+                                />
+                              </div>
+                              <div className="group/input">
+                                <label className="block text-xs font-bold text-emerald-300 mb-2 uppercase tracking-wide">
+                                  Last Name
+                                </label>
+                                <input
+                                  type="text"
+                                  value={editingUserForm.last_name}
+                                  onChange={(e) =>
+                                    setEditingUserForm({
+                                      ...editingUserForm,
+                                      last_name: e.target.value,
+                                    })
+                                  }
+                                  className="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 transition-all duration-300 shadow-inner"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="group/input">
+                              <label className="block text-xs font-bold text-emerald-300 mb-2 uppercase tracking-wide">
+                                📧 Email Address
+                              </label>
+                              <input
+                                type="email"
+                                value={editingUserForm.email}
+                                onChange={(e) =>
+                                  setEditingUserForm({
+                                    ...editingUserForm,
+                                    email: e.target.value,
+                                  })
+                                }
+                                className="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 transition-all duration-300 shadow-inner"
+                              />
+                            </div>
+
+                            <div className="group/input">
+                              <label className="block text-xs font-bold text-emerald-300 mb-2 uppercase tracking-wide">
+                                📱 Contact Number
+                              </label>
+                              <input
+                                type="tel"
+                                value={editingUserForm.contact_number}
+                                onChange={(e) =>
+                                  setEditingUserForm({
+                                    ...editingUserForm,
+                                    contact_number: e.target.value,
+                                  })
+                                }
+                                className="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 transition-all duration-300 shadow-inner"
+                              />
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-3 pt-4">
+                              <button
+                                onClick={() => handleSaveUserEdit(user.user_id)}
+                                className="group/btn flex-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 relative overflow-hidden"
+                              >
+                                <span className="relative z-10 flex items-center justify-center gap-2">
+                                  <span>💾</span>
+                                  Save Changes
+                                </span>
+                                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                className="group/btn flex-1 rounded-xl bg-gradient-to-r from-slate-700 to-slate-800 px-4 py-3 text-sm font-bold text-slate-200 shadow-lg hover:shadow-xl hover:from-slate-600 hover:to-slate-700 hover:scale-[1.02] transition-all duration-300"
+                              >
+                                <span className="flex items-center justify-center gap-2">
+                                  <span>✖️</span>
+                                  Cancel
+                                </span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          // View Mode - Enhanced
+                          <div>
+                            {/* User Header */}
+                            <div className="flex items-start gap-4 mb-6">
+                              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-600/20 border border-emerald-500/30 shadow-lg flex-shrink-0">
+                                <span className="text-2xl">
+                                  {user.role === "TCEMO Head"
+                                    ? "👔"
+                                    : user.role === "Secretary"
+                                      ? "📝"
+                                      : user.role === "BWMC"
+                                        ? "🏛️"
+                                        : "🔧"}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-xl font-black bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent truncate mb-1">
+                                  {user.first_name} {user.last_name}
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-300 border border-blue-500/40 text-xs font-bold shadow">
+                                    {user.role}
+                                  </span>
+                                  <span
+                                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold shadow ${
+                                      user.status === "archived"
+                                        ? "bg-gradient-to-r from-red-500/20 to-orange-500/20 text-red-300 border border-red-500/40"
+                                        : "bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/40"
+                                    }`}
+                                  >
+                                    <span
+                                      className={`w-2 h-2 rounded-full ${user.status === "archived" ? "bg-red-400" : "bg-emerald-400 animate-pulse"}`}
+                                    />
+                                    {user.status || "Active"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* User Details */}
+                            <div className="space-y-3 mb-6">
+                              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/50 border border-slate-700/50">
+                                <span className="text-lg">📧</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs text-slate-400 font-semibold uppercase">
+                                    Email
+                                  </p>
+                                  <p className="text-sm text-slate-200 truncate">
+                                    {user.email}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/50 border border-slate-700/50">
+                                <span className="text-lg">📱</span>
+                                <div className="flex-1">
+                                  <p className="text-xs text-slate-400 font-semibold uppercase">
+                                    Phone
+                                  </p>
+                                  <p className="text-sm text-slate-200">
+                                    {user.contact_number}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-3 pt-4 border-t border-slate-700/50">
+                              <button
+                                onClick={() => handleEditUser(user)}
+                                className="group/btn flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02] transition-all duration-300 relative overflow-hidden"
+                              >
+                                <span className="relative z-10 flex items-center justify-center gap-2">
+                                  <span>✏️</span>
+                                  Edit
+                                </span>
+                                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+                              </button>
+                              {user.status !== "archived" && (
+                                <button
+                                  onClick={() =>
+                                    handleArchiveUser(
+                                      user.user_id,
+                                      `${user.first_name} ${user.last_name}`,
+                                    )
+                                  }
+                                  className="group/btn flex-1 rounded-xl bg-gradient-to-r from-red-600 to-orange-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02] transition-all duration-300 relative overflow-hidden"
+                                >
+                                  <span className="relative z-10 flex items-center justify-center gap-2">
+                                    <span>🗂️</span>
+                                    Archive
+                                  </span>
+                                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {/* INCIDENT REPORTS */}
+          {activeTab === "incidentReports" && (
+            <div className="space-y-6">
+              {/* Header Section */}
+              <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 via-slate-800/90 to-red-900/40 border border-red-500/30 p-8 shadow-2xl shadow-red-900/20 backdrop-blur-2xl overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-orange-500/5 to-red-500/10 opacity-50 blur-3xl animate-pulse" />
+                <div className="relative z-10 flex items-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-orange-600 shadow-lg shadow-red-500/50">
+                    <span className="text-3xl">🚨</span>
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-black bg-gradient-to-r from-red-300 via-orange-300 to-red-300 bg-clip-text text-transparent drop-shadow-2xl">
+                      Incident Reports Dashboard
+                    </h2>
+                    <p className="text-red-200/70 text-sm mt-1">
+                      View and manage community incident reports by barangay
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters Section */}
+              <div className="group relative rounded-2xl bg-gradient-to-br from-slate-800/95 to-slate-900/95 border border-slate-700/50 p-6 shadow-xl backdrop-blur-2xl">
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-500/5 to-slate-600/5 opacity-50 blur-xl" />
+                <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Barangay Filter */}
+                  <div>
+                    <label className="block text-sm font-bold text-emerald-300 mb-2 uppercase tracking-wide">
+                      🏘️ Select Barangay
+                    </label>
+                    <select
+                      value={selectedBarangay}
+                      onChange={(e) => setSelectedBarangay(e.target.value)}
+                      className="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 transition-all duration-300 shadow-inner"
+                    >
+                      <option value="all">All Barangays</option>
+                      {barangayOptions.map((barangay) => (
+                        <option key={barangay.value} value={barangay.value}>
+                          {barangay.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Sort By Filter */}
+                  <div>
+                    <label className="block text-sm font-bold text-emerald-300 mb-2 uppercase tracking-wide">
+                      🔄 Sort By
+                    </label>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 transition-all duration-300 shadow-inner"
+                    >
+                      <option value="date_desc">Date (Newest First)</option>
+                      <option value="date_asc">Date (Oldest First)</option>
+                      <option value="status">Status</option>
+                      <option value="barangay">Barangay</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Error Message */}
+              {reportsError && (
+                <div className="group relative rounded-2xl bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/40 p-4 shadow-lg backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-orange-500/5 opacity-50 blur-xl" />
+                  <div className="relative z-10 flex items-start gap-3">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                      <p className="text-sm font-semibold text-red-200">
+                        Error
+                      </p>
+                      <p className="text-sm text-red-300/90">{reportsError}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Loading State */}
+              {loadingReports && <TruckLoader />}
+
+              {/* No Reports */}
+              {!loadingReports && incidentReports.length === 0 && (
+                <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/60 to-slate-900/60 border border-slate-700/50 p-12 text-center backdrop-blur-xl">
+                  <div className="absolute inset-0 bg-gradient-to-r from-slate-500/5 to-slate-600/5 opacity-50 blur-2xl" />
+                  <div className="relative z-10">
+                    <span className="text-6xl mb-4 block opacity-50">📋</span>
+                    <p className="text-xl font-semibold text-slate-300 mb-2">
+                      No Reports Found
+                    </p>
+                    <p className="text-sm text-slate-400">
+                      There are no incident reports for the selected barangay
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Reports List */}
+              {!loadingReports && incidentReports.length > 0 && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {incidentReports.map((report) => (
+                    <div
+                      key={report.report_id}
+                      className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-slate-900/95 border border-slate-700/50 p-6 shadow-xl hover:shadow-2xl hover:shadow-red-500/20 hover:border-red-500/50 transition-all duration-500 backdrop-blur-2xl overflow-hidden"
+                    >
+                      {/* Glow effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-orange-500/5 to-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl" />
+
+                      <div className="relative z-10">
+                        {/* Report Header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500/20 to-orange-600/20 border border-red-500/30 shadow-lg">
+                              <span className="text-2xl">🚨</span>
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                                Report ID
+                              </p>
+                              <p className="text-sm font-bold text-slate-200">
+                                #{String(report.report_id).slice(0, 8)}
+                              </p>
+                            </div>
+                          </div>
+                          <span
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold shadow-lg ${
+                              report.current_status === "Resolved"
+                                ? "bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/40"
+                                : report.current_status === "Ongoing"
+                                  ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-300 border border-blue-500/40"
+                                  : "bg-gradient-to-r from-orange-500/20 to-red-500/20 text-orange-300 border border-orange-500/40"
+                            }`}
+                          >
+                            {report.current_status || "Pending"}
+                          </span>
+                        </div>
+
+                        {/* Report Details */}
+                        <div className="space-y-3 mb-4">
+                          <div className="flex items-start gap-2">
+                            <span className="text-lg mt-0.5">📍</span>
+                            <div className="flex-1">
+                              <p className="text-xs text-slate-400 font-semibold uppercase">
+                                Location
+                              </p>
+                              <p className="text-sm text-slate-200">
+                                {report.location || "N/A"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-2">
+                            <span className="text-lg mt-0.5">🏘️</span>
+                            <div className="flex-1">
+                              <p className="text-xs text-slate-400 font-semibold uppercase">
+                                Barangay
+                              </p>
+                              <p className="text-sm text-slate-200">
+                                {report.barangay?.barangay_name || "Unknown"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-2">
+                            <span className="text-lg mt-0.5">📅</span>
+                            <div className="flex-1">
+                              <p className="text-xs text-slate-400 font-semibold uppercase">
+                                Submitted
+                              </p>
+                              <p className="text-sm text-slate-200">
+                                {new Date(
+                                  report.date_submitted,
+                                ).toLocaleDateString("en-US", {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
+                          </div>
+
+                          {report.landmark && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-lg mt-0.5">🏛️</span>
+                              <div className="flex-1">
+                                <p className="text-xs text-slate-400 font-semibold uppercase">
+                                  Landmark
+                                </p>
+                                <p className="text-sm text-slate-200">
+                                  {report.landmark}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* View Details Button */}
+                        <button
+                          onClick={() => handleViewReport(report)}
+                          className="w-full group/btn rounded-xl bg-gradient-to-r from-red-600 to-orange-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02] transition-all duration-300 relative overflow-hidden"
+                        >
+                          <span className="relative z-10 flex items-center justify-center gap-2">
+                            <span>👁️</span>
+                            View Full Report
+                          </span>
+                          <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Report Details Modal */}
+              {showReportModal && selectedReport && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+                  onClick={() => setShowReportModal(false)}
+                >
+                  <div
+                    className="group relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl border border-red-700/60 bg-gradient-to-br from-slate-900/98 to-slate-800/98 p-8 shadow-[0_20px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Glow effect */}
+                    <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-r from-red-500/8 via-transparent to-orange-500/8 opacity-0 blur-xl transition-opacity group-hover:opacity-100" />
+
+                    <div className="relative z-10">
+                      {/* Modal Header */}
+                      <div className="flex items-start justify-between mb-6 pb-6 border-b border-red-500/30">
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-orange-600 shadow-lg">
+                            <span className="text-3xl">🚨</span>
+                          </div>
+                          <div>
+                            <h3 className="text-2xl font-black bg-gradient-to-r from-red-300 to-orange-300 bg-clip-text text-transparent">
+                              Incident Report Details
+                            </h3>
+                            <p className="text-sm text-slate-400">
+                              ID: #
+                              {String(selectedReport.report_id).slice(0, 12)}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setShowReportModal(false)}
+                          className="rounded-xl bg-slate-800 px-4 py-2 text-slate-300 hover:bg-slate-700 transition-colors"
+                        >
+                          ✖️
+                        </button>
+                      </div>
+
+                      {/* Report Information */}
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                            <p className="text-xs font-bold text-emerald-300 mb-1 uppercase">
+                              Status
+                            </p>
+                            <span
+                              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-bold ${
+                                selectedReport.current_status === "Resolved"
+                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                                  : selectedReport.current_status === "Ongoing"
+                                    ? "bg-blue-500/20 text-blue-300 border border-blue-500/40"
+                                    : "bg-orange-500/20 text-orange-300 border border-orange-500/40"
+                              }`}
+                            >
+                              {selectedReport.current_status || "Pending"}
+                            </span>
+                          </div>
+
+                          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                            <p className="text-xs font-bold text-emerald-300 mb-1 uppercase">
+                              Barangay
+                            </p>
+                            <p className="text-sm text-slate-200">
+                              {selectedReport.barangay?.barangay_name ||
+                                "Unknown"}
+                            </p>
+                          </div>
+
+                          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                            <p className="text-xs font-bold text-emerald-300 mb-1 uppercase">
+                              Location
+                            </p>
+                            <p className="text-sm text-slate-200">
+                              {selectedReport.location || "N/A"}
+                            </p>
+                          </div>
+
+                          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                            <p className="text-xs font-bold text-emerald-300 mb-1 uppercase">
+                              Date Submitted
+                            </p>
+                            <p className="text-sm text-slate-200">
+                              {new Date(
+                                selectedReport.date_submitted,
+                              ).toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        </div>
+
+                        {selectedReport.landmark && (
+                          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                            <p className="text-xs font-bold text-emerald-300 mb-2 uppercase">
+                              Landmark
+                            </p>
+                            <p className="text-sm text-slate-200">
+                              {selectedReport.landmark}
+                            </p>
+                          </div>
+                        )}
+
+                        {selectedReport.description && (
+                          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                            <p className="text-xs font-bold text-emerald-300 mb-2 uppercase">
+                              Description
+                            </p>
+                            <p className="text-sm text-slate-200 whitespace-pre-wrap">
+                              {selectedReport.description}
+                            </p>
+                          </div>
+                        )}
+
+                        {selectedReport.image_url && (
+                          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                            <p className="text-xs font-bold text-emerald-300 mb-2 uppercase">
+                              Attached Image
+                            </p>
+                            <img
+                              src={selectedReport.image_url}
+                              alt="Report evidence"
+                              className="w-full rounded-lg border border-slate-700"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Close Button */}
+                      <div className="mt-6 pt-6 border-t border-slate-700/50">
+                        <button
+                          onClick={() => setShowReportModal(false)}
+                          className="w-full rounded-xl bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-3 text-sm font-bold text-slate-200 shadow-lg hover:shadow-xl hover:from-slate-600 hover:to-slate-700 transition-all duration-300"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           {/* REPORTS */}
           {activeTab === "reports" && (
