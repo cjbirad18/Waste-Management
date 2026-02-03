@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
 
     // Send SMS
     const smsResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-sms`,
+      `${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-sms`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

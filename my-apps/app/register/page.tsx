@@ -249,7 +249,7 @@ export default function RegisterPage() {
     }
 
     setMessage(
-      "Registration successful! Your account will be activated by your BWMC once approved. Please check your email to complete verification.",
+      "Registration successful! Your account will be activated by your BWMC once approved. Please check your Message to complete verification.",
     );
     setUsername("");
     setFirstName("");
