@@ -4,22 +4,54 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   const { to, message } = await req.json();
 
+  console.log(`[Send SMS] Starting SMS send to: ${to}`);
+
   try {
     const apiToken = process.env.PHILSMS_API_TOKEN;
     const senderId = process.env.PHILSMS_SENDER_ID || "PhilSMS";
 
     if (!apiToken) {
+      console.error("[Send SMS] CRITICAL: PHILSMS_API_TOKEN not configured");
       return NextResponse.json(
-        { success: false, error: "SMS service not configured" },
+        {
+          success: false,
+          error: "SMS service not configured - missing API token",
+        },
         { status: 500 },
       );
     }
 
+    if (!to) {
+      console.error("[Send SMS] Missing phone number");
+      return NextResponse.json(
+        { success: false, error: "Missing phone number (to)" },
+        { status: 400 },
+      );
+    }
+
+    if (!message) {
+      console.error("[Send SMS] Missing message");
+      return NextResponse.json(
+        { success: false, error: "Missing message content" },
+        { status: 400 },
+      );
+    }
+
+    console.log(
+      `[Send SMS] Config - Sender: ${senderId}, Token: ${apiToken.substring(0, 10)}...`,
+    );
+
     const payload = {
-      recipient: to, // Format: 09XXXXXXXXX or 639XXXXXXXXX
+      recipient: to,
       sender_id: senderId,
       message,
     };
+
+    console.log(`[Send SMS] Payload prepared:`, {
+      recipient: to,
+      sender_id: senderId,
+      message_length: message.length,
+    });
 
     const response = await fetch("https://app.philsms.com/api/v3/sms/send", {
       method: "POST",
@@ -33,14 +65,29 @@ export async function POST(req: NextRequest) {
     });
 
     const result = await response.json();
-    console.log("PhilSMS response:", response.status, result);
+
+    console.log(`[Send SMS] PhilSMS API Response:`, {
+      status: response.status,
+      ok: response.ok,
+      result: result,
+    });
 
     if (!response.ok) {
+      console.error(
+        `[Send SMS] API Error (${response.status}):`,
+        result.message || result,
+      );
       return NextResponse.json(
-        { success: false, error: result.message || "Failed to send SMS" },
+        {
+          success: false,
+          error: result.message || "Failed to send SMS",
+          details: result,
+        },
         { status: response.status },
       );
     }
+
+    console.log(`[Send SMS] SUCCESS: SMS sent to ${to}`);
 
     return NextResponse.json({
       success: true,
@@ -48,9 +95,13 @@ export async function POST(req: NextRequest) {
       data: result,
     });
   } catch (error: any) {
-    console.error("PhilSMS route error:", error);
+    console.error("[Send SMS] Exception error:", error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      {
+        success: false,
+        error: error.message,
+        type: error.name,
+      },
       { status: 500 },
     );
   }
