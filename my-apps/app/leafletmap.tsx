@@ -157,14 +157,20 @@ function computeEtaMinutes(distanceKm: number, speedKmh: number): number {
   return Math.round(hours * 60);
 }
 
-function RecenterOnGps({ gps }: { gps: ResidentGps }) {
+function RecenterOnGps({
+  gps,
+  autoCenter,
+}: {
+  gps: ResidentGps;
+  autoCenter: boolean;
+}) {
   const map = useMap();
 
   useEffect(() => {
-    if (gps.lat != null && gps.lng != null) {
+    if (autoCenter && gps.lat != null && gps.lng != null) {
       map.setView([gps.lat, gps.lng], map.getZoom());
     }
-  }, [gps.lat, gps.lng, map]);
+  }, [gps.lat, gps.lng, map, autoCenter]);
 
   return null;
 }
@@ -180,6 +186,7 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
   const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
 
   const [role, setRole] = useState<AppRole>(null);
+  const [autoCenter, setAutoCenter] = useState(true);
 
   const [residentLocation, setResidentLocation] = useState<{
     lat: number;
@@ -570,7 +577,37 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
       {/* Enhanced Header with Theme Toggle */}
 
       <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 md:p-1">
-        <div className="flex items-center gap-3"></div>
+        <div className="flex items-center gap-3">
+          {/* Location Control for Residents */}
+          {role === "Resident" && (
+            <div className="inline-flex items-center rounded-2xl border border-slate-700/60 bg-slate-900/60 p-1 shadow-md">
+              <button
+                onClick={() => setAutoCenter(true)}
+                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 ${
+                  autoCenter
+                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/50"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+                title="Center map on your current location"
+              >
+                <span className="text-base">📍</span>
+                <span className="hidden sm:inline">Follow Location</span>
+              </button>
+              <button
+                onClick={() => setAutoCenter(false)}
+                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 ${
+                  !autoCenter
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/50"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+                title="Free browse the map"
+              >
+                <span className="text-base">🗺️</span>
+                <span className="hidden sm:inline">Free Browse</span>
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Live Indicator */}
@@ -722,7 +759,9 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
             />
 
             {/* Recenter map when live GPS changes */}
-            {residentGps && <RecenterOnGps gps={residentGps} />}
+            {residentGps && (
+              <RecenterOnGps gps={residentGps} autoCenter={autoCenter} />
+            )}
 
             {geojson && (
               <GeoJSON
