@@ -300,26 +300,26 @@ export default function LoginClient() {
               <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             </button>
           </div>
-
-          {expectedRole === "resident" && (
-            <div className="pt-4 text-center border-t border-green-800/30">
-              <p className="text-xs text-slate-400 mb-2">No account yet?</p>
-              <Link
-                href="/register"
-                className="block w-full rounded-2xl bg-emerald-500/20 px-4 py-3 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/30 hover:text-emerald-200 transition-all duration-300 backdrop-blur-sm border border-emerald-500/40 hover:border-emerald-400/60 cursor-pointer touch-manipulation"
-              >
-                Create Resident Account
-              </Link>
-            </div>
-          )}
-
-          <Link
-            href="/"
-            className="block w-full rounded-2xl bg-slate-700/50 px-4 py-3 text-center text-xs font-semibold text-slate-300 hover:bg-slate-600/50 hover:text-emerald-300 transition-all duration-300 backdrop-blur-sm border border-slate-600/50 hover:border-emerald-500/50 cursor-pointer touch-manipulation"
-          >
-            ← Back to Dashboard
-          </Link>
         </form>
+
+        {expectedRole === "resident" && (
+          <div className="pt-4 text-center border-t border-green-800/30">
+            <p className="text-xs text-slate-400 mb-2">No account yet?</p>
+            <Link
+              href="/register"
+              className="block w-full rounded-2xl bg-emerald-500/20 px-4 py-3 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/30 hover:text-emerald-200 transition-all duration-300 backdrop-blur-sm border border-emerald-500/40 hover:border-emerald-400/60 cursor-pointer touch-manipulation"
+            >
+              Create Resident Account
+            </Link>
+          </div>
+        )}
+
+        <Link
+          href="/"
+          className="block w-full rounded-2xl bg-slate-700/50 px-4 py-3 text-center text-xs font-semibold text-slate-300 hover:bg-slate-600/50 hover:text-emerald-300 transition-all duration-300 backdrop-blur-sm border border-slate-600/50 hover:border-emerald-500/50 cursor-pointer touch-manipulation"
+        >
+          ← Back to Dashboard
+        </Link>
 
         {/* Status indicator */}
         <div className="mt-6 text-center">
