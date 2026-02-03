@@ -570,16 +570,7 @@ export default function TcemoDashboard() {
             >
               {sidebarOpen ? "✖" : "☰"}
             </button>
-            <button
-              onClick={() => {
-                setActiveTab("dashboard");
-                setSidebarOpen(false);
-              }}
-              className="inline-flex items-center justify-center h-10 w-10 ml-2 rounded-lg bg-slate-800/80 text-emerald-300 hover:bg-emerald-600/10 md:hidden"
-              aria-label="Go to Dashboard"
-            >
-              📊
-            </button>
+
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 hover:scale-110 transition-all duration-300">
                 🚛
