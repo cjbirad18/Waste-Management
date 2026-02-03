@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const apiToken = process.env.PHILSMS_API_TOKEN;
-    const senderId = process.env.PHILSMS_SENDER_ID || "PhilSMS";
+    const senderId = process.env.PHILSMS_SENDER_ID || "Track the Truck";
 
     if (!apiToken) {
       console.error("[Send SMS] CRITICAL: PHILSMS_API_TOKEN not configured");
@@ -41,28 +41,41 @@ export async function POST(req: NextRequest) {
       `[Send SMS] Config - Sender: ${senderId}, Token: ${apiToken.substring(0, 10)}...`,
     );
 
+    // Format phone number: Convert 09XXXXXXXXX to 639XXXXXXXXX
+    let phoneNumber = to.trim();
+    if (phoneNumber.startsWith("0")) {
+      phoneNumber = "63" + phoneNumber.substring(1);
+    } else if (!phoneNumber.startsWith("63")) {
+      phoneNumber = "63" + phoneNumber;
+    }
+
+    console.log(`[Send SMS] Phone formatted: ${to} -> ${phoneNumber}`);
+
     const payload = {
-      recipient: to,
+      recipient: phoneNumber,
       sender_id: senderId,
       message,
     };
 
     console.log(`[Send SMS] Payload prepared:`, {
-      recipient: to,
+      recipient: phoneNumber,
       sender_id: senderId,
       message_length: message.length,
     });
 
-    const response = await fetch("https://app.philsms.com/api/v3/sms/send", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
+    const response = await fetch(
+      "https://dashboard.philsms.com/api/v3/sms/send",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+        cache: "no-store",
       },
-      body: JSON.stringify(payload),
-      cache: "no-store",
-    });
+    );
 
     const result = await response.json();
 

@@ -1,29 +1,40 @@
 // PhilSMS Integration
 export const sendSMS = async (to, message) => {
   const apiToken = process.env.PHILSMS_API_TOKEN;
-  const senderId = process.env.PHILSMS_SENDER_ID || "PhilSMS";
+  const senderId = process.env.PHILSMS_SENDER_ID || "Track the Truck";
 
   if (!apiToken) {
     console.error("PhilSMS API Token not configured");
     throw new Error("SMS service not configured");
   }
 
+  // Format phone number: Convert 09XXXXXXXXX to 639XXXXXXXXX
+  let phoneNumber = to.trim();
+  if (phoneNumber.startsWith("0")) {
+    phoneNumber = "63" + phoneNumber.substring(1);
+  } else if (!phoneNumber.startsWith("63")) {
+    phoneNumber = "63" + phoneNumber;
+  }
+
   const payload = {
-    recipient: to, // Format: 09XXXXXXXXX or 639XXXXXXXXX
+    recipient: phoneNumber, // Format: 639XXXXXXXXX
     sender_id: senderId,
     message: message,
   };
 
   try {
-    const response = await fetch("https://app.philsms.com/api/v3/sms/send", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
+    const response = await fetch(
+      "https://dashboard.philsms.com/api/v3/sms/send",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    });
+    );
 
     const result = await response.json();
 

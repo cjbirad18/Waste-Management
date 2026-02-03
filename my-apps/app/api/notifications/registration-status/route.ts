@@ -2,18 +2,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
-
 export async function POST(req: NextRequest) {
+  console.log("[Registration Status SMS] Endpoint called");
+
   try {
-    const { userId, status, reason } = await req.json();
+    const body = await req.json();
+    console.log("[Registration Status SMS] Request body:", body);
+
+    const { userId, status, reason } = body;
+
+    if (!userId || !status) {
+      console.error("[Registration Status SMS] Missing userId or status");
+      return NextResponse.json(
+        { success: false, error: "Missing userId or status" },
+        { status: 400 },
+      );
+    }
 
     console.log(
       `[Registration Status SMS] Processing userId: ${userId}, status: ${status}`,
     );
+
+    // Create Supabase client
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error("[Registration Status SMS] Missing Supabase credentials");
+      return NextResponse.json(
+        { success: false, error: "Server configuration error" },
+        { status: 500 },
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get resident details
     const { data: resident, error: residentError } = await supabase
@@ -58,9 +80,9 @@ export async function POST(req: NextRequest) {
     let message = "";
 
     if (status === "approved" || status === "active") {
-      message = `Welcome to Track the Truck, ${resident.first_name}! Your account has been approved by BWMC. You can now log in and track garbage collection in your area. - Track the Truck`;
+      message = `Welcome to Track the Truck! Your registration has been approved. You can now log in using your credentials to access garbage collection schedules and real-time truck updates.`;
     } else if (status === "rejected") {
-      message = `Your registration for Track the Truck has been reviewed. ${reason ? `Reason: ${reason}.` : "Please contact your BWMC for more information."} - Track the Truck`;
+      message = reason ? `${reason}` : `Not OK. Call BWMC.`;
     } else {
       console.warn(`[Registration Status SMS] Unknown status: ${status}`);
       return NextResponse.json(

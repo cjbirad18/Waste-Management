@@ -13,7 +13,7 @@ export async function notifyTruckArrival(
   recipient: NotificationRecipient,
   etaMinutes: number,
 ) {
-  const message = `Hi ${recipient.name}! A garbage truck will arrive at your location in approximately ${etaMinutes} minutes. Please prepare your waste for collection. - Track the Truck`;
+  const message = `Truck in ${etaMinutes}mins. Ready waste. TTruck`;
 
   try {
     await sendSMS(recipient.phoneNumber, message);
@@ -33,7 +33,7 @@ export async function notifyCollectionSchedule(
   date: string,
   time: string,
 ) {
-  const message = `Garbage collection schedule for ${barangay}: ${date} at ${time}. Please prepare your waste ahead of time. - Track the Truck`;
+  const message = `${barangay} ${date} ${time}. Ready waste.`;
 
   try {
     await sendSMS(recipient.phoneNumber, message);
@@ -52,7 +52,7 @@ export async function notifyIncidentAcknowledged(
   reportId: string,
   status: string,
 ) {
-  const message = `Your incident report #${reportId} has been ${status}. Our team will respond shortly. Thank you for reporting! - Track the Truck`;
+  const message = `Report #${reportId} ${status}. TTruck`;
 
   try {
     await sendSMS(recipient.phoneNumber, message);
@@ -70,7 +70,7 @@ export async function notifyMissedCollection(
   recipient: NotificationRecipient,
   nextSchedule: string,
 ) {
-  const message = `We missed your collection today. Our team will return on ${nextSchedule}. We apologize for the inconvenience. - Track the Truck`;
+  const message = `Missed. Back ${nextSchedule}. TTruck`;
 
   try {
     await sendSMS(recipient.phoneNumber, message);
@@ -89,7 +89,7 @@ export async function notifyEmergencyIncident(
   location: string,
   description: string,
 ) {
-  const message = `URGENT: Critical incident reported at ${location}. Details: ${description}. Please respond immediately. - Track the Truck`;
+  const message = `${location}: ${description}. TTruck`;
 
   try {
     await sendSMS(recipient.phoneNumber, message);
