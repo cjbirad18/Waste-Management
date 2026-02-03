@@ -1609,7 +1609,6 @@ export default function ResidentDashboard() {
                 tab: "submitIncidentReport",
               },
               { label: "My Reports", icon: "📅", tab: "myReports" },
-              { label: "Manage Account", icon: "🚨", tab: "manageAccount" },
             ].map((item) => (
               <button
                 key={item.tab}
