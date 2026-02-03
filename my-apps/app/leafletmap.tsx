@@ -20,7 +20,7 @@ const barangayHallIcon = L.icon({
 });
 
 const truckIcon = L.icon({
-  iconUrl: "/truck.png",
+  iconUrl: "/trucklogo.png",
   iconSize: [85, 95],
   iconAnchor: [27, 32],
   popupAnchor: [0, -18],
@@ -367,6 +367,24 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
         status: "ongoing",
       })
       .eq("schedule_id", data.schedule_id);
+
+    // Send SMS notification to residents
+    try {
+      await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/notifications/collection-status`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scheduleId: data.schedule_id,
+            status: "ongoing",
+            barangayId: barangay_id,
+          }),
+        },
+      );
+    } catch (err) {
+      console.error("Failed to send collection status notification:", err);
+    }
   };
 
   const endCollectionIfNeeded = async (barangay_id: number) => {
@@ -389,6 +407,24 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
         status: "completed",
       })
       .eq("schedule_id", data.schedule_id);
+
+    // Send SMS notification to residents
+    try {
+      await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/notifications/collection-status`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scheduleId: data.schedule_id,
+            status: "completed",
+            barangayId: barangay_id,
+          }),
+        },
+      );
+    } catch (err) {
+      console.error("Failed to send collection completed notification:", err);
+    }
   };
 
   const handleTruckLocationLogic = async (row: TruckRow) => {
