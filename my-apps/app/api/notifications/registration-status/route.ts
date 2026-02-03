@@ -104,6 +104,8 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           to: resident.contact_number,
           message,
+          userId: userId,
+          notificationType: "registration-status",
         }),
       },
     );

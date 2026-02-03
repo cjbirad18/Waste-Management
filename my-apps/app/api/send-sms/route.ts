@@ -1,8 +1,9 @@
 // app/api/send-sms/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: NextRequest) {
-  const { to, message } = await req.json();
+  const { to, message, userId, notificationType } = await req.json();
 
   console.log(`[Send SMS] Starting SMS send to: ${to}`);
 
@@ -101,6 +102,38 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`[Send SMS] SUCCESS: SMS sent to ${to}`);
+
+    // Log SMS to database
+    if (userId) {
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+        if (supabaseUrl && supabaseKey) {
+          const supabase = createClient(supabaseUrl, supabaseKey);
+
+          const { error: logError } = await supabase
+            .from("sms_notifications")
+            .insert({
+              user_id: userId,
+              notification_type: notificationType || "general",
+              message: message,
+              phone_number: to,
+              status: "sent",
+              sent_at: new Date().toISOString(),
+            });
+
+          if (logError) {
+            console.warn(`[Send SMS] Failed to log SMS to database:`, logError);
+          } else {
+            console.log(`[Send SMS] SMS logged to database`);
+          }
+        }
+      } catch (logErr) {
+        console.warn(`[Send SMS] Error logging SMS:`, logErr);
+        // Don't fail the SMS send if logging fails
+      }
+    }
 
     return NextResponse.json({
       success: true,
