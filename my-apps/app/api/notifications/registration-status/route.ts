@@ -93,47 +93,7 @@ export async function POST(req: NextRequest) {
       result: smsResult,
     });
 
-    if (smsResult.success) {
-      console.log(`[Registration Status SMS] SMS sent successfully`);
-
-      // Try to log, but don't fail if table doesn't exist
-      try {
-        await supabase.from("sms_notifications").insert({
-          user_id: userId,
-          notification_type: "registration_status",
-          message,
-          phone_number: resident.contact_number,
-          sent_at: new Date().toISOString(),
-          status: "sent",
-        });
-      } catch (logErr) {
-        console.warn(
-          `[Registration Status SMS] Could not log to sms_notifications (table may not exist):`,
-          logErr,
-        );
-      }
-    } else {
-      console.error(`[Registration Status SMS] SMS failed:`, smsResult.error);
-
-      // Try to log failed attempt
-      try {
-        await supabase.from("sms_notifications").insert({
-          user_id: userId,
-          notification_type: "registration_status",
-          message,
-          phone_number: resident.contact_number,
-          sent_at: new Date().toISOString(),
-          status: "failed",
-          error_message: smsResult.error || "Unknown error",
-        });
-      } catch (logErr) {
-        console.warn(
-          `[Registration Status SMS] Could not log error (table may not exist):`,
-          logErr,
-        );
-      }
-    }
-
+    // Skip database logging for now - just return the SMS result
     return NextResponse.json({
       success: smsResult.success,
       message: smsResult.success
