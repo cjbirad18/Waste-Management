@@ -307,12 +307,13 @@ export default function LoginClient() {
             <p className="text-xs text-slate-400 mb-2">No account yet?</p>
             <Link
               href="/register"
-              className="block w-full rounded-2xl bg-emerald-500/20 px-4 py-3 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/30 hover:text-emerald-200 transition-all duration-300 backdrop-blur-sm border border-emerald-500/40 hover:border-emerald-400/60 cursor-pointer touch-manipulation"
+              className=" block w-full rounded-2xl bg-emerald-500/20 px-4 py-3 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/30 hover:text-emerald-200 transition-all duration-300 backdrop-blur-sm border border-emerald-500/40 hover:border-emerald-400/60 cursor-pointer touch-manipulation"
             >
               Create Resident Account
             </Link>
           </div>
         )}
+        <br />
 
         <Link
           href="/"
