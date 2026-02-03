@@ -321,20 +321,15 @@ export default function BWMCdashboard() {
         setRejectedAccounts((prev) => [...prev, updatedUser as User]);
       }
 
+      // Send notification to resident
       if (updatedUser.contact_number) {
-        const message =
-          newStatus === "approved"
-            ? "Your account has been approved."
-            : `Your account has been rejected. Reason: ${
-                reason || "No reason provided."
-              }`;
-
-        await fetch("/api/send-sms", {
+        await fetch("/api/notifications/registration-status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            to: updatedUser.contact_number,
-            message,
+            userId: userId,
+            status: newStatus,
+            reason: newStatus === "rejected" ? reason : undefined,
           }),
         });
       }
