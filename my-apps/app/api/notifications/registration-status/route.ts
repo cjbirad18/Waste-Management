@@ -94,13 +94,11 @@ export async function POST(req: NextRequest) {
     });
 
     if (smsResult.success) {
-      console.log(
-        `[Registration Status SMS] SMS sent successfully, logging to database`,
-      );
+      console.log(`[Registration Status SMS] SMS sent successfully`);
 
-      const { error: logError } = await supabase
-        .from("sms_notifications")
-        .insert({
+      // Try to log, but don't fail if table doesn't exist
+      try {
+        await supabase.from("sms_notifications").insert({
           user_id: userId,
           notification_type: "registration_status",
           message,
@@ -108,17 +106,18 @@ export async function POST(req: NextRequest) {
           sent_at: new Date().toISOString(),
           status: "sent",
         });
-
-      if (logError) {
-        console.warn(`[Registration Status SMS] Failed to log SMS:`, logError);
+      } catch (logErr) {
+        console.warn(
+          `[Registration Status SMS] Could not log to sms_notifications (table may not exist):`,
+          logErr,
+        );
       }
     } else {
       console.error(`[Registration Status SMS] SMS failed:`, smsResult.error);
 
-      // Log failed attempt
-      const { error: logError } = await supabase
-        .from("sms_notifications")
-        .insert({
+      // Try to log failed attempt
+      try {
+        await supabase.from("sms_notifications").insert({
           user_id: userId,
           notification_type: "registration_status",
           message,
@@ -127,11 +126,10 @@ export async function POST(req: NextRequest) {
           status: "failed",
           error_message: smsResult.error || "Unknown error",
         });
-
-      if (logError) {
+      } catch (logErr) {
         console.warn(
-          `[Registration Status SMS] Failed to log error:`,
-          logError,
+          `[Registration Status SMS] Could not log error (table may not exist):`,
+          logErr,
         );
       }
     }
