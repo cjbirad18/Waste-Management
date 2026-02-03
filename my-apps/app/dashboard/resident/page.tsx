@@ -94,10 +94,10 @@ function SidebarItem({
   return (
     <button
       onClick={onClick}
-      className={`group relative w-full flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 mb-2 text-left transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-[1.02] ${
+      className={`w-full flex items-center justify-between gap-3 rounded-lg px-4 py-3 mb-2 text-left transition-colors ${
         selected
-          ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-xl shadow-green-500/30 border-green-500/50"
-          : "border-green-800/50 bg-slate-800/80 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25"
+          ? "bg-emerald-600 text-white"
+          : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
       }`}
       aria-current={selected ? "page" : undefined}
     >
@@ -105,17 +105,13 @@ function SidebarItem({
         <span className="text-xl" aria-hidden="true">
           {icon}
         </span>
-        <span className="font-bold">{label}</span>
+        <span className="font-medium">{label}</span>
       </span>
 
       {hasBadge && (
         <span className="inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-500 text-white shadow shadow-red-900/60">
           {badgeCount}
         </span>
-      )}
-
-      {selected && (
-        <div className="absolute right-3 w-2 h-6 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full animate-pulse" />
       )}
     </button>
   );
@@ -1479,52 +1475,44 @@ export default function ResidentDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
-      {/* Subtle animated overlay */}
-      <div className="fixed inset-0 opacity-30 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 animate-pulse" />
-      </div>
-
+    <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col relative">
       {/* Top navigation (same as SWMO) */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
-        <div className="flex items-center justify-between px-4 md:px-8 py-4">
-          <div className="flex items-center gap-4">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800 bg-slate-950">
+        <div className="flex items-center justify-between px-2 sm:px-4 md:px-8 py-3 sm:py-4 min-h-16">
+          <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
+              className="md:hidden inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors flex-shrink-0"
               aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
               {sidebarOpen ? "✖" : "☰"}
             </button>
 
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 hover:scale-110 transition-all duration-300">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-600/20 border border-emerald-600/30 text-lg flex-shrink-0">
                 🚛
               </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-bold">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-slate-400 font-semibold truncate">
                   Track-the-Truck
                 </p>
-                <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                <h1 className="text-sm sm:text-base md:text-lg font-bold text-slate-100 truncate">
                   Residents Dashboard
                 </h1>
               </div>
             </div>
           </div>
           {/* Profile Dropdown */}
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             <button
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-400/50 transition-all duration-300"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors whitespace-nowrap"
             >
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm">
-                RD
-              </div>
-              <span className="hidden md:inline text-sm font-semibold text-emerald-300">
+              <span className="hidden sm:inline text-xs sm:text-sm">
                 Resident
               </span>
               <svg
-                className={`w-4 h-4 text-emerald-300 transition-transform duration-300 ${profileDropdownOpen ? "rotate-180" : ""}`}
+                className={`w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1543,9 +1531,9 @@ export default function ResidentDashboard() {
                   className="fixed inset-0 z-40"
                   onClick={() => setProfileDropdownOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 w-56 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-emerald-500/30 shadow-2xl shadow-emerald-900/40 overflow-hidden z-50">
-                  <div className="p-3 border-b border-emerald-500/20">
-                    <p className="text-xs text-emerald-400 font-semibold">
+                <div className="absolute right-0 mt-2 w-56 rounded-lg bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-50">
+                  <div className="p-3 border-b border-slate-800">
+                    <p className="text-xs text-slate-400 font-medium">
                       Resident Account
                     </p>
                   </div>
@@ -1556,7 +1544,7 @@ export default function ResidentDashboard() {
                         setProfileDropdownOpen(false);
                         setSidebarOpen(false);
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-200 hover:bg-emerald-500/10 transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-200 hover:bg-slate-800 transition-colors"
                     >
                       <span className="text-lg">⚙️</span>
                       <span>Manage Account</span>
@@ -1566,7 +1554,7 @@ export default function ResidentDashboard() {
                         setProfileDropdownOpen(false);
                         handleLogout();
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-red-400 hover:bg-slate-800 transition-colors"
                     >
                       <span className="text-lg">🚪</span>
                       <span>Logout</span>
@@ -1579,7 +1567,7 @@ export default function ResidentDashboard() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden relative z-10 pt-16">
+      <div className="flex flex-1 overflow-hidden relative z-10 pt-24 sm:pt-20 md:pt-16">
         {/* Mobile overlay when sidebar is open */}
         {sidebarOpen && (
           <div
@@ -1592,7 +1580,7 @@ export default function ResidentDashboard() {
         {/* Sidebar and toggle button */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="md:hidden fixed top-4 left-4 z-[70] inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
+          className="md:hidden fixed top-4 left-4 z-[70] inline-flex items-center justify-center h-11 w-11 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
           aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
         >
           {sidebarOpen ? "✖" : "☰"}
@@ -1600,12 +1588,12 @@ export default function ResidentDashboard() {
 
         <aside
           className={`
-          fixed z-40 left-0 top-16 bottom-0 w-72 ${
+          fixed z-40 left-0 top-24 sm:top-20 bottom-0 w-72 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
           md:fixed md:translate-x-0 md:top-16 md:left-0 md:bottom-0 md:w-64
-          bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-green-800/40
-          flex flex-col py-6 px-4 transition-all duration-300 backdrop-blur-2xl shadow-2xl shadow-green-900/20
+          bg-slate-950 border-r border-slate-800
+          flex flex-col py-6 px-4 transition-all duration-300
         `}
         >
           <nav
@@ -1629,28 +1617,23 @@ export default function ResidentDashboard() {
                   setActiveTab(item.tab as ResidentActiveTab);
                   if (item.tab !== "dashboard") setSidebarOpen(false);
                 }}
-                className={`group relative w-full flex items-center gap-3 rounded-2xl border ${
+                className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
                   activeTab === item.tab
-                    ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-xl shadow-green-500/30 border-green-500/50"
-                    : "border-green-800/50 bg-slate-800/80 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25"
-                } px-4 py-3 text-left transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-[1.02] ${
-                  activeTab === item.tab ? "!text-emerald-100" : ""
+                    ? "bg-emerald-600 text-white"
+                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                 }`}
               >
                 <span className="text-xl">{item.icon}</span>
-                <span className="font-bold">{item.label}</span>
-                {activeTab === item.tab && (
-                  <div className="absolute right-3 w-2 h-6 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full animate-pulse" />
-                )}
+                <span className="font-medium">{item.label}</span>
               </button>
             ))}
 
-            <div className="pt-6 mt-6 border-t border-green-800/40"></div>
+            <div className="pt-6 mt-6 border-t border-slate-800"></div>
           </nav>
         </aside>
 
         {/* Main content area */}
-        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64">
+        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64 bg-slate-900/50">
           {/* Success modal */}
           {reportSuccessModalOpen && (
             <div

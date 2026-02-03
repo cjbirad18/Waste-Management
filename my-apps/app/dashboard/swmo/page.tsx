@@ -85,7 +85,7 @@ function InputField({
     <div className="mb-4">
       <label
         htmlFor={name}
-        className="block mb-1 text-md font-semibold text-slate-100"
+        className="block mb-1 text-xs font-medium text-slate-300"
       >
         {label}
       </label>
@@ -97,7 +97,7 @@ function InputField({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        className="w-full rounded-2xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/70 transition-shadow duration-200 shadow-sm"
+        className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
       />
     </div>
   );
@@ -124,7 +124,7 @@ function SelectField({
     <div className="mb-4">
       <label
         htmlFor={name}
-        className="block mb-1 text-md font-semibold text-slate-100"
+        className="block mb-1 text-xs font-medium text-slate-300"
       >
         {label}
       </label>
@@ -134,7 +134,7 @@ function SelectField({
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full rounded-2xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-shadow duration-200"
+        className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
       >
         <option value="" disabled>
           {placeholder}
@@ -207,6 +207,7 @@ export default function AdminDashboard() {
   const [loadingOtherUsers, setLoadingOtherUsers] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingUserForm, setEditingUserForm] = useState<any>(null);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [otherUsersError, setOtherUsersError] = useState<string | null>(null);
   const [otherUsersSuccess, setOtherUsersSuccess] = useState<string | null>(
     null,
@@ -784,6 +785,7 @@ export default function AdminDashboard() {
       password: "",
       confirm_password: "",
     });
+    setShowEditUserModal(true);
     setOtherUsersError(null);
     setOtherUsersSuccess(null);
   };
@@ -792,6 +794,7 @@ export default function AdminDashboard() {
   const handleCancelEdit = () => {
     setEditingUserId(null);
     setEditingUserForm(null);
+    setShowEditUserModal(false);
   };
 
   // Save user changes
@@ -835,6 +838,7 @@ export default function AdminDashboard() {
       setOtherUsersSuccess("User account updated successfully!");
       setEditingUserId(null);
       setEditingUserForm(null);
+      setShowEditUserModal(false);
       fetchOtherUsers();
     } catch (err) {
       setOtherUsersError(`Unexpected error: ${(err as Error).message}`);
@@ -1005,11 +1009,11 @@ export default function AdminDashboard() {
     if (loading) return <TruckLoader />;
 
     return (
-      <section className="max-w-5xl mx-auto rounded-3xl bg-slate-900/95 border border-slate-800 px-10 py-8 shadow-2xl">
-        <h2 className="text-3xl font-bold mb-1 text-emerald-400">
+      <section className="max-w-5xl mx-auto rounded-lg bg-slate-900 border border-slate-800 px-6 py-6">
+        <h2 className="text-lg font-bold mb-1 text-slate-100">
           Manage Account
         </h2>
-        <p className="text-[11px] text-slate-400 mb-6">
+        <p className="text-xs text-slate-400 mb-6">
           Update your profile details and sign-in credentials.
         </p>
 
@@ -1036,7 +1040,7 @@ export default function AdminDashboard() {
           <div>
             <label
               htmlFor="username"
-              className="block text-xs font-semibold text-slate-100 mb-1"
+              className="block text-xs font-medium text-slate-300 mb-1"
             >
               Username
             </label>
@@ -1047,7 +1051,7 @@ export default function AdminDashboard() {
               value={form.username}
               onChange={onChange}
               required
-              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
               placeholder="Enter your username"
             />
           </div>
@@ -1057,7 +1061,7 @@ export default function AdminDashboard() {
             <div>
               <label
                 htmlFor="first_name"
-                className="block text-xs font-semibold text-slate-100 mb-1"
+                className="block text-xs font-medium text-slate-300 mb-1"
               >
                 First Name
               </label>
@@ -1068,14 +1072,14 @@ export default function AdminDashboard() {
                 value={form.first_name}
                 onChange={onChange}
                 required
-                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
                 placeholder="Enter your first name"
               />
             </div>
             <div>
               <label
                 htmlFor="last_name"
-                className="block text-xs font-semibold text-slate-100 mb-1"
+                className="block text-xs font-medium text-slate-300 mb-1"
               >
                 Last Name
               </label>
@@ -1086,7 +1090,7 @@ export default function AdminDashboard() {
                 value={form.last_name}
                 onChange={onChange}
                 required
-                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
                 placeholder="Enter your last name"
               />
             </div>
@@ -1097,7 +1101,7 @@ export default function AdminDashboard() {
             <div>
               <label
                 htmlFor="contact_number"
-                className="block text-xs font-semibold text-slate-100 mb-1"
+                className="block text-xs font-medium text-slate-300 mb-1"
               >
                 Contact Number
               </label>
@@ -1108,14 +1112,14 @@ export default function AdminDashboard() {
                 value={form.contact_number}
                 onChange={onChange}
                 required
-                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
                 placeholder="09123456789"
               />
             </div>
             <div>
               <label
                 htmlFor="email"
-                className="block text-xs font-semibold text-slate-100 mb-1"
+                className="block text-xs font-medium text-slate-300 mb-1"
               >
                 Email
               </label>
@@ -1126,7 +1130,7 @@ export default function AdminDashboard() {
                 value={form.email}
                 onChange={onChange}
                 required
-                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
                 placeholder="user@tagbilaran.gov.ph"
               />
             </div>
@@ -1136,7 +1140,7 @@ export default function AdminDashboard() {
           <div>
             <label
               htmlFor="password"
-              className="block text-xs font-semibold text-slate-100 mb-1"
+              className="block text-xs font-medium text-slate-300 mb-1"
             >
               Password
             </label>
@@ -1146,7 +1150,7 @@ export default function AdminDashboard() {
               type="password"
               value={form.password}
               onChange={onChange}
-              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
               placeholder="Leave blank to keep current password"
             />
           </div>
@@ -1154,7 +1158,7 @@ export default function AdminDashboard() {
           <div>
             <label
               htmlFor="confirm_password"
-              className="block text-xs font-semibold text-slate-100 mb-1"
+              className="block text-xs font-medium text-slate-300 mb-1"
             >
               Confirm Password
             </label>
@@ -1164,7 +1168,7 @@ export default function AdminDashboard() {
               type="password"
               value={form.confirm_password}
               onChange={onChange}
-              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
               placeholder="Confirm your new password"
             />
           </div>
@@ -1172,7 +1176,7 @@ export default function AdminDashboard() {
           <div className="flex justify-end pt-3">
             <button
               type="submit"
-              className="inline-flex items-center rounded-md bg-emerald-600 px-6 py-2.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
+              className="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
             >
               Update Account
             </button>
@@ -1198,45 +1202,40 @@ export default function AdminDashboard() {
       </div>
 
       {/* Top navigation */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-green-800/40 bg-slate-900/95 backdrop-blur-2xl shadow-xl shadow-green-900/20">
-        <div className="flex items-center justify-between px-4 md:px-8 py-4">
-          <div className="flex items-center gap-4">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800 bg-slate-950">
+        <div className="flex items-center justify-between px-4 md:px-8 py-4 min-h-16">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden inline-flex items-center justify-center h-12 w-12 rounded-2xl border-2 border-green-800/50 bg-slate-800/90 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md"
+              className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
               aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
               {sidebarOpen ? "✖" : "☰"}
             </button>
 
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 hover:scale-110 transition-all duration-300">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-600 text-lg font-bold text-white flex-shrink-0">
                 🚛
               </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-bold">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-slate-400 font-semibold truncate">
                   Track-the-Truck
                 </p>
-                <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
-                  SWMO Admin
+                <h1 className="text-sm sm:text-base md:text-lg font-bold text-slate-100 truncate">
+                  SWMO Dashboard
                 </h1>
               </div>
             </div>
           </div>
           {/* Profile Dropdown */}
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             <button
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-400/50 transition-all duration-300"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors"
             >
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm">
-                SA
-              </div>
-              <span className="hidden md:inline text-sm font-semibold text-emerald-300">
-                Admin
-              </span>
+              Admin
               <svg
-                className={`w-4 h-4 text-emerald-300 transition-transform duration-300 ${profileDropdownOpen ? "rotate-180" : ""}`}
+                className={`w-4 h-4 transition-transform duration-300 ${profileDropdownOpen ? "rotate-180" : ""}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1255,22 +1254,17 @@ export default function AdminDashboard() {
                   className="fixed inset-0 z-40"
                   onClick={() => setProfileDropdownOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 w-56 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-emerald-500/30 shadow-2xl shadow-emerald-900/40 overflow-hidden z-50">
-                  <div className="p-3 border-b border-emerald-500/20">
-                    <p className="text-xs text-emerald-400 font-semibold">
-                      SWMO Admin
-                    </p>
-                  </div>
-                  <div className="py-2">
+                <div className="absolute right-0 mt-2 w-48 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden z-50">
+                  <div className="py-1">
                     <button
                       onClick={() => {
                         setActiveTab("manageAccount");
                         setProfileDropdownOpen(false);
                         setSidebarOpen(false);
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-200 hover:bg-emerald-500/10 transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-800 transition-colors"
                     >
-                      <span className="text-lg">⚙️</span>
+                      <span>⚙️</span>
                       <span>Manage Account</span>
                     </button>
                     <button
@@ -1278,9 +1272,9 @@ export default function AdminDashboard() {
                         setProfileDropdownOpen(false);
                         handleLogout();
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-red-400 hover:bg-slate-800 transition-colors"
                     >
-                      <span className="text-lg">🚪</span>
+                      <span>🚪</span>
                       <span>Logout</span>
                     </button>
                   </div>
@@ -1305,19 +1299,18 @@ export default function AdminDashboard() {
         {/* Sidebar */}
         <aside
           className={`
-          fixed z-40 left-0 top-16 bottom-0 w-72 ${
+          fixed z-40 left-0 top-16 bottom-0 w-64 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
-          md:fixed md:translate-x-0 md:top-20 md:left-0 md:bottom-0 md:w-64
-          bg-gradient-to-b from-slate-900/95 to-slate-950/95 border-r border-green-800/40
-          flex flex-col py-6 px-4 transition-all duration-300 backdrop-blur-2xl shadow-2xl shadow-green-900/20
+          md:fixed md:translate-x-0 md:top-16 md:left-0 md:bottom-0 md:w-64
+          bg-slate-950 border-r border-slate-800
+          flex flex-col py-4 px-3 transition-all duration-300
         `}
         >
           <nav
-            className="flex-1 space-y-2 text-sm font-semibold text-slate-200"
+            className="flex-1 space-y-1 text-sm font-medium"
             aria-label="Main Navigation"
           >
-            {/* You'll need to replace SidebarItem with this inline version */}
             {[
               { label: "Dashboard", icon: "📊", tab: "dashboard" },
               { label: "Manage Users", icon: "👥", tab: "userAdmin" },
@@ -1339,28 +1332,21 @@ export default function AdminDashboard() {
                   );
                   if (item.tab !== "dashboard") setSidebarOpen(false);
                 }}
-                className={`group relative w-full flex items-center gap-3 rounded-2xl border ${
+                className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 transition-colors ${
                   activeTab === item.tab
-                    ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-xl shadow-green-500/30 border-green-500/50"
-                    : "border-green-800/50 bg-slate-800/80 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25"
-                } px-4 py-3 text-left transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-[1.02] ${
-                  activeTab === item.tab ? "!text-emerald-100" : ""
+                    ? "bg-emerald-600 text-white"
+                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                 }`}
               >
-                <span className="text-xl">{item.icon}</span>
-                <span className="font-bold">{item.label}</span>
-                {activeTab === item.tab && (
-                  <div className="absolute right-3 w-2 h-6 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full animate-pulse" />
-                )}
+                <span className="text-lg">{item.icon}</span>
+                <span>{item.label}</span>
               </button>
             ))}
-
-            <div className="pt-6 mt-6 border-t border-green-800/40"></div>
           </nav>
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64">
+        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64 bg-slate-900/50">
           {/* DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
@@ -1372,41 +1358,22 @@ export default function AdminDashboard() {
                     : "max-h-0 opacity-0 mb-0"
                 }`}
               >
-                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   {summaryCards.map((card, idx) => (
                     <div
                       key={idx}
-                      className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-lg shadow-green-900/20 p-3.5 sm:p-4 backdrop-blur-2xl hover:shadow-xl hover:shadow-green-600/30 transition-all duration-300 hover:border-green-600/70"
+                      className="bg-slate-900 border border-slate-800 rounded-lg p-5 hover:border-slate-700 transition-colors"
                       role="region"
                       aria-label={card.label}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/6 via-transparent to-teal-500/6 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-lg border border-green-800/50 shadow">
-                              {card.icon}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[10px] uppercase tracking-wide text-emerald-400 font-semibold truncate">
-                                {card.label}
-                              </p>
-                              <p className="text-xl sm:text-2xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent leading-none">
-                                {card.count}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="hidden sm:inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-300">
-                            Auto
-                          </div>
-                        </div>
-
-                        <div className="mt-2.5">
-                          <div className="h-1.5 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50">
-                            <div className="h-full w-[70%] bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow" />
-                          </div>
-                          <p className="mt-1.5 text-[9px] text-slate-400">
-                            Auto-updated from collection data
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-2xl">{card.icon}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs uppercase text-slate-400 font-medium">
+                            {card.label}
+                          </p>
+                          <p className="text-2xl font-bold text-slate-100 mt-1">
+                            {card.count}
                           </p>
                         </div>
                       </div>
@@ -1416,39 +1383,29 @@ export default function AdminDashboard() {
               </div>
 
               {/* Map Section with Toggle Button */}
-              <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
-                <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-                  <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
-                        Collection Coverage Map
-                      </h2>
-                      <div className="flex items-center gap-3">
-                        {/* Stats Toggle Button */}
-                        <button
-                          onClick={() => setStatsVisible(!statsVisible)}
-                          className="group/btn inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 text-emerald-300 border border-emerald-500/30 font-semibold text-xs backdrop-blur-sm hover:bg-emerald-500/20 hover:border-emerald-400/50 transition-all duration-300 relative z-10"
-                          title={
-                            statsVisible ? "Hide Statistics" : "Show Statistics"
-                          }
-                        >
-                          <span className="text-sm">
-                            {statsVisible ? "📊" : "📈"}
-                          </span>
-                          <span className="hidden sm:inline">
-                            {statsVisible ? "Hide Stats" : "Show Stats"}
-                          </span>
-                        </button>
-                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
-                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-                          Live vehicles
-                        </span>
-                      </div>
+              <section>
+                <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 overflow-hidden">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-slate-100">
+                      Collection Coverage Map
+                    </h2>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setStatsVisible(!statsVisible)}
+                        className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm transition-colors"
+                        title={
+                          statsVisible ? "Hide Statistics" : "Show Statistics"
+                        }
+                      >
+                        {statsVisible ? "📊 Hide Stats" : "📈 Show Stats"}
+                      </button>
+                      <span className="px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-sm font-medium">
+                        🟢 Live
+                      </span>
                     </div>
-                    <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px] relative z-10">
-                      <LeafletMap />
-                    </div>
+                  </div>
+                  <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px]">
+                    <LeafletMap />
                   </div>
                 </div>
               </section>
@@ -1458,13 +1415,12 @@ export default function AdminDashboard() {
           {activeTab === "userAdmin" && (
             <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               {/* Add user */}
-              <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+              <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 hover:border-slate-700 transition-colors overflow-hidden">
                 <div className="relative z-10">
-                  <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                  <h2 className="text-lg font-bold mb-4 text-slate-100">
                     Add User
                   </h2>
-                  <p className="text-sm text-slate-400 mb-6">
+                  <p className="text-xs text-slate-400 mb-6">
                     Create accounts for collectors, BWMC officers, and admins.
                   </p>
                   <form
@@ -1473,12 +1429,12 @@ export default function AdminDashboard() {
                     noValidate
                   >
                     {formError && (
-                      <div className="rounded-2xl bg-gradient-to-r from-orange-500/15 to-red-500/15 border border-orange-500/40 p-4 text-orange-200 text-sm backdrop-blur-xl shadow-lg">
+                      <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-red-300 text-xs">
                         {formError}
                       </div>
                     )}
                     {formSuccess && (
-                      <div className="rounded-2xl bg-gradient-to-r from-emerald-500/15 to-teal-500/15 border border-emerald-500/40 p-4 text-emerald-200 text-sm backdrop-blur-xl shadow-lg">
+                      <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-emerald-300 text-xs">
                         {formSuccess}
                       </div>
                     )}
@@ -1562,7 +1518,7 @@ export default function AdminDashboard() {
 
                     <div>
                       <label
-                        className="block mb-2 text-xs font-semibold text-emerald-300 uppercase tracking-wide"
+                        className="block mb-2 text-xs font-medium text-slate-300"
                         htmlFor="password"
                       >
                         Password
@@ -1570,7 +1526,7 @@ export default function AdminDashboard() {
                       <div className="relative">
                         <input
                           id="password"
-                          className="w-full rounded-2xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 text-slate-200 placeholder:text-slate-400 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20"
+                          className="w-full rounded-lg bg-slate-800 border border-slate-700 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors text-slate-200 placeholder:text-slate-400"
                           type={showPassword ? "text" : "password"}
                           name="password"
                           value={userForm.password}
@@ -1580,7 +1536,7 @@ export default function AdminDashboard() {
                         />
                         <button
                           type="button"
-                          className="absolute inset-y-0 right-3 flex items-center text-slate-400 text-sm hover:text-emerald-300 transition-colors"
+                          className="absolute inset-y-0 right-3 flex items-center text-slate-400 text-xs hover:text-slate-300 transition-colors"
                           onClick={() => setShowPassword(!showPassword)}
                           aria-label={
                             showPassword ? "Hide password" : "Show password"
@@ -1594,10 +1550,9 @@ export default function AdminDashboard() {
                     <div className="flex justify-end pt-2">
                       <button
                         type="submit"
-                        className="group relative inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600/95 to-teal-600/95 px-6 py-3 text-sm font-bold text-slate-100 shadow-xl shadow-emerald-500/30 hover:shadow-2xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 overflow-hidden"
+                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-xs font-medium text-white transition-colors"
                       >
-                        <span className="relative z-10">＋ Add User</span>
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        ＋ Add User
                       </button>
                     </div>
                   </form>
@@ -1605,33 +1560,32 @@ export default function AdminDashboard() {
               </div>
 
               {/* User list */}
-              <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden max-h-[600px]">
-                <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+              <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 hover:border-slate-700 transition-colors overflow-hidden max-h-[600px]">
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                    <h3 className="text-lg font-bold text-slate-100">
                       User List (Realtime)
                     </h3>
-                    <span className="text-sm bg-emerald-500/20 text-emerald-300 px-4 py-2 rounded-2xl border border-emerald-500/40 font-semibold backdrop-blur-sm">
+                    <span className="text-xs bg-emerald-600/20 text-emerald-300 px-3 py-1 rounded-lg border border-emerald-600/40 font-medium">
                       {users.length} users
                     </span>
                   </div>
                   {loadingUsers && <TruckLoader />}
                   {!loadingUsers && (
-                    <div className="overflow-x-auto rounded-2xl border border-green-800/50 max-h-[480px] bg-slate-900/50 backdrop-blur-xl shadow-inner">
+                    <div className="overflow-x-auto rounded-lg border border-slate-800 max-h-[480px] bg-slate-950">
                       <table className="min-w-full text-sm">
-                        <thead className="bg-gradient-to-r from-slate-900/95 to-gray-900/95 text-slate-300 border-b border-green-800/50 sticky top-0 z-10">
+                        <thead className="bg-slate-800 text-slate-300 border-b border-slate-700 sticky top-0 z-10">
                           <tr>
-                            <th className="px-6 py-4 text-left font-semibold">
+                            <th className="px-4 py-3 text-left font-medium text-xs">
                               Name
                             </th>
-                            <th className="px-6 py-4 text-left font-semibold hidden sm:table-cell">
+                            <th className="px-4 py-3 text-left font-medium text-xs hidden sm:table-cell">
                               Email
                             </th>
-                            <th className="px-6 py-4 text-left font-semibold">
+                            <th className="px-4 py-3 text-left font-medium text-xs">
                               Role
                             </th>
-                            <th className="px-6 py-4 text-left font-semibold hidden md:table-cell">
+                            <th className="px-4 py-3 text-left font-medium text-xs hidden md:table-cell">
                               Barangay
                             </th>
                           </tr>
@@ -1640,23 +1594,23 @@ export default function AdminDashboard() {
                           {users.map((user) => (
                             <tr
                               key={user.id || user.user_id || user.email}
-                              className="border-t border-green-800/30 hover:bg-slate-800/60 transition-all duration-200"
+                              className="border-t border-slate-800 hover:bg-slate-800 transition-colors"
                             >
-                              <td className="px-6 py-4 font-semibold text-slate-200">
+                              <td className="px-4 py-3 font-medium text-slate-200 text-sm">
                                 {user.first_name} {user.last_name}
                                 <div className="sm:hidden text-xs text-slate-400 font-normal">
                                   {user.email}
                                 </div>
                               </td>
-                              <td className="px-6 py-4 text-slate-300 hidden sm:table-cell">
+                              <td className="px-4 py-3 text-slate-300 hidden sm:table-cell text-sm">
                                 {user.email}
                               </td>
-                              <td className="px-6 py-4">
-                                <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-semibold">
+                              <td className="px-4 py-3">
+                                <span className="px-2 py-1 rounded-md bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 text-xs font-medium">
                                   {user.role}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 text-slate-400 hidden md:table-cell">
+                              <td className="px-4 py-3 text-slate-400 hidden md:table-cell text-sm">
                                 {user.role === "BWMC" ? user.barangay_id : "-"}
                               </td>
                             </tr>
@@ -1673,17 +1627,16 @@ export default function AdminDashboard() {
           {activeTab === "manageUsers" && (
             <div className="space-y-6">
               {/* Header Section */}
-              <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 via-slate-800/90 to-emerald-900/40 border border-emerald-500/30 p-8 shadow-2xl shadow-emerald-900/20 backdrop-blur-2xl overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-green-500/10 opacity-50 blur-3xl animate-pulse" />
+              <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 hover:border-slate-700 transition-colors overflow-hidden">
                 <div className="relative z-10 flex items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/50">
-                    <span className="text-3xl">👥</span>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-600/20 border border-emerald-600/30">
+                    <span className="text-2xl">👥</span>
                   </div>
                   <div>
-                    <h2 className="text-3xl font-black bg-gradient-to-r from-emerald-300 via-teal-300 to-green-300 bg-clip-text text-transparent drop-shadow-2xl">
+                    <h2 className="text-lg font-bold text-slate-100">
                       User Account Management
                     </h2>
-                    <p className="text-emerald-200/70 text-sm mt-1">
+                    <p className="text-slate-400 text-xs mt-1">
                       Manage TCEMO Head, Secretary, BWMC, and GCP accounts
                     </p>
                   </div>
@@ -1692,15 +1645,12 @@ export default function AdminDashboard() {
 
               {/* Alerts */}
               {otherUsersError && (
-                <div className="group relative rounded-2xl bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/40 p-4 shadow-lg backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-orange-500/5 opacity-50 blur-xl" />
-                  <div className="relative z-10 flex items-start gap-3">
-                    <span className="text-2xl">⚠️</span>
+                <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-4 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex items-start gap-3">
+                    <span className="text-lg mt-0.5">⚠️</span>
                     <div>
-                      <p className="text-sm font-semibold text-red-200">
-                        Error
-                      </p>
-                      <p className="text-sm text-red-300/90">
+                      <p className="text-xs font-medium text-red-300">Error</p>
+                      <p className="text-sm text-red-200 mt-1">
                         {otherUsersError}
                       </p>
                     </div>
@@ -1708,15 +1658,14 @@ export default function AdminDashboard() {
                 </div>
               )}
               {otherUsersSuccess && (
-                <div className="group relative rounded-2xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/40 p-4 shadow-lg backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 opacity-50 blur-xl" />
-                  <div className="relative z-10 flex items-start gap-3">
-                    <span className="text-2xl">✅</span>
+                <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-4 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex items-start gap-3">
+                    <span className="text-lg mt-0.5">✅</span>
                     <div>
-                      <p className="text-sm font-semibold text-emerald-200">
+                      <p className="text-xs font-medium text-emerald-300">
                         Success
                       </p>
-                      <p className="text-sm text-emerald-300/90">
+                      <p className="text-sm text-emerald-200 mt-1">
                         {otherUsersSuccess}
                       </p>
                     </div>
@@ -1727,14 +1676,13 @@ export default function AdminDashboard() {
               {loadingOtherUsers && <TruckLoader />}
 
               {!loadingOtherUsers && otherUsersList.length === 0 && (
-                <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/60 to-slate-900/60 border border-slate-700/50 p-12 text-center backdrop-blur-xl">
-                  <div className="absolute inset-0 bg-gradient-to-r from-slate-500/5 to-slate-600/5 opacity-50 blur-2xl" />
+                <div className="rounded-lg bg-slate-900 border border-slate-800 p-12 text-center">
                   <div className="relative z-10">
-                    <span className="text-6xl mb-4 block opacity-50">👤</span>
-                    <p className="text-xl font-semibold text-slate-300 mb-2">
+                    <span className="text-6xl mb-4 block opacity-40">👤</span>
+                    <p className="text-lg font-semibold text-slate-300 mb-2">
                       No Users Found
                     </p>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-xs text-slate-400">
                       There are currently no user accounts to manage
                     </p>
                   </div>
@@ -1746,226 +1694,99 @@ export default function AdminDashboard() {
                   {otherUsersList.map((user) => (
                     <div
                       key={user.user_id}
-                      className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-slate-900/95 border border-slate-700/50 p-6 shadow-xl hover:shadow-2xl hover:shadow-emerald-500/20 hover:border-emerald-500/50 transition-all duration-500 backdrop-blur-2xl overflow-hidden"
+                      className="relative bg-slate-900 border border-slate-800 rounded-lg p-5 hover:border-slate-700 transition-colors overflow-hidden"
                     >
-                      {/* Glow effect */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-teal-500/5 to-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl" />
-
                       <div className="relative z-10">
-                        {editingUserId === user.user_id && editingUserForm ? (
-                          // Edit Mode - Enhanced
-                          <div className="space-y-4">
-                            {/* Edit Header */}
-                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-emerald-500/30">
-                              <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                                  <span className="text-xl">✏️</span>
-                                </div>
-                                <div>
-                                  <h3 className="text-lg font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent">
-                                    Editing Account
-                                  </h3>
-                                  <p className="text-xs text-slate-400">
-                                    {user.first_name} {user.last_name}
-                                  </p>
-                                </div>
-                              </div>
-                              <span className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-300 border border-blue-500/40 text-xs font-bold shadow-lg">
-                                {user.role}
+                        {/* View Mode */}
+                        <div>
+                          {/* User Header */}
+                          <div className="flex items-start gap-4 mb-6">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-600/20 border border-emerald-600/30 flex-shrink-0">
+                              <span className="text-2xl">
+                                {user.role === "TCEMO Head"
+                                  ? "👔"
+                                  : user.role === "Secretary"
+                                    ? "📝"
+                                    : user.role === "BWMC"
+                                      ? "🏛️"
+                                      : "🔧"}
                               </span>
                             </div>
-
-                            {/* Form Fields */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="group/input">
-                                <label className="block text-xs font-bold text-emerald-300 mb-2 uppercase tracking-wide">
-                                  First Name
-                                </label>
-                                <input
-                                  type="text"
-                                  value={editingUserForm.first_name}
-                                  onChange={(e) =>
-                                    setEditingUserForm({
-                                      ...editingUserForm,
-                                      first_name: e.target.value,
-                                    })
-                                  }
-                                  className="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 transition-all duration-300 shadow-inner"
-                                />
-                              </div>
-                              <div className="group/input">
-                                <label className="block text-xs font-bold text-emerald-300 mb-2 uppercase tracking-wide">
-                                  Last Name
-                                </label>
-                                <input
-                                  type="text"
-                                  value={editingUserForm.last_name}
-                                  onChange={(e) =>
-                                    setEditingUserForm({
-                                      ...editingUserForm,
-                                      last_name: e.target.value,
-                                    })
-                                  }
-                                  className="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 transition-all duration-300 shadow-inner"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="group/input">
-                              <label className="block text-xs font-bold text-emerald-300 mb-2 uppercase tracking-wide">
-                                📧 Email Address
-                              </label>
-                              <input
-                                type="email"
-                                value={editingUserForm.email}
-                                onChange={(e) =>
-                                  setEditingUserForm({
-                                    ...editingUserForm,
-                                    email: e.target.value,
-                                  })
-                                }
-                                className="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 transition-all duration-300 shadow-inner"
-                              />
-                            </div>
-
-                            <div className="group/input">
-                              <label className="block text-xs font-bold text-emerald-300 mb-2 uppercase tracking-wide">
-                                📱 Contact Number
-                              </label>
-                              <input
-                                type="tel"
-                                value={editingUserForm.contact_number}
-                                onChange={(e) =>
-                                  setEditingUserForm({
-                                    ...editingUserForm,
-                                    contact_number: e.target.value,
-                                  })
-                                }
-                                className="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 transition-all duration-300 shadow-inner"
-                              />
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex gap-3 pt-4">
-                              <button
-                                onClick={() => handleSaveUserEdit(user.user_id)}
-                                className="group/btn flex-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 relative overflow-hidden"
-                              >
-                                <span className="relative z-10 flex items-center justify-center gap-2">
-                                  <span>💾</span>
-                                  Save Changes
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-base font-bold text-slate-100 truncate mb-2">
+                                {user.first_name} {user.last_name}
+                              </h3>
+                              <div className="flex flex-wrap gap-2">
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 text-xs font-medium">
+                                  {user.role}
                                 </span>
-                                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-                              </button>
-                              <button
-                                onClick={handleCancelEdit}
-                                className="group/btn flex-1 rounded-xl bg-gradient-to-r from-slate-700 to-slate-800 px-4 py-3 text-sm font-bold text-slate-200 shadow-lg hover:shadow-xl hover:from-slate-600 hover:to-slate-700 hover:scale-[1.02] transition-all duration-300"
-                              >
-                                <span className="flex items-center justify-center gap-2">
-                                  <span>✖️</span>
-                                  Cancel
-                                </span>
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          // View Mode - Enhanced
-                          <div>
-                            {/* User Header */}
-                            <div className="flex items-start gap-4 mb-6">
-                              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-600/20 border border-emerald-500/30 shadow-lg flex-shrink-0">
-                                <span className="text-2xl">
-                                  {user.role === "TCEMO Head"
-                                    ? "👔"
-                                    : user.role === "Secretary"
-                                      ? "📝"
-                                      : user.role === "BWMC"
-                                        ? "🏛️"
-                                        : "🔧"}
-                                </span>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h3 className="text-xl font-black bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent truncate mb-1">
-                                  {user.first_name} {user.last_name}
-                                </h3>
-                                <div className="flex flex-wrap gap-2">
-                                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-300 border border-blue-500/40 text-xs font-bold shadow">
-                                    {user.role}
-                                  </span>
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold shadow ${
-                                      user.status === "archived"
-                                        ? "bg-gradient-to-r from-red-500/20 to-orange-500/20 text-red-300 border border-red-500/40"
-                                        : "bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/40"
-                                    }`}
-                                  >
-                                    <span
-                                      className={`w-2 h-2 rounded-full ${user.status === "archived" ? "bg-red-400" : "bg-emerald-400 animate-pulse"}`}
-                                    />
-                                    {user.status || "Active"}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* User Details */}
-                            <div className="space-y-3 mb-6">
-                              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/50 border border-slate-700/50">
-                                <span className="text-lg">📧</span>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs text-slate-400 font-semibold uppercase">
-                                    Email
-                                  </p>
-                                  <p className="text-sm text-slate-200 truncate">
-                                    {user.email}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/50 border border-slate-700/50">
-                                <span className="text-lg">📱</span>
-                                <div className="flex-1">
-                                  <p className="text-xs text-slate-400 font-semibold uppercase">
-                                    Phone
-                                  </p>
-                                  <p className="text-sm text-slate-200">
-                                    {user.contact_number}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex gap-3 pt-4 border-t border-slate-700/50">
-                              <button
-                                onClick={() => handleEditUser(user)}
-                                className="group/btn flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02] transition-all duration-300 relative overflow-hidden"
-                              >
-                                <span className="relative z-10 flex items-center justify-center gap-2">
-                                  <span>✏️</span>
-                                  Edit
-                                </span>
-                                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-                              </button>
-                              {user.status !== "archived" && (
-                                <button
-                                  onClick={() =>
-                                    handleArchiveUser(
-                                      user.user_id,
-                                      `${user.first_name} ${user.last_name}`,
-                                    )
-                                  }
-                                  className="group/btn flex-1 rounded-xl bg-gradient-to-r from-red-600 to-orange-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02] transition-all duration-300 relative overflow-hidden"
+                                <span
+                                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold shadow ${
+                                    user.status === "archived"
+                                      ? "bg-red-500/10 text-red-300 border border-red-500/30"
+                                      : "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                                  }`}
                                 >
-                                  <span className="relative z-10 flex items-center justify-center gap-2">
-                                    <span>🗂️</span>
-                                    Archive
-                                  </span>
-                                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-                                </button>
-                              )}
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${user.status === "archived" ? "bg-red-400" : "bg-emerald-400 animate-pulse"}`}
+                                  />
+                                  {user.status || "Active"}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        )}
+
+                          {/* User Details */}
+                          <div className="space-y-3 mb-6">
+                            <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-800 border border-slate-700">
+                              <span className="text-lg">📧</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-slate-400 font-medium">
+                                  Email
+                                </p>
+                                <p className="text-xs text-slate-200 truncate">
+                                  {user.email}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-800 border border-slate-700">
+                              <span className="text-lg">📱</span>
+                              <div className="flex-1">
+                                <p className="text-xs text-slate-400 font-medium">
+                                  Phone
+                                </p>
+                                <p className="text-xs text-slate-200">
+                                  {user.contact_number}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-3 pt-4 border-t border-slate-700/50">
+                            <button
+                              onClick={() => handleEditUser(user)}
+                              className="flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-2 text-xs font-medium text-white transition-colors flex items-center justify-center gap-2"
+                            >
+                              <span>✏️</span>
+                              Edit
+                            </button>
+                            {user.status !== "archived" && (
+                              <button
+                                onClick={() =>
+                                  handleArchiveUser(
+                                    user.user_id,
+                                    `${user.first_name} ${user.last_name}`,
+                                  )
+                                }
+                                className="flex-1 rounded-lg bg-amber-600 hover:bg-amber-700 px-3 py-2 text-xs font-medium text-white transition-colors flex items-center justify-center gap-2"
+                              >
+                                <span>🗂️</span>
+                                Archive
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1977,17 +1798,16 @@ export default function AdminDashboard() {
           {activeTab === "incidentReports" && (
             <div className="space-y-6">
               {/* Header Section */}
-              <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 via-slate-800/90 to-red-900/40 border border-red-500/30 p-8 shadow-2xl shadow-red-900/20 backdrop-blur-2xl overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 via-orange-500/5 to-red-500/10 opacity-50 blur-3xl animate-pulse" />
+              <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 hover:border-slate-700 transition-colors overflow-hidden">
                 <div className="relative z-10 flex items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-orange-600 shadow-lg shadow-red-500/50">
-                    <span className="text-3xl">🚨</span>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-600/20 border border-red-600/30">
+                    <span className="text-2xl">🚨</span>
                   </div>
                   <div>
-                    <h2 className="text-3xl font-black bg-gradient-to-r from-red-300 via-orange-300 to-red-300 bg-clip-text text-transparent drop-shadow-2xl">
+                    <h2 className="text-lg font-bold text-slate-100">
                       Incident Reports Dashboard
                     </h2>
-                    <p className="text-red-200/70 text-sm mt-1">
+                    <p className="text-slate-400 text-xs mt-1">
                       View and manage community incident reports by barangay
                     </p>
                   </div>
@@ -1995,18 +1815,17 @@ export default function AdminDashboard() {
               </div>
 
               {/* Filters Section */}
-              <div className="group relative rounded-2xl bg-gradient-to-br from-slate-800/95 to-slate-900/95 border border-slate-700/50 p-6 shadow-xl backdrop-blur-2xl">
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-500/5 to-slate-600/5 opacity-50 blur-xl" />
+              <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 hover:border-slate-700 transition-colors overflow-hidden">
                 <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Barangay Filter */}
                   <div>
-                    <label className="block text-sm font-bold text-emerald-300 mb-2 uppercase tracking-wide">
+                    <label className="block text-xs font-medium text-slate-300 mb-2">
                       🏘️ Select Barangay
                     </label>
                     <select
                       value={selectedBarangay}
                       onChange={(e) => setSelectedBarangay(e.target.value)}
-                      className="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 transition-all duration-300 shadow-inner"
+                      className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
                     >
                       <option value="all">All Barangays</option>
                       {barangayOptions.map((barangay) => (
@@ -2019,13 +1838,13 @@ export default function AdminDashboard() {
 
                   {/* Sort By Filter */}
                   <div>
-                    <label className="block text-sm font-bold text-emerald-300 mb-2 uppercase tracking-wide">
+                    <label className="block text-xs font-medium text-slate-300 mb-2">
                       🔄 Sort By
                     </label>
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
-                      className="w-full rounded-xl bg-slate-900/80 border border-slate-700 px-4 py-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 transition-all duration-300 shadow-inner"
+                      className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
                     >
                       <option value="date_desc">Date (Newest First)</option>
                       <option value="date_asc">Date (Oldest First)</option>
@@ -2038,15 +1857,14 @@ export default function AdminDashboard() {
 
               {/* Error Message */}
               {reportsError && (
-                <div className="group relative rounded-2xl bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/40 p-4 shadow-lg backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-orange-500/5 opacity-50 blur-xl" />
-                  <div className="relative z-10 flex items-start gap-3">
-                    <span className="text-2xl">⚠️</span>
+                <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-4 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex items-start gap-3">
+                    <span className="text-lg mt-0.5">⚠️</span>
                     <div>
-                      <p className="text-sm font-semibold text-red-200">
-                        Error
+                      <p className="text-xs font-medium text-red-300">Error</p>
+                      <p className="text-sm text-red-200 mt-1">
+                        {reportsError}
                       </p>
-                      <p className="text-sm text-red-300/90">{reportsError}</p>
                     </div>
                   </div>
                 </div>
@@ -2057,14 +1875,13 @@ export default function AdminDashboard() {
 
               {/* No Reports */}
               {!loadingReports && incidentReports.length === 0 && (
-                <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/60 to-slate-900/60 border border-slate-700/50 p-12 text-center backdrop-blur-xl">
-                  <div className="absolute inset-0 bg-gradient-to-r from-slate-500/5 to-slate-600/5 opacity-50 blur-2xl" />
+                <div className="rounded-lg bg-slate-900 border border-slate-800 p-12 text-center">
                   <div className="relative z-10">
-                    <span className="text-6xl mb-4 block opacity-50">📋</span>
-                    <p className="text-xl font-semibold text-slate-300 mb-2">
+                    <span className="text-6xl mb-4 block opacity-40">📋</span>
+                    <p className="text-lg font-semibold text-slate-300 mb-2">
                       No Reports Found
                     </p>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-xs text-slate-400">
                       There are no incident reports for the selected barangay
                     </p>
                   </div>
@@ -2077,34 +1894,31 @@ export default function AdminDashboard() {
                   {incidentReports.map((report) => (
                     <div
                       key={report.report_id}
-                      className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-slate-900/95 border border-slate-700/50 p-6 shadow-xl hover:shadow-2xl hover:shadow-red-500/20 hover:border-red-500/50 transition-all duration-500 backdrop-blur-2xl overflow-hidden"
+                      className="relative bg-slate-900 border border-slate-800 rounded-lg p-5 hover:border-slate-700 transition-colors overflow-hidden"
                     >
-                      {/* Glow effect */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-orange-500/5 to-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl" />
-
                       <div className="relative z-10">
                         {/* Report Header */}
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500/20 to-orange-600/20 border border-red-500/30 shadow-lg">
-                              <span className="text-2xl">🚨</span>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-600/20 border border-red-600/30">
+                              <span className="text-xl">🚨</span>
                             </div>
                             <div>
-                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
                                 Report ID
                               </p>
-                              <p className="text-sm font-bold text-slate-200">
+                              <p className="text-sm font-semibold text-slate-200">
                                 #{String(report.report_id).slice(0, 8)}
                               </p>
                             </div>
                           </div>
                           <span
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold shadow-lg ${
+                            className={`px-2 py-1 rounded-md text-xs font-medium ${
                               report.current_status === "Resolved"
-                                ? "bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/40"
+                                ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
                                 : report.current_status === "Ongoing"
-                                  ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-300 border border-blue-500/40"
-                                  : "bg-gradient-to-r from-orange-500/20 to-red-500/20 text-orange-300 border border-orange-500/40"
+                                  ? "bg-blue-500/10 text-blue-300 border border-blue-500/30"
+                                  : "bg-amber-500/10 text-amber-300 border border-amber-500/30"
                             }`}
                           >
                             {report.current_status || "Pending"}
@@ -2114,36 +1928,36 @@ export default function AdminDashboard() {
                         {/* Report Details */}
                         <div className="space-y-3 mb-4">
                           <div className="flex items-start gap-2">
-                            <span className="text-lg mt-0.5">📍</span>
+                            <span className="text-base mt-0.5">📍</span>
                             <div className="flex-1">
-                              <p className="text-xs text-slate-400 font-semibold uppercase">
+                              <p className="text-[10px] text-slate-400 font-medium uppercase">
                                 Location
                               </p>
-                              <p className="text-sm text-slate-200">
+                              <p className="text-xs text-slate-200">
                                 {report.location || "N/A"}
                               </p>
                             </div>
                           </div>
 
                           <div className="flex items-start gap-2">
-                            <span className="text-lg mt-0.5">🏘️</span>
+                            <span className="text-base mt-0.5">🏘️</span>
                             <div className="flex-1">
-                              <p className="text-xs text-slate-400 font-semibold uppercase">
+                              <p className="text-[10px] text-slate-400 font-medium uppercase">
                                 Barangay
                               </p>
-                              <p className="text-sm text-slate-200">
+                              <p className="text-xs text-slate-200">
                                 {report.barangay?.barangay_name || "Unknown"}
                               </p>
                             </div>
                           </div>
 
                           <div className="flex items-start gap-2">
-                            <span className="text-lg mt-0.5">📅</span>
+                            <span className="text-base mt-0.5">📅</span>
                             <div className="flex-1">
-                              <p className="text-xs text-slate-400 font-semibold uppercase">
+                              <p className="text-[10px] text-slate-400 font-medium uppercase">
                                 Submitted
                               </p>
-                              <p className="text-sm text-slate-200">
+                              <p className="text-xs text-slate-200">
                                 {new Date(
                                   report.date_submitted,
                                 ).toLocaleDateString("en-US", {
@@ -2159,12 +1973,12 @@ export default function AdminDashboard() {
 
                           {report.landmark && (
                             <div className="flex items-start gap-2">
-                              <span className="text-lg mt-0.5">🏛️</span>
+                              <span className="text-base mt-0.5">🏛️</span>
                               <div className="flex-1">
-                                <p className="text-xs text-slate-400 font-semibold uppercase">
+                                <p className="text-[10px] text-slate-400 font-medium uppercase">
                                   Landmark
                                 </p>
-                                <p className="text-sm text-slate-200">
+                                <p className="text-xs text-slate-200">
                                   {report.landmark}
                                 </p>
                               </div>
@@ -2175,13 +1989,10 @@ export default function AdminDashboard() {
                         {/* View Details Button */}
                         <button
                           onClick={() => handleViewReport(report)}
-                          className="w-full group/btn rounded-xl bg-gradient-to-r from-red-600 to-orange-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02] transition-all duration-300 relative overflow-hidden"
+                          className="w-full rounded-lg bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-medium text-white transition-colors flex items-center justify-center gap-2"
                         >
-                          <span className="relative z-10 flex items-center justify-center gap-2">
-                            <span>👁️</span>
-                            View Full Report
-                          </span>
-                          <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+                          <span>👁️</span>
+                          View Full Report
                         </button>
                       </div>
                     </div>
@@ -2196,24 +2007,21 @@ export default function AdminDashboard() {
                   onClick={() => setShowReportModal(false)}
                 >
                   <div
-                    className="group relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl border border-red-700/60 bg-gradient-to-br from-slate-900/98 to-slate-800/98 p-8 shadow-[0_20px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl"
+                    className="relative w-full max-w-3xl max-h-[75vh] overflow-y-auto rounded-lg border border-slate-800 bg-slate-900 p-6 shadow-2xl"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {/* Glow effect */}
-                    <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-r from-red-500/8 via-transparent to-orange-500/8 opacity-0 blur-xl transition-opacity group-hover:opacity-100" />
-
                     <div className="relative z-10">
                       {/* Modal Header */}
-                      <div className="flex items-start justify-between mb-6 pb-6 border-b border-red-500/30">
-                        <div className="flex items-center gap-4">
-                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-orange-600 shadow-lg">
-                            <span className="text-3xl">🚨</span>
+                      <div className="flex items-start justify-between mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-slate-800 gap-3">
+                        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                          <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-red-600/20 border border-red-600/30 flex-shrink-0">
+                            <span className="text-lg sm:text-2xl">🚨</span>
                           </div>
-                          <div>
-                            <h3 className="text-2xl font-black bg-gradient-to-r from-red-300 to-orange-300 bg-clip-text text-transparent">
+                          <div className="min-w-0">
+                            <h3 className="text-base sm:text-lg font-bold text-slate-100 truncate">
                               Incident Report Details
                             </h3>
-                            <p className="text-sm text-slate-400">
+                            <p className="text-xs text-slate-400 truncate">
                               ID: #
                               {String(selectedReport.report_id).slice(0, 12)}
                             </p>
@@ -2221,7 +2029,7 @@ export default function AdminDashboard() {
                         </div>
                         <button
                           onClick={() => setShowReportModal(false)}
-                          className="rounded-xl bg-slate-800 px-4 py-2 text-slate-300 hover:bg-slate-700 transition-colors"
+                          className="rounded-lg bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700 transition-colors flex-shrink-0 text-sm"
                         >
                           ✖️
                         </button>
@@ -2230,47 +2038,47 @@ export default function AdminDashboard() {
                       {/* Report Information */}
                       <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                            <p className="text-xs font-bold text-emerald-300 mb-1 uppercase">
+                          <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                            <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
                               Status
                             </p>
                             <span
-                              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-bold ${
+                              className={`inline-flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium ${
                                 selectedReport.current_status === "Resolved"
-                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                                  ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
                                   : selectedReport.current_status === "Ongoing"
-                                    ? "bg-blue-500/20 text-blue-300 border border-blue-500/40"
-                                    : "bg-orange-500/20 text-orange-300 border border-orange-500/40"
+                                    ? "bg-blue-500/10 text-blue-300 border border-blue-500/30"
+                                    : "bg-amber-500/10 text-amber-300 border border-amber-500/30"
                               }`}
                             >
                               {selectedReport.current_status || "Pending"}
                             </span>
                           </div>
 
-                          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                            <p className="text-xs font-bold text-emerald-300 mb-1 uppercase">
+                          <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                            <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
                               Barangay
                             </p>
-                            <p className="text-sm text-slate-200">
+                            <p className="text-xs text-slate-200">
                               {selectedReport.barangay?.barangay_name ||
                                 "Unknown"}
                             </p>
                           </div>
 
-                          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                            <p className="text-xs font-bold text-emerald-300 mb-1 uppercase">
+                          <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                            <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
                               Location
                             </p>
-                            <p className="text-sm text-slate-200">
+                            <p className="text-xs text-slate-200">
                               {selectedReport.location || "N/A"}
                             </p>
                           </div>
 
-                          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                            <p className="text-xs font-bold text-emerald-300 mb-1 uppercase">
+                          <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                            <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
                               Date Submitted
                             </p>
-                            <p className="text-sm text-slate-200">
+                            <p className="text-xs text-slate-200">
                               {new Date(
                                 selectedReport.date_submitted,
                               ).toLocaleDateString("en-US", {
@@ -2285,30 +2093,30 @@ export default function AdminDashboard() {
                         </div>
 
                         {selectedReport.landmark && (
-                          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                            <p className="text-xs font-bold text-emerald-300 mb-2 uppercase">
+                          <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                            <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
                               Landmark
                             </p>
-                            <p className="text-sm text-slate-200">
+                            <p className="text-xs text-slate-200">
                               {selectedReport.landmark}
                             </p>
                           </div>
                         )}
 
                         {selectedReport.description && (
-                          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                            <p className="text-xs font-bold text-emerald-300 mb-2 uppercase">
+                          <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                            <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
                               Description
                             </p>
-                            <p className="text-sm text-slate-200 whitespace-pre-wrap">
+                            <p className="text-xs text-slate-200 whitespace-pre-wrap">
                               {selectedReport.description}
                             </p>
                           </div>
                         )}
 
                         {selectedReport.image_url && (
-                          <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                            <p className="text-xs font-bold text-emerald-300 mb-2 uppercase">
+                          <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                            <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
                               Attached Image
                             </p>
                             <img
@@ -2324,7 +2132,7 @@ export default function AdminDashboard() {
                       <div className="mt-6 pt-6 border-t border-slate-700/50">
                         <button
                           onClick={() => setShowReportModal(false)}
-                          className="w-full rounded-xl bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-3 text-sm font-bold text-slate-200 shadow-lg hover:shadow-xl hover:from-slate-600 hover:to-slate-700 transition-all duration-300"
+                          className="w-full rounded-lg bg-slate-800 hover:bg-slate-700 px-4 py-2 text-xs font-medium text-slate-200 transition-colors"
                         >
                           Close
                         </button>
@@ -2342,8 +2150,7 @@ export default function AdminDashboard() {
             </>
           )}
           {activeTab === "manageAccount" && (
-            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 max-w-2xl mx-auto">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 hover:border-slate-700 transition-colors max-w-2xl mx-auto">
               <div className="relative z-10">
                 <ManageAccountSection
                   form={manageAccountForm}
@@ -2353,6 +2160,140 @@ export default function AdminDashboard() {
                   onChange={handleManageAccountFormChange}
                   onSubmit={handleManageAccountSubmit}
                 />
+              </div>
+            </div>
+          )}
+
+          {/* Edit User Modal */}
+          {showEditUserModal && editingUserForm && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                {/* Modal Header */}
+                <div className="sticky top-0 flex items-center justify-between bg-slate-950 border-b border-slate-800 p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-emerald-600/20 flex items-center justify-center border border-emerald-600/30">
+                      <span className="text-xl">✏️</span>
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-100">
+                        Edit User Account
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Update user information
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="text-slate-400 hover:text-slate-100 transition-colors text-2xl leading-none"
+                    aria-label="Close modal"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-6 space-y-4">
+                  {/* Error/Success Messages */}
+                  {otherUsersError && (
+                    <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
+                      {otherUsersError}
+                    </div>
+                  )}
+                  {otherUsersSuccess && (
+                    <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
+                      {otherUsersSuccess}
+                    </div>
+                  )}
+
+                  {/* Form Fields */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-2">
+                        First Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editingUserForm.first_name}
+                        onChange={(e) =>
+                          setEditingUserForm({
+                            ...editingUserForm,
+                            first_name: e.target.value,
+                          })
+                        }
+                        className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-300 mb-2">
+                        Last Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editingUserForm.last_name}
+                        onChange={(e) =>
+                          setEditingUserForm({
+                            ...editingUserForm,
+                            last_name: e.target.value,
+                          })
+                        }
+                        className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-2">
+                      📧 Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={editingUserForm.email}
+                      onChange={(e) =>
+                        setEditingUserForm({
+                          ...editingUserForm,
+                          email: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-2">
+                      📱 Contact Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={editingUserForm.contact_number}
+                      onChange={(e) =>
+                        setEditingUserForm({
+                          ...editingUserForm,
+                          contact_number: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
+                    />
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="sticky bottom-0 bg-slate-950 border-t border-slate-800 p-6 flex gap-3">
+                  <button
+                    onClick={() => handleSaveUserEdit(editingUserId || "")}
+                    className="flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span>💾</span>
+                    Save Changes
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="flex-1 rounded-lg bg-slate-800 hover:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span>✖️</span>
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           )}

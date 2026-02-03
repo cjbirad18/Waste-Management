@@ -570,19 +570,7 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
       {/* Enhanced Header with Theme Toggle */}
 
       <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 md:p-1">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/80 to-teal-600/80 text-lg shadow-lg shadow-emerald-500/30">
-            🗺️
-          </div>
-          <div>
-            <h3 className="text-base md:text-xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent">
-              Collection Coverage Map
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Real-time vehicle tracking &amp; service coverage
-            </p>
-          </div>
-        </div>
+        <div className="flex items-center gap-3"></div>
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Live Indicator */}
