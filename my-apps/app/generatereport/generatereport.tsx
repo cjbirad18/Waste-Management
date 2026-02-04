@@ -47,6 +47,10 @@ export default function ReportsAnalytics({
     "wasteCollection" | "barangayConcerns"
   >("wasteCollection");
 
+  const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly">(
+    "monthly",
+  );
+
   const [wasteCollectionData, setWasteCollectionData] = useState<
     WasteCollectionPoint[]
   >([]);
@@ -86,7 +90,24 @@ export default function ReportsAnalytics({
 
         if (error) throw error;
 
-        const byMonth: Record<
+        const getDateKey = (date: Date): string => {
+          if (timePeriod === "daily") {
+            return date.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            });
+          } else if (timePeriod === "weekly") {
+            const startOfWeek = new Date(date);
+            startOfWeek.setDate(
+              date.getDate() - date.getDay() + (date.getDay() === 0 ? -6 : 1),
+            );
+            return `Week of ${startOfWeek.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+          } else {
+            return date.toLocaleString("en-US", { month: "short" });
+          }
+        };
+
+        const byPeriod: Record<
           string,
           { tons: number; collected: number; total: number }
         > = {};
@@ -98,53 +119,36 @@ export default function ReportsAnalytics({
           const d = new Date(date);
           if (Number.isNaN(d.getTime())) continue;
 
-          const monthKey = d.toLocaleString("en-US", { month: "short" });
+          const periodKey = getDateKey(d);
 
-          if (!byMonth[monthKey]) {
-            byMonth[monthKey] = { tons: 0, collected: 0, total: 0 };
+          if (!byPeriod[periodKey]) {
+            byPeriod[periodKey] = { tons: 0, collected: 0, total: 0 };
           }
 
           const weight = Number(row.waste_weight) || 0;
-          byMonth[monthKey].tons += weight;
+          byPeriod[periodKey].tons += weight;
 
-          byMonth[monthKey].total += 1;
+          byPeriod[periodKey].total += 1;
           if (row.status === "Done") {
-            byMonth[monthKey].collected += 1;
+            byPeriod[periodKey].collected += 1;
           }
         }
 
-        const orderedMonths = [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
-        ];
+        const periodKeys = Object.keys(byPeriod).sort();
 
-        const wasteData: WasteCollectionPoint[] = orderedMonths
-          .filter((m) => byMonth[m])
-          .map((m) => ({
-            month: m,
-            tons: Number(byMonth[m].tons.toFixed(2)),
-          }));
+        const wasteData: WasteCollectionPoint[] = periodKeys.map((key) => ({
+          month: key,
+          tons: Number(byPeriod[key].tons.toFixed(2)),
+        }));
 
-        const perfData: PerformancePoint[] = orderedMonths
-          .filter((m) => byMonth[m])
-          .map((m) => {
-            const { collected, total } = byMonth[m];
-            const eff = total === 0 ? 0 : (collected / total) * 100;
-            return {
-              month: m,
-              efficiency: Number(eff.toFixed(1)),
-            };
-          });
+        const perfData: PerformancePoint[] = periodKeys.map((key) => {
+          const { collected, total } = byPeriod[key];
+          const eff = total === 0 ? 0 : (collected / total) * 100;
+          return {
+            month: key,
+            efficiency: Number(eff.toFixed(1)),
+          };
+        });
 
         setWasteCollectionData(wasteData);
         setPerformanceData(perfData);
@@ -157,7 +161,7 @@ export default function ReportsAnalytics({
     };
 
     loadReportsAnalytics();
-  }, [activeReportOption, barangayId]);
+  }, [activeReportOption, barangayId, timePeriod]);
 
   // Load barangay concerns analytics
   useEffect(() => {
@@ -180,7 +184,24 @@ export default function ReportsAnalytics({
 
         if (error) throw error;
 
-        const byMonth: Record<
+        const getDateKey = (date: Date): string => {
+          if (timePeriod === "daily") {
+            return date.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            });
+          } else if (timePeriod === "weekly") {
+            const startOfWeek = new Date(date);
+            startOfWeek.setDate(
+              date.getDate() - date.getDay() + (date.getDay() === 0 ? -6 : 1),
+            );
+            return `Week of ${startOfWeek.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+          } else {
+            return date.toLocaleString("en-US", { month: "short" });
+          }
+        };
+
+        const byPeriod: Record<
           string,
           {
             total: number;
@@ -197,10 +218,10 @@ export default function ReportsAnalytics({
           const d = new Date(date);
           if (Number.isNaN(d.getTime())) continue;
 
-          const monthKey = d.toLocaleString("en-US", { month: "short" });
+          const periodKey = getDateKey(d);
 
-          if (!byMonth[monthKey]) {
-            byMonth[monthKey] = {
+          if (!byPeriod[periodKey]) {
+            byPeriod[periodKey] = {
               total: 0,
               needsAction: 0,
               ongoing: 0,
@@ -208,47 +229,32 @@ export default function ReportsAnalytics({
             };
           }
 
-          byMonth[monthKey].total += 1;
+          byPeriod[periodKey].total += 1;
 
           switch (row.current_status) {
             case "Needs Action":
-              byMonth[monthKey].needsAction += 1;
+              byPeriod[periodKey].needsAction += 1;
               break;
             case "Ongoing":
-              byMonth[monthKey].ongoing += 1;
+              byPeriod[periodKey].ongoing += 1;
               break;
             case "Resolved":
-              byMonth[monthKey].resolved += 1;
+              byPeriod[periodKey].resolved += 1;
               break;
             default:
               break;
           }
         }
 
-        const orderedMonths = [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
-        ];
+        const periodKeys = Object.keys(byPeriod).sort();
 
-        const stats: ConcernStatsPoint[] = orderedMonths
-          .filter((m) => byMonth[m])
-          .map((m) => ({
-            month: m,
-            total: byMonth[m].total,
-            needsAction: byMonth[m].needsAction,
-            ongoing: byMonth[m].ongoing,
-            resolved: byMonth[m].resolved,
-          }));
+        const stats: ConcernStatsPoint[] = periodKeys.map((key) => ({
+          month: key,
+          total: byPeriod[key].total,
+          needsAction: byPeriod[key].needsAction,
+          ongoing: byPeriod[key].ongoing,
+          resolved: byPeriod[key].resolved,
+        }));
 
         setConcernStats(stats);
       } catch (err: any) {
@@ -260,7 +266,7 @@ export default function ReportsAnalytics({
     };
 
     loadBarangayConcerns();
-  }, [activeReportOption, barangayId]);
+  }, [activeReportOption, barangayId, timePeriod]);
 
   const handleDownloadPDF = () => {
     if (typeof window !== "undefined") {
@@ -417,6 +423,39 @@ export default function ReportsAnalytics({
                   }`}
                 >
                   📍 Barangay Concerns
+                </button>
+              </div>
+
+              <div className="inline-flex rounded-2xl bg-slate-900/90 border border-emerald-800/50 p-1 text-sm backdrop-blur-sm shadow-lg">
+                <button
+                  onClick={() => setTimePeriod("daily")}
+                  className={`px-4 py-2.5 rounded-xl font-semibold transition-all duration-300 ${
+                    timePeriod === "daily"
+                      ? "bg-gradient-to-r from-blue-600/80 to-cyan-600/80 text-white shadow-lg shadow-blue-500/30"
+                      : "text-blue-300 hover:text-blue-200"
+                  }`}
+                >
+                  📅 Daily
+                </button>
+                <button
+                  onClick={() => setTimePeriod("weekly")}
+                  className={`px-4 py-2.5 rounded-xl font-semibold transition-all duration-300 ${
+                    timePeriod === "weekly"
+                      ? "bg-gradient-to-r from-blue-600/80 to-cyan-600/80 text-white shadow-lg shadow-blue-500/30"
+                      : "text-blue-300 hover:text-blue-200"
+                  }`}
+                >
+                  📊 Weekly
+                </button>
+                <button
+                  onClick={() => setTimePeriod("monthly")}
+                  className={`px-4 py-2.5 rounded-xl font-semibold transition-all duration-300 ${
+                    timePeriod === "monthly"
+                      ? "bg-gradient-to-r from-blue-600/80 to-cyan-600/80 text-white shadow-lg shadow-blue-500/30"
+                      : "text-blue-300 hover:text-blue-200"
+                  }`}
+                >
+                  📈 Monthly
                 </button>
               </div>
 
