@@ -259,13 +259,13 @@ export default function BarangayConcernsAnalytics({
   return (
     <section className="print-report-page space-y-6 max-w-7xl mx-auto p-4 md:p-8">
       {/* Header Section */}
-      <div className="border border-gray-300 rounded-lg bg-white p-6 sm:p-8">
+      <div className="border border-gray-300 rounded-lg bg-slate-950/60 p-6 sm:p-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h2 className="print-report-title text-3xl font-bold text-gray-900">
+            <h2 className="print-report-title text-3xl font-bold text-white/80">
               {title}
             </h2>
-            <p className="print-report-subtitle text-sm text-gray-600 mt-2">
+            <p className="print-report-subtitle text-sm text-white/80 mt-2">
               {subtitle}
             </p>
           </div>
@@ -273,13 +273,13 @@ export default function BarangayConcernsAnalytics({
           {/* Controls */}
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto no-print">
             {/* View Mode Toggle */}
-            <div className="flex gap-1 bg-white rounded-lg p-1 border border-gray-300">
+            <div className="flex gap-1 bg-slate-950/60 rounded-lg p-1 border border-gray-900">
               <button
                 onClick={() => setViewMode("monthly")}
                 className={`px-4 py-2 rounded-md text-sm font-semibold transition-all duration-300 ${
                   viewMode === "monthly"
                     ? "bg-blue-600 text-white"
-                    : "text-gray-700 hover:bg-gray-100"
+                    : "text-gray-700 hover:bg-gray-900"
                 }`}
               >
                 📅 Monthly
@@ -301,7 +301,7 @@ export default function BarangayConcernsAnalytics({
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="rounded-lg bg-white border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400 transition-all"
+                className="rounded-lg bg-gray-900 border border-gray-300 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400 transition-all"
               >
                 {availableMonths.length === 0 ? (
                   <option value={selectedMonth}>{selectedMonth}</option>
@@ -333,12 +333,14 @@ export default function BarangayConcernsAnalytics({
         </div>
       ) : errorMsg ? (
         <div className="border border-red-300 rounded-lg bg-red-50 p-6 sm:p-8 text-red-700">
-          <p className="text-center font-semibold">⚠️ {errorMsg}</p>
+          <p className="text-center font-semibold ">⚠️ {errorMsg}</p>
         </div>
       ) : !stats.length && viewMode === "monthly" ? (
-        <div className="border border-gray-300 rounded-lg bg-white p-8 text-gray-600 text-center">
-          <p className="text-lg font-semibold mb-2">📭 No Data Available</p>
-          <p className="text-sm">
+        <div className="border border-gray-300 rounded-lg bg-slate-950/60 p-8 text-gray-600 text-center">
+          <p className="text-lg font-semibold mb-2 text-white/80">
+            📭 No Data Available
+          </p>
+          <p className="text-sm text-white/80">
             No barangay concerns found for {selectedMonth}.
           </p>
         </div>
@@ -370,14 +372,14 @@ export default function BarangayConcernsAnalytics({
           </div>
 
           {/* Chart Section */}
-          <div className="border border-gray-300 rounded-lg bg-white p-6 sm:p-8">
+          <div className="border border-gray-300 rounded-lg bg-slate-950/60 p-6 sm:p-8">
             <div className="mb-6">
-              <h3 className="text-xl font-bold text-gray-900">
+              <h3 className="text-xl font-bold text-white/80">
                 {viewMode === "monthly"
                   ? `${selectedMonth} Report`
                   : "Yearly Overview"}
               </h3>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-white/80 mt-1">
                 {viewMode === "monthly"
                   ? `Status breakdown for ${selectedMonth}`
                   : `Aggregated data for all months`}
@@ -512,7 +514,7 @@ export default function BarangayConcernsAnalytics({
                 </ResponsiveContainer>
               </div>
             ) : viewMode === "yearly" ? (
-              <div className="h-96 bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <div className="h-96 bg-slate-950/60 rounded-lg p-4 border border-gray-200">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={allStats}
