@@ -109,6 +109,10 @@ body {
 }
 
 @media print {
+  @page {
+    margin: 20mm 14mm 16mm;
+  }
+
   html,
   body {
     margin: 0;
@@ -117,11 +121,153 @@ body {
     color: #000000;
   }
 
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-brand {
+    position: fixed;
+    top: 8mm;
+    left: 14mm;
+    right: 14mm;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #000000;
+    border-bottom: 2px solid #000000;
+    padding-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .print-brand::after {
+    content: counter(page);
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+  }
+
   /* Only the report page if you use this class */
   .print-report-page,
   .print-report-page * {
     color: #000000 !important; /* pure black text */
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    backdrop-filter: none !important;
   }
+
+  .print-report-page .border {
+    border: 1.5px solid #000000 !important;
+  }
+
+  .print-report-page .rounded-2xl,
+  .print-report-page .rounded-xl,
+  .print-report-page .rounded-lg {
+    border-radius: 8px !important;
+  }
+
+  .print-report-page {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding-top: 14mm !important;
+  }
+
+  .print-report-page .grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .print-report-page .flex {
+    flex-wrap: wrap !important;
+  }
+
+  .print-report-page .rounded-3xl,
+  .print-report-page .rounded-2xl,
+  .print-report-page .rounded-xl,
+  .print-report-page .rounded-lg,
+  .print-report-page .border,
+  .print-report-page > div {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-report-page .h-80 {
+    height: 180px !important;
+    border: 1px solid #d1d5db !important;
+    background: #fafafa !important;
+  }
+
+  .print-report-page .grid > div {
+    border: 1.5px solid #000000 !important;
+    padding: 12px !important;
+    border-radius: 6px !important;
+  }
+
+  .print-report-page .p-8 {
+    padding: 12px !important;
+  }
+
+  .print-report-page .p-6 {
+    padding: 10px !important;
+  }
+
+  .print-report-page .p-4 {
+    padding: 8px !important;
+  }
+
+  .print-report-page.space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 12px !important;
+  }
+
+  .print-report-page .gap-6 {
+    gap: 12px !important;
+  }
+
+  .print-report-page .mb-6 {
+    margin-bottom: 10px !important;
+  }
+
+  .print-report-page img,
+  .print-report-page svg,
+  .print-report-page canvas {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  .print-report-page .text-3xl {
+    font-size: 22px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.5px !important;
+  }
+
+  .print-report-page .text-2xl {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+  }
+
+  .print-report-page .text-xl {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+  }
+
+  .print-report-page h2,
+  .print-report-page h3 {
+    margin-bottom: 8px !important;
+  }
+
+  .print-report-page p {
+    line-height: 1.5 !important;
+  }
+}
+
+.print-only {
+  display: none;
 }
 
 .resident-pulse-wrapper {
