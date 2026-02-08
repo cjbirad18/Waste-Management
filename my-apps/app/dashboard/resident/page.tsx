@@ -1154,7 +1154,7 @@ export default function ResidentDashboard() {
 
   // Map filter states
   const [showAllTrucks, setShowAllTrucks] = useState<boolean>(true);
-  const [assignedTruckId, setAssignedTruckId] = useState<string | null>(null);
+  const [assignedTruckId, setAssignedTruckId] = useState<number | null>(null);
 
   // Reports and notifications state
   const [userReports, setUserReports] = useState<any[]>([]);
@@ -1287,7 +1287,13 @@ export default function ResidentDashboard() {
           .single();
 
         if (!error && data) {
-          setAssignedTruckId(data.truck_id);
+          const nextTruckId =
+            data.truck_id == null ? null : Number(data.truck_id);
+          setAssignedTruckId(
+            nextTruckId != null && !Number.isNaN(nextTruckId)
+              ? nextTruckId
+              : null,
+          );
         } else {
           setAssignedTruckId(null);
         }

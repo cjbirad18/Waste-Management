@@ -150,7 +150,7 @@ type ResidentGps = { lat: number | null; lng: number | null };
 interface LeafletMapProps {
   residentGps?: ResidentGps;
   showAllTrucks?: boolean;
-  assignedTruckId?: string | null;
+  assignedTruckId?: number | null;
 }
 
 function computeEtaMinutes(distanceKm: number, speedKmh: number): number {
@@ -294,11 +294,10 @@ function LeafletMap({
     }
   }, [residentGps?.lat, residentGps?.lng, role]);
 
-  const assignedTruckIdNum = assignedTruckId ? Number(assignedTruckId) : null;
   const visibleTrucks = showAllTrucks
     ? trucks
-    : assignedTruckIdNum != null && !Number.isNaN(assignedTruckIdNum)
-      ? trucks.filter((t) => t.truck_id === assignedTruckIdNum)
+    : assignedTruckId != null && !Number.isNaN(assignedTruckId)
+      ? trucks.filter((t) => t.truck_id === assignedTruckId)
       : [];
 
   // ETA calculation for residents
