@@ -26,6 +26,7 @@ interface User {
   contact_number: string;
   role: string;
   status: string;
+  created_at?: string;
   barangay_id?: string;
 }
 
@@ -386,7 +387,10 @@ export default function AdminDashboard() {
     setLoadingUsers(true);
     setErrorUsers(null);
     try {
-      const { data, error } = await supabase.from("users").select("*");
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .order("date_created", { ascending: false });
       if (error) throw error;
       setUsers(data as User[]);
     } catch (error) {

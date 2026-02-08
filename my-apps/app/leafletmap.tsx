@@ -149,6 +149,8 @@ type ResidentGps = { lat: number | null; lng: number | null };
 
 interface LeafletMapProps {
   residentGps?: ResidentGps;
+  showAllTrucks?: boolean;
+  assignedTruckId?: string | null;
 }
 
 function computeEtaMinutes(distanceKm: number, speedKmh: number): number {
@@ -175,7 +177,11 @@ function RecenterOnGps({
   return null;
 }
 
-function LeafletMap({ residentGps }: LeafletMapProps) {
+function LeafletMap({
+  residentGps,
+  showAllTrucks = true,
+  assignedTruckId,
+}: LeafletMapProps) {
   const [geojson, setGeojson] = useState<GeoJSONType | null>(null);
   const [trucks, setTrucks] = useState<TruckRow[]>([]);
   const animStatesRef = useRef<Record<number, TruckAnimState>>({});
@@ -288,9 +294,19 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
     }
   }, [residentGps?.lat, residentGps?.lng, role]);
 
+  const visibleTrucks = showAllTrucks
+    ? trucks
+    : assignedTruckId
+      ? trucks.filter((t) => t.truck_id === assignedTruckId)
+      : [];
+
   // ETA calculation for residents
   useEffect(() => {
-    if (role !== "Resident" || !residentLocation || trucks.length === 0) {
+    if (
+      role !== "Resident" ||
+      !residentLocation ||
+      visibleTrucks.length === 0
+    ) {
       setEtaMinutes(null);
       return;
     }
@@ -298,7 +314,7 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
     const speedKmh = 17.5;
     let bestDist: number | null = null;
 
-    trucks.forEach((t) => {
+    visibleTrucks.forEach((t) => {
       if (t.latitude == null || t.longitude == null) return;
 
       const d = haversineKm(
@@ -320,7 +336,7 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
 
     const eta = computeEtaMinutes(bestDist, speedKmh);
     setEtaMinutes(eta);
-  }, [role, residentLocation, trucks]);
+  }, [role, residentLocation, showAllTrucks, assignedTruckId, trucks]);
 
   const getBarangayFromPoint = (
     [lat, lng]: [number, number],
@@ -842,8 +858,8 @@ function LeafletMap({ residentGps }: LeafletMapProps) {
               />
             )}
 
-            {/* Trucks — show to all users */}
-            {trucks.map((t) => {
+            {/* Trucks — filtered for residents */}
+            {visibleTrucks.map((t) => {
               if (t.latitude == null || t.longitude == null) return null;
               const pos: [number, number] = [t.latitude, t.longitude];
               const key = t.id ?? `truck-${t.truck_id}`;

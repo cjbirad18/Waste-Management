@@ -1152,6 +1152,10 @@ export default function ResidentDashboard() {
 
   const [residentBarangayId, setResidentBarangayId] = useState<string>("");
 
+  // Map filter states
+  const [showAllTrucks, setShowAllTrucks] = useState<boolean>(true);
+  const [assignedTruckId, setAssignedTruckId] = useState<string | null>(null);
+
   // Reports and notifications state
   const [userReports, setUserReports] = useState<any[]>([]);
   const [reportsLoading, setReportsLoading] = useState<boolean>(false);
@@ -1269,6 +1273,36 @@ export default function ResidentDashboard() {
       setScheduleData((prev) => ({ ...prev, plate_number: "" }));
     }
   }, [scheduleData.truck_id, trucks]);
+
+  // Fetch assigned truck for resident's barangay
+  useEffect(() => {
+    async function fetchAssignedTruck() {
+      if (!residentBarangayId) return;
+      try {
+        const { data, error } = await supabase
+          .from("collection_schedules")
+          .select("truck_id")
+          .eq("barangay_id", residentBarangayId)
+          .limit(1)
+          .single();
+
+        if (!error && data) {
+          setAssignedTruckId(data.truck_id);
+        } else {
+          setAssignedTruckId(null);
+        }
+      } catch (err) {
+        setAssignedTruckId(null);
+      }
+    }
+    fetchAssignedTruck();
+  }, [residentBarangayId]);
+
+  useEffect(() => {
+    if (!assignedTruckId) {
+      setShowAllTrucks(true);
+    }
+  }, [assignedTruckId]);
 
   // Fetch user reports and unread count
   useEffect(() => {
@@ -1681,13 +1715,48 @@ export default function ResidentDashboard() {
                       <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
                         Collection Coverage Map
                       </h2>
-                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
-                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-                        Live vehicles
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
+                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                          Live vehicles
+                        </span>
+                        <div className="inline-flex items-center rounded-2xl border border-slate-700/60 bg-slate-900/60 p-1 shadow-md">
+                          <button
+                            type="button"
+                            onClick={() => setShowAllTrucks(true)}
+                            className={`inline-flex items-center rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 ${
+                              showAllTrucks
+                                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/50"
+                                : "text-slate-400 hover:text-slate-200"
+                            }`}
+                          >
+                            All trucks
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowAllTrucks(false)}
+                            className={`inline-flex items-center rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 ${
+                              !showAllTrucks
+                                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/50"
+                                : "text-slate-400 hover:text-slate-200"
+                            } ${
+                              assignedTruckId
+                                ? ""
+                                : "opacity-50 cursor-not-allowed"
+                            }`}
+                            disabled={!assignedTruckId}
+                          >
+                            Assigned truck
+                          </button>
+                        </div>
+                      </div>
                     </div>
                     <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 relative z-10">
-                      <LeafletMap residentGps={gps} />
+                      <LeafletMap
+                        residentGps={gps}
+                        showAllTrucks={showAllTrucks}
+                        assignedTruckId={assignedTruckId}
+                      />
                     </div>
                   </div>
                 </div>

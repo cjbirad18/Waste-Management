@@ -400,6 +400,15 @@ function GCPAssignedTasksSection() {
   const [responseSaving, setResponseSaving] = useState(false);
   const [responseError, setResponseError] = useState<string | null>(null);
 
+  const [wasteModalOpen, setWasteModalOpen] = useState(false);
+  const [wasteWeight, setWasteWeight] = useState("");
+  const [collectionDate, setCollectionDate] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
+  const [wasteSaving, setWasteSaving] = useState(false);
+  const [wasteError, setWasteError] = useState<string | null>(null);
+  const [wasteSuccess, setWasteSuccess] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchTasks = async () => {
       setLoading(true);
@@ -449,6 +458,69 @@ function GCPAssignedTasksSection() {
     setResponseText(assignment.gcp_response || "");
     setResponseError(null);
     setResponseModalOpen(true);
+  };
+
+  const handleOpenWasteModal = () => {
+    setWasteWeight("");
+    setCollectionDate(new Date().toISOString().slice(0, 10));
+    setWasteError(null);
+    setWasteSuccess(null);
+    setWasteModalOpen(true);
+  };
+
+  const handleSubmitWaste = async () => {
+    const weightValue = Number(wasteWeight);
+    if (!wasteWeight.trim() || Number.isNaN(weightValue) || weightValue <= 0) {
+      setWasteError("Please enter a valid waste weight.");
+      return;
+    }
+
+    setWasteSaving(true);
+    setWasteError(null);
+    setWasteSuccess(null);
+
+    try {
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !authData?.user) throw new Error("Not authenticated");
+
+      const { data: truck, error: truckErr } = await supabase
+        .from("garbage_trucks")
+        .select("truck_id")
+        .eq("gcp_user_id", authData.user.id)
+        .single();
+      if (truckErr || !truck?.truck_id) {
+        throw new Error("No truck assigned to this account.");
+      }
+
+      const { data: schedule, error: scheduleErr } = await supabase
+        .from("collection_schedules")
+        .select("schedule_id")
+        .eq("gcp_user_id", authData.user.id)
+        .order("date_created", { ascending: false })
+        .limit(1)
+        .single();
+      if (scheduleErr || !schedule?.schedule_id) {
+        throw new Error("No schedule found for this account.");
+      }
+
+      const { error: insertError } = await supabase
+        .from("collection_details")
+        .insert({
+          schedule_id: schedule.schedule_id,
+          truck_id: truck.truck_id,
+          collection_date: collectionDate,
+          waste_weight: weightValue,
+        });
+
+      if (insertError) throw insertError;
+
+      setWasteSuccess("Waste collection recorded successfully.");
+      setWasteModalOpen(false);
+    } catch (err: any) {
+      setWasteError(err.message || "Failed to record waste collection.");
+    } finally {
+      setWasteSaving(false);
+    }
   };
 
   const handleSubmitResponse = async () => {
@@ -520,12 +592,27 @@ function GCPAssignedTasksSection() {
   }
 
   return (
-    <section className="group relative max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 md:p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+    <section className="group relative max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 md:p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70">
       <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
       <div className="relative z-10">
-        <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
-          Assigned Incident Tasks
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+            Assigned Incident Tasks
+          </h2>
+          <button
+            type="button"
+            className="px-4 py-2 text-xs sm:text-sm rounded-2xl font-semibold bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500/70 shadow-sm shadow-emerald-700/40 transition-colors"
+            onClick={handleOpenWasteModal}
+          >
+            Record Waste Collected
+          </button>
+        </div>
+
+        {wasteSuccess && (
+          <div className="mb-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-200">
+            {wasteSuccess}
+          </div>
+        )}
 
         {tasks.length === 0 ? (
           <p className="text-slate-300">You have no assigned incident tasks.</p>
@@ -689,14 +776,87 @@ function GCPAssignedTasksSection() {
           </div>
         )}
 
+        {wasteModalOpen && (
+          <div
+            className="fixed inset-0 rounded-3xl backdrop-blur z-50 flex items-center justify-center px-4 pt-20 -pb-20"
+            onClick={() => setWasteModalOpen(false)}
+          >
+            <div
+              className="relative max-w-md w-full max-h-[90vh] overflow-y-auto text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/70 bg-slate-900/95 backdrop-blur-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-2 border-b border-emerald-700/70">
+                <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
+                  Record Waste Collected
+                </span>
+                <button
+                  onClick={() => setWasteModalOpen(false)}
+                  className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-5">
+                <label className="block text-xs font-semibold mb-1 text-slate-100">
+                  Collection date
+                </label>
+                <input
+                  type="date"
+                  className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm mb-3 bg-slate-900/80 text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500"
+                  value={collectionDate}
+                  onChange={(e) => setCollectionDate(e.target.value)}
+                />
+
+                <label className="block text-xs font-semibold mb-1 text-slate-100">
+                  Waste weight collected (kg)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm mb-3 bg-slate-900/80 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500"
+                  value={wasteWeight}
+                  onChange={(e) => setWasteWeight(e.target.value)}
+                  placeholder="e.g. 120.5"
+                />
+
+                {wasteError && (
+                  <p className="text-xs text-red-300 mb-2">{wasteError}</p>
+                )}
+
+                <div className="flex justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setWasteModalOpen(false)}
+                    className="px-4 py-1 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 disabled:opacity-60 transition-colors"
+                    disabled={wasteSaving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSubmitWaste}
+                    className="px-4 py-1 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 disabled:bg-slate-600 disabled:text-slate-300 disabled:border-slate-500 transition-colors"
+                    disabled={wasteSaving}
+                  >
+                    {wasteSaving ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Incident description modal */}
         {activeIncident && (
           <div
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm px-4 pt-20 pb-8"
             onClick={() => setActiveIncident(null)}
           >
             <div
-              className="relative max-w-md w-full text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/70 bg-slate-900/95 backdrop-blur-xl"
+              className="relative max-w-md w-full max-h-[90vh] overflow-y-auto text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/70 bg-slate-900/95 backdrop-blur-xl"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Title bar */}
@@ -743,11 +903,11 @@ function GCPAssignedTasksSection() {
         {/* Task from secretary modal */}
         {activeTask && (
           <div
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm overflow-y-auto"
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm overflow-y-auto px-4 pt-20 pb-8"
             onClick={() => setActiveTask(null)}
           >
             <div
-              className="relative max-w-lg w-[90vw] md:w-[32rem] my-8 text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/70 bg-slate-900/95 backdrop-blur-xl"
+              className="relative max-w-lg w-[90vw] md:w-[32rem] max-h-[90vh] overflow-y-auto text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/70 bg-slate-900/95 backdrop-blur-xl"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Title bar */}
@@ -799,11 +959,11 @@ function GCPAssignedTasksSection() {
         {/* Response form modal (detailed) */}
         {responseModalOpen && responseAssignment && (
           <div
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm px-4 pt-20 pb-8"
             onClick={() => setResponseModalOpen(false)}
           >
             <div
-              className="bg-slate-900/95 rounded-2xl shadow-2xl border border-green-800/60 max-w-md w-full p-6 text-slate-100 backdrop-blur-xl"
+              className="relative max-w-md w-full max-h-[90vh] overflow-y-auto bg-slate-900/95 rounded-2xl shadow-2xl border border-green-800/60 p-6 text-slate-100 backdrop-blur-xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center mb-3">

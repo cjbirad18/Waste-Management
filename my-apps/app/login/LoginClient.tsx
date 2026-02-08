@@ -96,7 +96,7 @@ export default function LoginClient() {
   const roleParam = searchParams.get("role") || "resident";
   const expectedRole = normalizeRole(roleParam);
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -107,8 +107,26 @@ export default function LoginClient() {
     e.preventDefault();
     setErrorMessage("");
 
+    const normalizedIdentifier = identifier.trim();
+    let loginEmail = normalizedIdentifier;
+
+    if (!normalizedIdentifier.includes("@")) {
+      const { data: loginUser, error: loginUserError } = await supabase
+        .from("users")
+        .select("email")
+        .eq("username", normalizedIdentifier)
+        .single();
+
+      if (loginUserError || !loginUser?.email) {
+        setErrorMessage("No account found for that username.");
+        return;
+      }
+
+      loginEmail = loginUser.email;
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: loginEmail,
       password,
     });
 
@@ -218,17 +236,17 @@ export default function LoginClient() {
           <div className="space-y-6">
             <div className="space-y-2">
               <label className="block text-xs font-semibold text-emerald-300 uppercase tracking-wide">
-                Email Address
+                Email or Username
               </label>
               <input
                 className="w-full rounded-2xl border border-green-800/50 bg-slate-900/80 px-5 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-lg hover:shadow-emerald-500/20"
-                type="email"
-                value={email}
+                type="text"
+                value={identifier}
                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setEmail(e.target.value)
+                  setIdentifier(e.target.value)
                 }
                 required
-                placeholder="Enter your email"
+                placeholder="Enter email or username"
               />
             </div>
 
