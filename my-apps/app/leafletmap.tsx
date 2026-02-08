@@ -294,10 +294,11 @@ function LeafletMap({
     }
   }, [residentGps?.lat, residentGps?.lng, role]);
 
+  const assignedTruckIdNum = assignedTruckId ? Number(assignedTruckId) : null;
   const visibleTrucks = showAllTrucks
     ? trucks
-    : assignedTruckId
-      ? trucks.filter((t) => t.truck_id === assignedTruckId)
+    : assignedTruckIdNum != null && !Number.isNaN(assignedTruckIdNum)
+      ? trucks.filter((t) => t.truck_id === assignedTruckIdNum)
       : [];
 
   // ETA calculation for residents
