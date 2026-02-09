@@ -1087,6 +1087,27 @@ export default function BWMCdashboard() {
         return;
       }
 
+      // Notify resident via SMS with BWMC remarks
+      if (selectedReport.user_id) {
+        try {
+          await fetch("/api/notifications/incident-status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              reportId: selectedReport.report_id,
+              userId: selectedReport.user_id,
+              status: "rejected",
+              reason: rejectRemarks || undefined,
+            }),
+          });
+        } catch (notifyError) {
+          console.error(
+            "Failed to notify resident about rejection",
+            notifyError,
+          );
+        }
+      }
+
       setReports((prev: any[]) =>
         prev.map((r) =>
           r.report_id === selectedReport.report_id

@@ -96,10 +96,32 @@ export default function LoginClient() {
   const roleParam = searchParams.get("role") || "resident";
   const expectedRole = normalizeRole(roleParam);
 
+  const getTimeTheme = (): "light" | "dark" => {
+    const hour = new Date().getHours();
+    return hour >= 6 && hour < 18 ? "light" : "dark";
+  };
+
+  const [themePreference, setThemePreference] = useState<
+    "auto" | "light" | "dark"
+  >("auto");
+  const [timeTheme, setTimeTheme] = useState<"light" | "dark">("dark");
+
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    setTimeTheme(getTimeTheme());
+    const intervalId = setInterval(
+      () => {
+        setTimeTheme(getTimeTheme());
+      },
+      5 * 60 * 1000,
+    );
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   const handleCloseModal = () => setErrorMessage("");
 
@@ -199,11 +221,36 @@ export default function LoginClient() {
     }
   };
 
+  const resolvedTheme =
+    themePreference === "auto" ? timeTheme : themePreference;
+  const isLightTheme = resolvedTheme === "light";
+  const isDarkTheme = resolvedTheme === "dark";
+
+  const handleThemeToggle = () => {
+    if (themePreference === "auto") {
+      setThemePreference(timeTheme === "dark" ? "light" : "dark");
+      return;
+    }
+    setThemePreference(themePreference === "dark" ? "light" : "dark");
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 font-sans relative overflow-hidden">
+    <div
+      className={`min-h-screen flex items-center justify-center font-sans relative overflow-hidden ${
+        isLightTheme
+          ? "bg-gradient-to-br from-emerald-50 via-slate-50 to-teal-100 text-gray-900"
+          : "bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200"
+      }`}
+    >
       {/* Subtle background animation */}
       <div className="fixed inset-0 opacity-30">
-        <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 animate-pulse" />
+        <div
+          className={`absolute inset-0 animate-pulse ${
+            isLightTheme
+              ? "bg-gradient-to-br from-emerald-300/30 to-teal-300/30"
+              : "bg-gradient-to-br from-green-500/10 to-emerald-500/10"
+          }`}
+        />
       </div>
 
       {errorMessage && (
@@ -224,6 +271,55 @@ export default function LoginClient() {
           <p className="text-sm text-emerald-400 mt-1 font-medium">
             {friendlyRole(roleParam)}
           </p>
+          <div className="mt-4 inline-flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleThemeToggle}
+              className={`p-3 rounded-xl transition-all duration-300 ${
+                isDarkTheme
+                  ? "bg-slate-800 hover:bg-slate-700 text-yellow-400 border border-slate-700"
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200"
+              }`}
+              title={
+                isDarkTheme ? "Switch to Light Mode" : "Switch to Dark Mode"
+              }
+              aria-label={
+                isDarkTheme ? "Switch to Light Mode" : "Switch to Dark Mode"
+              }
+            >
+              {isDarkTheme ? (
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" />
+                </svg>
+              ) : (
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                </svg>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setThemePreference("auto")}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-300 ${
+                themePreference === "auto"
+                  ? "bg-emerald-500/90 text-slate-900"
+                  : isDarkTheme
+                    ? "bg-slate-800/60 text-emerald-200 border border-slate-700 hover:bg-slate-800"
+                    : "bg-white/80 text-emerald-700 border border-emerald-200 hover:bg-emerald-50"
+              }`}
+              aria-pressed={themePreference === "auto"}
+            >
+              AUTO
+            </button>
+          </div>
         </div>
 
         <form
