@@ -1036,7 +1036,7 @@ export default function BWMCdashboard() {
           .not("contact_number", "is", null);
 
         if (!secretaryError && secretaries?.length) {
-          const secretaryMessage = `Incident report #${selectedReport.report_id} requires your action. Location: ${selectedReport.location}. ${responseRemarks ? `Remarks: ${responseRemarks}. ` : ""}\n\nTrack the Truck`;
+          const secretaryMessage = `Incident report #${selectedReport.report_id} requires your action. Location: ${selectedReport.location}. ${responseRemarks ? `\n\nRemarks: ${responseRemarks}. ` : ""}\n\nTrack the Truck`;
 
           await Promise.all(
             secretaries.map((secretary) =>

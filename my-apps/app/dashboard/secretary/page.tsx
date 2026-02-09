@@ -2784,12 +2784,12 @@ export default function SecretaryDashboard() {
         {/* Sidebar – Secretary items */}
         <aside
           className={`
-          fixed z-40 left-0 top-16 bottom-0 w-72 ${
+          fixed z-40 left-0 top-16 bottom-0 w-64 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
-          md:fixed md:translate-x-0 md:top-20 md:left-0 md:bottom-0 md:w-64
-            bg-slate-950 border-r border-slate-800
-            flex flex-col py-6 px-4 transition-all duration-300
+          md:fixed md:translate-x-0 md:top-16 md:left-0 md:bottom-0 md:w-64
+          bg-slate-950 border-r border-slate-800
+          flex flex-col py-4 px-3 transition-all duration-300
         `}
         >
           <nav
@@ -2810,19 +2810,14 @@ export default function SecretaryDashboard() {
                   setActiveTab(item.tab as SecretaryActiveTab);
                   if (item.tab !== "dashboard") setSidebarOpen(false);
                 }}
-                className={`group relative w-full flex items-center gap-3 rounded-2xl border ${
+                className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 transition-colors ${
                   activeTab === item.tab
-                    ? "bg-gradient-to-r from-green-600/95 to-emerald-600/95 text-slate-100 shadow-xl shadow-green-500/30 border-green-500/50"
-                    : "border-green-800/50 bg-slate-800/80 text-emerald-300 hover:border-green-600/70 hover:bg-green-500/10 hover:shadow-lg hover:shadow-green-500/25"
-                } px-4 py-3 text-left transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-[1.02] ${
-                  activeTab === item.tab ? "!text-emerald-100" : ""
+                    ? "bg-emerald-600 text-white"
+                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                 }`}
               >
-                <span className="text-xl">{item.icon}</span>
-                <span className="font-bold">{item.label}</span>
-                {activeTab === item.tab && (
-                  <div className="absolute right-3 w-2 h-6 bg-gradient-to-b from-emerald-400 to-teal-400 rounded-full animate-pulse" />
-                )}
+                <span className="text-lg">{item.icon}</span>
+                <span>{item.label}</span>
               </button>
             ))}
 
@@ -2843,41 +2838,22 @@ export default function SecretaryDashboard() {
                     : "max-h-0 opacity-0 mb-0"
                 }`}
               >
-                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   {summaryCards.map((card, idx) => (
                     <div
                       key={idx}
-                      className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-lg shadow-green-900/20 p-3.5 sm:p-4 backdrop-blur-2xl hover:shadow-xl hover:shadow-green-600/30 transition-all duration-300 hover:border-green-600/70"
+                      className="bg-slate-900 border border-slate-800 rounded-lg p-5 hover:border-slate-700 transition-colors"
                       role="region"
                       aria-label={card.label}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/6 via-transparent to-teal-500/6 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-lg border border-green-800/50 shadow">
-                              {card.icon}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[10px] uppercase tracking-wide text-emerald-400 font-semibold truncate">
-                                {card.label}
-                              </p>
-                              <p className="text-xl sm:text-2xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent leading-none">
-                                {card.count}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="hidden sm:inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-300">
-                            Auto
-                          </div>
-                        </div>
-
-                        <div className="mt-2.5">
-                          <div className="h-1.5 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50">
-                            <div className="h-full w-[70%] bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow" />
-                          </div>
-                          <p className="mt-1.5 text-[9px] text-slate-400">
-                            Auto-updated from collection data
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-2xl">{card.icon}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs uppercase text-slate-400 font-medium">
+                            {card.label}
+                          </p>
+                          <p className="text-2xl font-bold text-slate-100 mt-1">
+                            {card.count}
                           </p>
                         </div>
                       </div>
@@ -2887,39 +2863,29 @@ export default function SecretaryDashboard() {
               </div>
 
               {/* Map Section with Toggle Button */}
-              <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
-                <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-                  <div className="relative z-10">
-                    <div className="flex items-center justify-between gap-4 mb-6">
-                      <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
-                        Collection Coverage Map
-                      </h2>
-                      <div className="flex items-center gap-3">
-                        {/* Stats Toggle Button */}
-                        <button
-                          onClick={() => setStatsVisible(!statsVisible)}
-                          className="group/btn inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 text-emerald-300 border border-emerald-500/30 font-semibold text-xs backdrop-blur-sm hover:bg-emerald-500/20 hover:border-emerald-400/50 transition-all duration-300 relative z-10"
-                          title={
-                            statsVisible ? "Hide Statistics" : "Show Statistics"
-                          }
-                        >
-                          <span className="text-sm">
-                            {statsVisible ? "📊" : "📈"}
-                          </span>
-                          <span className="hidden sm:inline">
-                            {statsVisible ? "Hide Stats" : "Show Stats"}
-                          </span>
-                        </button>
-                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
-                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-                          Live vehicles
-                        </span>
-                      </div>
+              <section>
+                <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 overflow-hidden">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-slate-100">
+                      Collection Coverage Map
+                    </h2>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setStatsVisible(!statsVisible)}
+                        className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm transition-colors"
+                        title={
+                          statsVisible ? "Hide Statistics" : "Show Statistics"
+                        }
+                      >
+                        {statsVisible ? "📊 Hide Stats" : "📈 Show Stats"}
+                      </button>
+                      <span className="px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-sm font-medium">
+                        🟢 Live
+                      </span>
                     </div>
-                    <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px] relative z-10">
-                      <LeafletMap />
-                    </div>
+                  </div>
+                  <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px]">
+                    <LeafletMap />
                   </div>
                 </div>
               </section>
