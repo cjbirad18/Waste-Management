@@ -1028,6 +1028,33 @@ export default function BWMCdashboard() {
         });
       }
 
+      if (newStatus === "Needs Action") {
+        const { data: secretaries, error: secretaryError } = await supabase
+          .from("users")
+          .select("user_id, contact_number")
+          .eq("role", "Secretary")
+          .not("contact_number", "is", null);
+
+        if (!secretaryError && secretaries?.length) {
+          const secretaryMessage = `Incident report #${selectedReport.report_id} requires your action. Location: ${selectedReport.location}. ${responseRemarks ? `Remarks: ${responseRemarks}. ` : ""}\n\nTrack the Truck`;
+
+          await Promise.all(
+            secretaries.map((secretary) =>
+              fetch("/api/send-sms", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  to: secretary.contact_number,
+                  message: secretaryMessage,
+                  userId: secretary.user_id,
+                  notificationType: "incident_needs_action",
+                }),
+              }),
+            ),
+          );
+        }
+      }
+
       setReports((prev) =>
         prev.map((r) =>
           r.report_id === selectedReport.report_id
