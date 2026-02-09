@@ -33,10 +33,12 @@ export async function POST(req: NextRequest) {
         message = `Action is being taken on your incident report #${reportId}. Our team is working to resolve the issue. - Track the Truck`;
         break;
       case "resolved":
-        message = `Your incident report #${reportId} has been resolved. ${actionTaken ? `Action taken: ${actionTaken}.` : ""} Thank you for your report! - Track the Truck`;
+        message = `Your incident report #${reportId} has been resolved. ${actionTaken ? `Action taken: ${actionTaken}.` : ""} Thank you for your report! 
+        
+        - Track the Truck`;
         break;
       case "rejected":
-        message = `Your incident report #${reportId} has been reviewed. ${reason ? `Reason: ${reason}.` : "Additional evidence may be required."} - Track the Truck`;
+        message = `Your incident report #${reportId} has been rejected. ${reason ? `Reason: ${reason}.` : "Additional evidence may be required."} - Track the Truck`;
         break;
       default:
         message = `Update on incident report #${reportId}: Status changed to ${status}. - Track the Truck`;
