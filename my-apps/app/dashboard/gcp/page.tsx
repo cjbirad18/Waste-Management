@@ -34,29 +34,37 @@ const summaryCards = [
   {
     label: "Collection Office Accounts",
     icon: "👤",
-    bg: "bg-blue-50",
-    color: "text-blue-700",
+    iconBg: "bg-emerald-500/15",
+    iconColor: "text-emerald-300",
+    trend: "Active",
+    trendClass: "text-emerald-400",
     count: 12,
   },
   {
     label: "Active Garbage Trucks",
     icon: "🚚",
-    bg: "bg-yellow-50",
-    color: "text-yellow-700",
+    iconBg: "bg-amber-500/15",
+    iconColor: "text-amber-300",
+    trend: "Active",
+    trendClass: "text-emerald-400",
     count: 5,
   },
   {
     label: "Daily Collections",
     icon: "📈",
-    bg: "bg-orange-50",
-    color: "text-orange-700",
+    iconBg: "bg-sky-500/15",
+    iconColor: "text-sky-300",
+    trend: "Active",
+    trendClass: "text-emerald-400",
     count: 8,
   },
   {
     label: "Incident Reports",
     icon: "🗑️",
-    bg: "bg-green-50",
-    color: "text-green-700",
+    iconBg: "bg-rose-500/15",
+    iconColor: "text-rose-300",
+    trend: "Active",
+    trendClass: "text-emerald-400",
     count: 3,
   },
 ];
@@ -66,6 +74,7 @@ const summaryCards = [
 function useTruckTracking() {
   useEffect(() => {
     let watchId: number | null = null;
+    let trackedTruckId: number | null = null;
 
     async function startTracking() {
       console.log("startTracking called");
@@ -83,6 +92,7 @@ function useTruckTracking() {
         .single();
       console.log("truck", { truck, truckErr });
       if (truckErr || !truck) return;
+      trackedTruckId = truck.truck_id ?? null;
 
       if (!("geolocation" in navigator)) {
         console.log("geolocation not available");
@@ -121,6 +131,12 @@ function useTruckTracking() {
     return () => {
       if (watchId !== null && "geolocation" in navigator) {
         navigator.geolocation.clearWatch(watchId);
+      }
+      if (trackedTruckId) {
+        void supabase
+          .from("truck_live_location")
+          .delete()
+          .eq("truck_id", trackedTruckId);
       }
     };
   }, []);
@@ -1031,6 +1047,7 @@ export default function GCPDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [statsVisible, setStatsVisible] = useState(true);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [displayName, setDisplayName] = useState("User");
   const [activeTab, setActiveTab] = useState<
     | "dashboard"
     | "userAdmin"
@@ -1038,6 +1055,27 @@ export default function GCPDashboard() {
     | "assignedTasks"
     | "manageAccount"
   >("dashboard");
+
+  useEffect(() => {
+    async function fetchDisplayName() {
+      const { data: authData, error } = await supabase.auth.getUser();
+      if (error || !authData?.user) return;
+
+      const { data: profile } = await supabase
+        .from("users")
+        .select("first_name, last_name, username")
+        .eq("user_id", authData.user.id)
+        .single();
+
+      const fullName =
+        `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
+      setDisplayName(
+        fullName || profile?.username || authData.user.email || "User",
+      );
+    }
+
+    fetchDisplayName();
+  }, []);
 
   // Manage Account State
   const [hasLoadedManageAccount, setHasLoadedManageAccount] = useState(false);
@@ -1204,7 +1242,7 @@ export default function GCPDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
       {/* Top navigation (SWMO style) */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800 bg-slate-950">
         <div className="flex items-center justify-between px-2 sm:px-4 md:px-8 py-3 sm:py-4 min-h-16">
@@ -1238,7 +1276,9 @@ export default function GCPDashboard() {
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors whitespace-nowrap"
             >
-              <span className="hidden sm:inline text-xs sm:text-sm">GCP</span>
+              <span className="hidden sm:inline text-xs sm:text-sm">
+                {displayName}
+              </span>
               <svg
                 className={`w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
                 fill="none"
@@ -1262,7 +1302,7 @@ export default function GCPDashboard() {
                 <div className="absolute right-0 mt-2 w-56 rounded-lg bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-50">
                   <div className="p-3 border-b border-slate-800">
                     <p className="text-xs text-slate-400 font-medium">
-                      GCP Personnel
+                      {displayName}
                     </p>
                   </div>
                   <div className="py-2">
@@ -1357,90 +1397,76 @@ export default function GCPDashboard() {
         <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64 bg-slate-900/50">
           {activeTab === "dashboard" && (
             <>
-              {/* Collapsible Stats Section */}
-              <div
-                className={`transition-all duration-500 ease-in-out overflow-hidden ${
-                  statsVisible
-                    ? "max-h-[500px] opacity-100 mb-8"
-                    : "max-h-0 opacity-0 mb-0"
-                }`}
-              >
-                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-                  {summaryCards.map((card, idx) => (
-                    <div
-                      key={idx}
-                      className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 shadow-lg shadow-green-900/20 p-3.5 sm:p-4 backdrop-blur-2xl hover:shadow-xl hover:shadow-green-600/30 transition-all duration-300 hover:border-green-600/70"
-                      role="region"
-                      aria-label={card.label}
+              <section className="space-y-6">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
+                      Dashboard
+                    </p>
+                    <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
+                      Track-the-Truck Overview
+                    </h1>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setStatsVisible(!statsVisible)}
+                      className="px-3 py-2 rounded-md bg-white/10 text-slate-100 text-xs font-semibold hover:bg-white/20 transition"
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/6 via-transparent to-teal-500/6 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-gradient-to-br from-slate-900/90 to-gray-900/90 flex items-center justify-center text-lg border border-green-800/50 shadow">
-                              {card.icon}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[10px] uppercase tracking-wide text-emerald-400 font-semibold truncate">
-                                {card.label}
-                              </p>
-                              <p className="text-xl sm:text-2xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent leading-none">
-                                {card.count}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="hidden sm:inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-300">
-                            Auto
-                          </div>
-                        </div>
+                      {statsVisible ? "Hide Stats" : "Show Stats"}
+                    </button>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                      Live
+                    </span>
+                  </div>
+                </div>
 
-                        <div className="mt-2.5">
-                          <div className="h-1.5 w-full rounded-full bg-slate-900/90 overflow-hidden border border-green-800/50">
-                            <div className="h-full w-[70%] bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full shadow" />
+                {statsVisible && (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    {summaryCards.map((card) => (
+                      <div
+                        key={card.label}
+                        className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40"
+                        role="region"
+                        aria-label={card.label}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-slate-400 text-sm">
+                              {card.label}
+                            </p>
+                            <h3 className="text-2xl font-bold text-slate-100">
+                              {card.count}
+                            </h3>
+                            <p className={`text-sm ${card.trendClass}`}>
+                              {card.trend}
+                            </p>
                           </div>
-                          <p className="mt-1.5 text-[9px] text-slate-400">
-                            Auto-updated from collection data
-                          </p>
+                          <div
+                            className={`${card.iconBg} ${card.iconColor} p-3 rounded-full text-xl`}
+                          >
+                            {card.icon}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </section>
-              </div>
+                    ))}
+                  </div>
+                )}
+              </section>
 
-              <section
-                aria-label="Map of collection area and vehicles"
-                className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-                <div className="relative z-10">
+              <section>
+                <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 overflow-hidden">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
-                      Collection Coverage Map
+                    <h2 className="text-xl font-bold text-slate-100">
+                      Live Truck Tracking
                     </h2>
-                    <div className="flex items-center gap-3">
-                      {/* Stats Toggle Button */}
-                      <button
-                        onClick={() => setStatsVisible(!statsVisible)}
-                        className="group/btn inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800/80 text-emerald-300 border border-emerald-500/30 font-semibold text-xs backdrop-blur-sm hover:bg-emerald-500/20 hover:border-emerald-400/50 transition-all duration-300 relative z-10"
-                        title={
-                          statsVisible ? "Hide Statistics" : "Show Statistics"
-                        }
-                      >
-                        <span className="text-sm">
-                          {statsVisible ? "📊" : "📈"}
-                        </span>
-                        <span className="hidden sm:inline">
-                          {statsVisible ? "Hide Stats" : "Show Stats"}
-                        </span>
-                      </button>
-                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm">
-                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-                        Live vehicles
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-sm font-medium">
+                        🟢 Live
                       </span>
                     </div>
                   </div>
-                  <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px]">
+                  <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px]">
                     <LeafletMap />
                   </div>
                 </div>

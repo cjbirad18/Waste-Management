@@ -692,6 +692,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [archivedSchedules, setArchivedSchedules] = useState<any[]>([]);
   const [archivedLoading, setArchivedLoading] = useState(false);
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
 
   useEffect(() => {
     if (!selectedBarangay) {
@@ -784,10 +785,10 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
   };
 
   // Archive schedule instead of deleting
-  const handleArchive = async (schedule_id: string) => {
+  const handleArchive = async (schedule: any) => {
     if (
       !window.confirm(
-        "Archive this schedule? It will be hidden from active lists but kept in the system.",
+        "Archive this schedule? It will be hidden from active lists but kept in the system. Residents will be notified.",
       )
     )
       return;
@@ -795,10 +796,33 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
       const { error } = await supabase
         .from("collection_schedules")
         .update({ status: "Archived" })
-        .eq("schedule_id", schedule_id);
+        .eq("schedule_id", schedule.schedule_id);
       if (error) throw error;
+
+      // Notify residents and GCP of schedule archival
+      const notificationRes = await fetch(
+        "/api/notifications/schedule-update",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scheduleId: schedule.schedule_id,
+            barangayId: schedule.barangay.barangay_id,
+            updateType: "archived",
+            scheduleDate: schedule.date_created,
+          }),
+        },
+      );
+
+      const notificationData = await notificationRes.json();
+      if (notificationData.success) {
+        console.log(
+          `Notifications sent to ${notificationData.notificationsSent} recipients`,
+        );
+      }
+
       setSchedules((s) =>
-        s.filter((sc: any) => sc.schedule_id !== schedule_id),
+        s.filter((sc: any) => sc.schedule_id !== schedule.schedule_id),
       );
     } catch (err) {
       alert("Failed to archive schedule.");
@@ -812,23 +836,74 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
   };
 
   // Save edit
-  const handleSaveEdit = async (schedule_id: string) => {
+  const handleSaveEdit = async (schedule: any) => {
+    if (isSavingSchedule) return; // Prevent multiple clicks
+
+    setIsSavingSchedule(true);
     try {
       const { error } = await supabase
         .from("collection_schedules")
         .update({ days: editPattern })
-        .eq("schedule_id", schedule_id);
+        .eq("schedule_id", schedule.schedule_id);
 
       if (error) throw error;
 
+      // Notify residents and GCP of schedule update
+      const notificationRes = await fetch(
+        "/api/notifications/schedule-update",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scheduleId: schedule.schedule_id,
+            barangayId: schedule.barangay.barangay_id,
+            updateType: "updated",
+            scheduleDate: schedule.date_created,
+            scheduleTime: schedule.start_time,
+            oldPattern: schedule.days,
+            newPattern: editPattern,
+          }),
+        },
+      );
+
+      const notificationData = await notificationRes.json();
+      console.log("Notification response:", notificationData);
+      if (notificationData.success) {
+        console.log(
+          `Update notifications sent to ${notificationData.notificationsSent} recipients:`,
+          notificationData.recipients,
+        );
+        if (notificationData.notificationsSent === 0) {
+          alert("Schedule updated, but no residents found in this barangay.");
+        } else {
+          alert(
+            `Schedule updated! Notifications sent to ${notificationData.notificationsSent} residents.`,
+          );
+        }
+      } else {
+        console.error("Notification API error:", notificationData.error);
+        alert(
+          "Schedule updated, but failed to send notifications: " +
+            notificationData.error,
+        );
+      }
+
       setSchedules((s) =>
         s.map((sc: any) =>
-          sc.schedule_id === schedule_id ? { ...sc, days: editPattern } : sc,
+          sc.schedule_id === schedule.schedule_id
+            ? { ...sc, days: editPattern }
+            : sc,
         ),
       );
       setEditScheduleId(null);
     } catch (err) {
-      alert("Failed to update schedule.");
+      console.error("Error updating schedule:", err);
+      alert(
+        "Failed to update schedule: " +
+          (err instanceof Error ? err.message : String(err)),
+      );
+    } finally {
+      setIsSavingSchedule(false);
     }
   };
 
@@ -943,20 +1018,29 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
                 <div className="flex flex-wrap justify-end gap-2">
                   {editScheduleId === schedule.schedule_id ? (
                     <>
-                      <input
+                      <select
                         value={editPattern}
                         onChange={(e) => setEditPattern(e.target.value)}
-                        className="w-full xs:w-24 sm:w-28 h-8 rounded-lg bg-slate-900/80 border border-slate-600/50 px-2 py-1 text-xs text-slate-200 placeholder-slate-500 
+                        className="w-full xs:w-32 sm:w-40 h-8 rounded-lg bg-slate-900/80 border border-slate-600/50 px-2 py-1 text-xs text-slate-200
                                focus:outline-none focus:ring-1 focus:ring-emerald-400/50 focus:border-emerald-500/70 
-                               transition-all backdrop-blur-sm shadow-sm"
-                        placeholder="Pattern"
-                      />
-                      <button
-                        className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white rounded-lg shadow-md 
-                               hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
-                        onClick={() => handleSaveEdit(schedule.schedule_id)}
+                               transition-all backdrop-blur-sm shadow-sm cursor-pointer"
                       >
-                        Save
+                        <option value="">Select Pattern</option>
+                        <option value="MWF">
+                          Monday, Wednesday, Friday (MWF)
+                        </option>
+                        <option value="TTH">Tuesday, Thursday (TTH)</option>
+                      </select>
+                      <button
+                        disabled={isSavingSchedule}
+                        className={`h-8 px-3 text-xs font-bold text-white rounded-lg shadow-md transition-all duration-200 flex items-center justify-center whitespace-nowrap ${
+                          isSavingSchedule
+                            ? "bg-slate-500 cursor-not-allowed opacity-60"
+                            : "bg-emerald-600 hover:bg-emerald-700 hover:shadow-lg hover:scale-[1.02]"
+                        }`}
+                        onClick={() => handleSaveEdit(schedule)}
+                      >
+                        {isSavingSchedule ? "Saving..." : "Save"}
                       </button>
                       <button
                         className="h-8 px-3 bg-slate-600 hover:bg-slate-700 text-xs font-bold text-white rounded-lg shadow-md 
@@ -978,7 +1062,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
                       <button
                         className="h-8 px-3 bg-amber-600 hover:bg-amber-700 text-xs font-bold text-white rounded-lg shadow-md 
                                hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
-                        onClick={() => handleArchive(schedule.schedule_id)}
+                        onClick={() => handleArchive(schedule)}
                       >
                         Archive
                       </button>
@@ -2213,7 +2297,29 @@ export default function SecretaryDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [statsVisible, setStatsVisible] = useState(true);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [displayName, setDisplayName] = useState("User");
   const [activeTab, setActiveTab] = useState<SecretaryActiveTab>("dashboard");
+
+  useEffect(() => {
+    async function fetchDisplayName() {
+      const { data: authData, error } = await supabase.auth.getUser();
+      if (error || !authData?.user) return;
+
+      const { data: profile } = await supabase
+        .from("users")
+        .select("first_name, last_name, username")
+        .eq("user_id", authData.user.id)
+        .single();
+
+      const fullName =
+        `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
+      setDisplayName(
+        fullName || profile?.username || authData.user.email || "User",
+      );
+    }
+
+    fetchDisplayName();
+  }, []);
 
   useEffect(() => {
     async function fetchBarangays() {
@@ -2268,83 +2374,63 @@ export default function SecretaryDashboard() {
   const [gcps, setGcps] = useState<GcpUser[]>([]);
 
   const [counts, setCounts] = useState({
-    residents: 0,
-    gcps: 0,
-    barangays: 0,
-    incidentReports: 0,
+    trucks: 0,
+    schedules: 0,
+    gcpResponses: 0,
   });
 
   useEffect(() => {
     async function fetchCounts() {
-      let residentCount = 0;
-      let gcpCount = 0;
-      let barangayCount = 0;
-      let reportCount = 0;
+      let truckCount = 0;
+      let scheduleCount = 0;
+      let gcpResponseCount = 0;
 
-      // Residents: users WHERE role = 'Resident'
+      // Trucks: count from garbage_trucks table
       try {
         const { count, error } = await supabase
-          .from("users")
-          .select("user_id", { count: "exact", head: true })
-          .eq("role", "Resident");
+          .from("garbage_trucks")
+          .select("truck_id", { count: "exact", head: true });
         if (error) {
-          console.error("Resident count fetch error:", error);
+          console.error("Truck count fetch error:", error);
         } else {
-          residentCount = count || 0;
+          truckCount = count || 0;
         }
       } catch (err) {
-        console.error("Unexpected error fetching Resident count:", err);
+        console.error("Unexpected error fetching Truck count:", err);
       }
 
-      // GCPs: users WHERE role = 'GCP'
+      // GCP Responses: count from gcpresponses table
       try {
         const { count, error } = await supabase
-          .from("users")
-          .select("user_id", { count: "exact", head: true })
-          .eq("role", "GCP");
+          .from("gcpresponses")
+          .select("response_id", { count: "exact", head: true });
         if (error) {
-          console.error("GCP count fetch error:", error);
+          console.error("GCP Response count fetch error:", error);
         } else {
-          gcpCount = count || 0;
+          gcpResponseCount = count || 0;
         }
       } catch (err) {
-        console.error("Unexpected error fetching GCP count:", err);
+        console.error("Unexpected error fetching GCP Response count:", err);
       }
 
-      // Barangays: all rows in barangay table
+      // Schedules: count from collection_schedules table
       try {
         const { count, error } = await supabase
-          .from("users")
-          .select("user_id", { count: "exact", head: true })
-          .eq("role", "BWMC");
+          .from("collection_schedules")
+          .select("schedule_id", { count: "exact", head: true });
         if (error) {
-          console.error("Barangay count fetch error:", error);
+          console.error("Schedule count fetch error:", error);
         } else {
-          barangayCount = count || 0;
+          scheduleCount = count || 0;
         }
       } catch (err) {
-        console.error("Unexpected error fetching Barangay count:", err);
-      }
-
-      // Incident Reports: all rows in community_reports
-      try {
-        const { count, error } = await supabase
-          .from("community_reports")
-          .select("report_id", { count: "exact", head: true });
-        if (error) {
-          console.error("Incident Reports count fetch error:", error);
-        } else {
-          reportCount = count || 0;
-        }
-      } catch (err) {
-        console.error("Unexpected error fetching Incident Reports count:", err);
+        console.error("Unexpected error fetching Schedule count:", err);
       }
 
       setCounts({
-        residents: residentCount,
-        gcps: gcpCount,
-        barangays: barangayCount,
-        incidentReports: reportCount,
+        trucks: truckCount,
+        schedules: scheduleCount,
+        gcpResponses: gcpResponseCount,
       });
     }
 
@@ -2353,32 +2439,31 @@ export default function SecretaryDashboard() {
 
   const summaryCards = [
     {
-      label: "Residents Registered",
-      icon: "👤",
-      bg: "bg-blue-50",
-      color: "text-blue-700",
-      count: counts.residents,
+      label: "Trucks Registered",
+      icon: "🚛",
+      iconBg: "bg-emerald-500/15",
+      iconColor: "text-emerald-300",
+      trend: "Active",
+      trendClass: "text-emerald-400",
+      count: counts.trucks,
     },
     {
-      label: "GCP Registered",
-      icon: "🛠️",
-      bg: "bg-yellow-50",
-      color: "text-yellow-700",
-      count: counts.gcps,
+      label: "Schedules Created",
+      icon: "📅",
+      iconBg: "bg-sky-500/15",
+      iconColor: "text-sky-300",
+      trend: "Active",
+      trendClass: "text-emerald-400",
+      count: counts.schedules,
     },
     {
-      label: "Barangays Registered",
-      icon: "🌏",
-      bg: "bg-orange-50",
-      color: "text-orange-700",
-      count: counts.barangays,
-    },
-    {
-      label: "Incident Reports",
-      icon: "🗑️",
-      bg: "bg-green-50",
-      color: "text-green-700",
-      count: counts.incidentReports,
+      label: "GCP Responses",
+      icon: "📋",
+      iconBg: "bg-indigo-500/15",
+      iconColor: "text-indigo-300",
+      trend: "Active",
+      trendClass: "text-emerald-400",
+      count: counts.gcpResponses,
     },
   ];
 
@@ -2669,7 +2754,7 @@ export default function SecretaryDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
       {/* Top navigation (same as SWMO) */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800 bg-slate-950">
         <div className="flex items-center justify-between px-2 sm:px-4 md:px-8 py-3 sm:py-4 min-h-16">
@@ -2681,16 +2766,7 @@ export default function SecretaryDashboard() {
             >
               {sidebarOpen ? "✖" : "☰"}
             </button>
-            <button
-              onClick={() => {
-                setActiveTab("dashboard");
-                setSidebarOpen(false);
-              }}
-              className="hidden sm:inline-flex items-center justify-center h-9 w-9 rounded-lg bg-slate-800/80 text-emerald-300 hover:bg-emerald-600/10 flex-shrink-0"
-              aria-label="Go to Dashboard"
-            >
-              📊
-            </button>
+
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-600/20 border border-emerald-600/30 text-lg flex-shrink-0">
                 🚛
@@ -2712,7 +2788,7 @@ export default function SecretaryDashboard() {
               className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors whitespace-nowrap"
             >
               <span className="hidden sm:inline text-xs sm:text-sm">
-                Secretary
+                {displayName}
               </span>
               <svg
                 className={`w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
@@ -2737,7 +2813,7 @@ export default function SecretaryDashboard() {
                 <div className="absolute right-0 mt-2 w-56 rounded-lg bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-50">
                   <div className="p-3 border-b border-slate-800">
                     <p className="text-xs text-slate-400 font-medium">
-                      Secretary
+                      {displayName}
                     </p>
                   </div>
                   <div className="py-2">
@@ -2838,23 +2914,28 @@ export default function SecretaryDashboard() {
                     : "max-h-0 opacity-0 mb-0"
                 }`}
               >
-                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                   {summaryCards.map((card, idx) => (
                     <div
                       key={idx}
-                      className="bg-slate-900 border border-slate-800 rounded-lg p-5 hover:border-slate-700 transition-colors"
+                      className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40"
                       role="region"
                       aria-label={card.label}
                     >
-                      <div className="flex items-center gap-3 mb-3">
-                        <span className="text-2xl">{card.icon}</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs uppercase text-slate-400 font-medium">
-                            {card.label}
-                          </p>
-                          <p className="text-2xl font-bold text-slate-100 mt-1">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-slate-400 text-sm">{card.label}</p>
+                          <h3 className="text-2xl font-bold text-slate-100">
                             {card.count}
+                          </h3>
+                          <p className={`text-sm ${card.trendClass}`}>
+                            {card.trend}
                           </p>
+                        </div>
+                        <div
+                          className={`${card.iconBg} ${card.iconColor} p-3 rounded-full text-xl`}
+                        >
+                          {card.icon}
                         </div>
                       </div>
                     </div>

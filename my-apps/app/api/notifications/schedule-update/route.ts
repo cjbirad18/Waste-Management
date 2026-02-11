@@ -15,13 +15,30 @@ type GCPAssignment = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { scheduleId, barangayId, updateType, scheduleDate, scheduleTime } =
-      await req.json();
+    const {
+      scheduleId,
+      barangayId,
+      updateType,
+      scheduleDate,
+      scheduleTime,
+      oldPattern,
+      newPattern,
+    } = await req.json();
+
+    console.log("Schedule update notification request:", {
+      scheduleId,
+      barangayId,
+      updateType,
+      scheduleDate,
+      scheduleTime,
+      oldPattern,
+      newPattern,
+    });
 
     const notifications = [];
 
     // Get assigned GCP
-    const { data: gcpAssignments } = await supabase
+    const { data: gcpAssignments, error: gcpError } = await supabase
       .from("collection_schedules")
       .select(
         `
@@ -31,13 +48,28 @@ export async function POST(req: NextRequest) {
       )
       .eq("schedule_id", scheduleId);
 
+    if (gcpError) {
+      console.error("Error fetching GCP assignments:", gcpError);
+    } else {
+      console.log("GCP assignments found:", gcpAssignments?.length || 0);
+    }
+
     // Get residents in the barangay
-    const { data: residents } = await supabase
+    const { data: residents, error: residentsError } = await supabase
       .from("users")
       .select("first_name, last_name, contact_number, user_id")
       .eq("role", "Resident")
-      .eq("barangay_id", barangayId)
-      .eq("notification_enabled", true);
+      .eq("barangay_id", barangayId);
+
+    if (residentsError) {
+      console.error("Error fetching residents:", residentsError);
+    } else {
+      console.log(
+        "Residents in barangay found:",
+        residents?.length || 0,
+        residents,
+      );
+    }
 
     const recipients = [
       ...(gcpAssignments || [])
@@ -62,14 +94,29 @@ export async function POST(req: NextRequest) {
     ];
 
     let message = "";
+
+    // Helper function to convert pattern code to full day names
+    const getFullDayNames = (pattern: string): string => {
+      const dayMap: { [key: string]: string } = {
+        MWF: "Monday, Wednesday, and Friday",
+        TTH: "Tuesday and Thursday",
+      };
+      return dayMap[pattern] || pattern;
+    };
+
     if (updateType === "archived") {
-      message = `NOTICE: The garbage collection schedule for ${scheduleDate} has been cancelled. You will be notified of the new schedule. - Track the Truck`;
-    } else if (updateType === "updated") {
-      message = `UPDATE: Garbage collection schedule has been changed. New schedule: ${scheduleDate} at ${scheduleTime}. - Track the Truck`;
+      message = `NOTICE: The garbage collection schedule for ${scheduleDate} has been cancelled. You will be notified of the new schedule.\n\n - Track the Truck`;
+    } else if (updateType === "updated" && oldPattern && newPattern) {
+      const newDays = getFullDayNames(newPattern);
+      const oldDays = getFullDayNames(oldPattern);
+      message = `Garbage Collection Updated!!\n\nCollection days are now ${newDays} (${newPattern}) instead of ${oldDays} (${oldPattern}).\nKindly place your trash out on the new schedule. Thank you!\n\n - Track the Truck`;
     }
+
+    console.log("Total recipients to notify:", recipients.length, recipients);
 
     // Send to all recipients
     for (const recipient of recipients) {
+      console.log(`Sending SMS to ${recipient.name} (${recipient.phone})...`);
       const smsResponse = await fetch(
         `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-sms`,
         {
@@ -80,6 +127,7 @@ export async function POST(req: NextRequest) {
       );
 
       const smsResult = await smsResponse.json();
+      console.log(`SMS response for ${recipient.phone}:`, smsResult);
 
       if (smsResult.success) {
         await supabase.from("sms_notifications").insert({
@@ -91,8 +139,15 @@ export async function POST(req: NextRequest) {
           status: "sent",
         });
         notifications.push(recipient.name);
+      } else {
+        console.error(
+          `Failed to send SMS to ${recipient.phone}:`,
+          smsResult.error,
+        );
       }
     }
+
+    console.log("Notifications sent successfully to:", notifications);
 
     return NextResponse.json({
       success: true,

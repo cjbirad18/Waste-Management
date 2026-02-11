@@ -775,17 +775,17 @@ export default function ReportsAnalytics({
               </div>
 
               {/* Chart */}
-              <div className="border border-gray-300 rounded-lg bg-white p-6 sm:p-8">
+              <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-emerald-800/50 p-6 sm:p-8 shadow-2xl shadow-emerald-900/30 backdrop-blur-2xl overflow-hidden">
                 <div className="mb-6">
-                  <h3 className="text-xl font-bold text-gray-900">
+                  <h3 className="text-xl font-bold text-white/80">
                     Monthly Barangay Concerns
                   </h3>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-white/80 mt-1">
                     Status breakdown by month
                   </p>
                 </div>
 
-                <div className="h-96 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="h-96 bg-slate-950 rounded-lg p-4 border border-slate-800">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={concernStats}

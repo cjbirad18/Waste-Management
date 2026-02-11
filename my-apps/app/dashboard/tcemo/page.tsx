@@ -99,6 +99,7 @@ export default function TcemoDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [statsVisible, setStatsVisible] = useState(true);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [displayName, setDisplayName] = useState("User");
   // Confirmation modal state
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [confirmModalAction, setConfirmModalAction] = useState<
@@ -115,6 +116,27 @@ export default function TcemoDashboard() {
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "manageUsers" | "manageAccount" | "generateReports"
   >("dashboard");
+
+  useEffect(() => {
+    async function fetchDisplayName() {
+      const { data: authData, error } = await supabase.auth.getUser();
+      if (error || !authData?.user) return;
+
+      const { data: profile } = await supabase
+        .from("users")
+        .select("first_name, last_name, username")
+        .eq("user_id", authData.user.id)
+        .single();
+
+      const fullName =
+        `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
+      setDisplayName(
+        fullName || profile?.username || authData.user.email || "User",
+      );
+    }
+
+    fetchDisplayName();
+  }, []);
 
   // Add SWMO Head form
   const [userForm, setUserForm] = useState({
@@ -556,7 +578,7 @@ export default function TcemoDashboard() {
   // ---------- Render ----------
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
       {/* Top navigation */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800 bg-slate-950">
         <div className="flex items-center justify-between px-2 sm:px-4 md:px-8 py-3 sm:py-4 min-h-16">
@@ -589,7 +611,7 @@ export default function TcemoDashboard() {
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors whitespace-nowrap"
             >
-              <span className="hidden sm:inline text-xs sm:text-sm">TCEMO</span>
+              <span className="text-xs sm:text-sm">{displayName}</span>
               <svg
                 className={`w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
                 fill="none"
@@ -613,7 +635,7 @@ export default function TcemoDashboard() {
                 <div className="absolute right-0 mt-2 w-56 rounded-lg bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-50">
                   <div className="p-3 border-b border-slate-800">
                     <p className="text-xs text-slate-400 font-medium">
-                      TCEMO Head
+                      {displayName}
                     </p>
                   </div>
                   <div className="py-2">
@@ -711,64 +733,79 @@ export default function TcemoDashboard() {
           {/* DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
-              {/* Collapsible Stats Section */}
-              <div
-                className={`transition-all duration-500 ease-in-out overflow-hidden ${
-                  statsVisible
-                    ? "max-h-[500px] opacity-100 mb-8"
-                    : "max-h-0 opacity-0 mb-0"
-                }`}
-              >
-                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                  {summaryCards.map((card, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-slate-900 border border-slate-800 rounded-lg p-5 hover:border-slate-700 transition-colors"
-                      role="region"
-                      aria-label={card.label}
-                    >
-                      <div className="flex items-center gap-3 mb-3">
-                        <span className="text-2xl">{card.icon}</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs uppercase text-slate-400 font-medium">
-                            {card.label}
-                          </p>
-                          <p className="text-2xl font-bold text-slate-100 mt-1">
-                            {card.count}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </section>
-              </div>
-
-              {/* Map Section with Toggle Button */}
-              <section>
-                <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 overflow-hidden">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-slate-100">
-                      Collection Coverage Map
-                    </h2>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setStatsVisible(!statsVisible)}
-                        className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm transition-colors"
-                        title={
-                          statsVisible ? "Hide Statistics" : "Show Statistics"
-                        }
-                      >
-                        {statsVisible ? "📊 Hide Stats" : "📈 Show Stats"}
-                      </button>
-                      <span className="px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-sm font-medium">
-                        🟢 Live
-                      </span>
-                    </div>
+              <section className="space-y-6">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
+                      Dashboard
+                    </p>
+                    <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
+                      Track-the-Truck Overview
+                    </h1>
                   </div>
-                  <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px]">
-                    <LeafletMap />
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setStatsVisible(!statsVisible)}
+                      className="px-3 py-2 rounded-md bg-white/10 text-slate-100 text-xs font-semibold hover:bg-white/20 transition"
+                    >
+                      {statsVisible ? "Hide Stats" : "Show Stats"}
+                    </button>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                      Live
+                    </span>
                   </div>
                 </div>
+
+                {/* Collapsible Stats Section */}
+                {statsVisible && (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    {summaryCards.map((card, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40"
+                        role="region"
+                        aria-label={card.label}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-slate-400 text-sm">
+                              {card.label}
+                            </p>
+                            <h3 className="text-2xl font-bold text-slate-100">
+                              {card.count}
+                            </h3>
+                            <p className="text-sm text-emerald-400 font-medium">
+                              ↑ Active
+                            </p>
+                          </div>
+                          <div className="bg-emerald-500/15 text-emerald-300 p-3 rounded-full text-xl">
+                            {card.icon}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Map Section with Toggle Button */}
+                <section>
+                  <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 overflow-hidden">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-xl font-bold text-slate-100">
+                        Live Truck Tracking
+                      </h2>
+                      <div className="flex items-center gap-2">
+                        <span className="px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-sm font-medium">
+                          🟢 Live
+                        </span>
+                      </div>
+                    </div>
+                    <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px]">
+                      <LeafletMap />
+                    </div>
+                  </div>
+                </section>
               </section>
             </>
           )}

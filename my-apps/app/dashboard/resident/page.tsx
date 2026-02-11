@@ -1110,12 +1110,34 @@ export default function ResidentDashboard() {
   const [selectedMessage, setSelectedMessage] = useState("");
   const [activeTab, setActiveTab] = useState<ResidentActiveTab>("dashboard");
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [displayName, setDisplayName] = useState("User");
   const [gps, setGps] = useState<{ lat: number | null; lng: number | null }>({
     lat: null,
     lng: null,
   });
 
   useResidentTracking(setGps);
+
+  useEffect(() => {
+    async function fetchDisplayName() {
+      const { data: authData, error } = await supabase.auth.getUser();
+      if (error || !authData?.user) return;
+
+      const { data: profile } = await supabase
+        .from("users")
+        .select("first_name, last_name, username")
+        .eq("user_id", authData.user.id)
+        .single();
+
+      const fullName =
+        `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
+      setDisplayName(
+        fullName || profile?.username || authData.user.email || "User",
+      );
+    }
+
+    fetchDisplayName();
+  }, []);
 
   // Manage Account States
   const [manageAccountForm, setManageAccountForm] = useState<ManageAccountForm>(
@@ -1549,7 +1571,7 @@ export default function ResidentDashboard() {
               className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors whitespace-nowrap"
             >
               <span className="hidden sm:inline text-xs sm:text-sm">
-                Resident
+                {displayName}
               </span>
               <svg
                 className={`w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
@@ -1574,7 +1596,7 @@ export default function ResidentDashboard() {
                 <div className="absolute right-0 mt-2 w-56 rounded-lg bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-50">
                   <div className="p-3 border-b border-slate-800">
                     <p className="text-xs text-slate-400 font-medium">
-                      Resident Account
+                      {displayName}
                     </p>
                   </div>
                   <div className="py-2">
