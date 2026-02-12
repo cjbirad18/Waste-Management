@@ -501,7 +501,7 @@ function GCPAssignedTasksSection() {
 
       const { data: truck, error: truckErr } = await supabase
         .from("garbage_trucks")
-        .select("truck_id")
+        .select("truck_id, truck_code")
         .eq("gcp_user_id", authData.user.id)
         .single();
       if (truckErr || !truck?.truck_id) {
@@ -510,7 +510,7 @@ function GCPAssignedTasksSection() {
 
       const { data: schedule, error: scheduleErr } = await supabase
         .from("collection_schedules")
-        .select("schedule_id")
+        .select("schedule_id, barangay:barangay_id (barangay_name)")
         .eq("gcp_user_id", authData.user.id)
         .order("date_created", { ascending: false })
         .limit(1)
@@ -529,6 +529,40 @@ function GCPAssignedTasksSection() {
         });
 
       if (insertError) throw insertError;
+
+      try {
+        const { data: secretaries, error: secretaryError } = await supabase
+          .from("users")
+          .select("user_id, contact_number")
+          .eq("role", "Secretary")
+          .not("contact_number", "is", null);
+
+        if (!secretaryError && secretaries?.length) {
+          const barangayName = schedule.barangay?.barangay_name || "Unknown";
+          const truckCode = truck.truck_code || "Unassigned";
+          const message = `Waste collected recorded. Barangay: ${barangayName}. Truck: ${truckCode}. Date: ${collectionDate}. Weight: ${weightValue} kg. - Track the Truck`;
+
+          await Promise.all(
+            secretaries.map((secretary) =>
+              fetch("/api/send-sms", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  to: secretary.contact_number,
+                  message,
+                  userId: secretary.user_id,
+                  notificationType: "waste_collected",
+                }),
+              }),
+            ),
+          );
+        }
+      } catch (notifyError) {
+        console.error(
+          "Failed to notify secretaries about waste collected",
+          notifyError,
+        );
+      }
 
       setWasteSuccess("Waste collection recorded successfully.");
       setWasteModalOpen(false);
@@ -566,6 +600,85 @@ function GCPAssignedTasksSection() {
           .eq("report_id", responseAssignment.report.report_id);
 
         if (reportError) throw reportError;
+      }
+
+      try {
+        const reportId = responseAssignment.report?.report_id;
+
+        if (reportId) {
+          const { data: reportDetails, error: reportDetailsError } =
+            await supabase
+              .from("community_reports")
+              .select("report_id, location, barangay_id, user_id")
+              .eq("report_id", reportId)
+              .single();
+
+          if (!reportDetailsError && reportDetails) {
+            if (reportDetails.user_id) {
+              await fetch("/api/notifications/incident-status", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  reportId: reportDetails.report_id,
+                  userId: reportDetails.user_id,
+                  status: "resolved",
+                  actionTaken: responseText.trim() || undefined,
+                }),
+              });
+            }
+
+            if (reportDetails.barangay_id) {
+              const { data: bwmc, error: bwmcError } = await supabase
+                .from("users")
+                .select("user_id, contact_number")
+                .eq("role", "BWMC")
+                .eq("barangay_id", reportDetails.barangay_id)
+                .maybeSingle();
+
+              if (!bwmcError && bwmc?.contact_number) {
+                const bwmcMessage = `Incident report #${reportDetails.report_id} resolved by GCP. Location: ${reportDetails.location}. ${responseText.trim() ? `Action taken: ${responseText.trim()}. ` : ""}Track the Truck`;
+
+                await fetch("/api/send-sms", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    to: bwmc.contact_number,
+                    message: bwmcMessage,
+                    userId: bwmc.user_id,
+                    notificationType: "incident_resolved",
+                  }),
+                });
+              }
+            }
+
+            const { data: secretaries, error: secretaryError } = await supabase
+              .from("users")
+              .select("user_id, contact_number")
+              .eq("role", "Secretary")
+              .not("contact_number", "is", null);
+
+            if (!secretaryError && secretaries?.length) {
+              const secretaryMessage = `Incident report #${reportDetails.report_id} resolved by GCP. Location: ${reportDetails.location}. ${responseText.trim() ? `Action taken: ${responseText.trim()}. ` : ""}Track the Truck`;
+
+              await Promise.all(
+                secretaries.map((secretary) =>
+                  fetch("/api/send-sms", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      to: secretary.contact_number,
+                      message: secretaryMessage,
+                      userId: secretary.user_id,
+                      notificationType: "incident_resolved",
+                    }),
+                  }),
+                ),
+              );
+            }
+          }
+        }
+      } catch (notifyError) {
+        console.error("Failed to send resolution notifications", notifyError);
       }
 
       // 3) Update local tasks so UI shows response + new status
@@ -1276,9 +1389,7 @@ export default function GCPDashboard() {
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors whitespace-nowrap"
             >
-              <span className="hidden sm:inline text-xs sm:text-sm">
-                {displayName}
-              </span>
+              <span className="text-xs sm:text-sm">{displayName}</span>
               <svg
                 className={`w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
                 fill="none"

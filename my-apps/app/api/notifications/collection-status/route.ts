@@ -26,25 +26,25 @@ export async function POST(req: NextRequest) {
     switch (status) {
       case "started":
         message =
-          "Garbage collection has started in your area! The truck is now in your barangay. Please prepare your waste. - Track the Truck";
+          "Garbage collection has started in your area! The truck is now in your barangay. Please prepare your waste.\n\n - Track the Truck";
         break;
       case "ongoing":
         message =
-          "Garbage collection is now ongoing in your barangay. You can track the truck's location in real-time through the app. - Track the Truck";
+          "Garbage collection is now ongoing in your barangay. You can track the truck's location in real-time through the app.\n\n - Track the Truck";
         break;
       case "delayed":
-        message = `The garbage collection truck is delayed. ${reason ? `Reason: ${reason}.` : ""} We apologize for the inconvenience. - Track the Truck`;
+        message = `The garbage collection truck is delayed. ${reason ? `Reason: ${reason}.` : ""} We apologize for the inconvenience.\n\n - Track the Truck`;
         break;
       case "missed":
         message =
-          "The garbage collection for your barangay was missed today. You will be notified of the rescheduled collection time. We apologize for the inconvenience. - Track the Truck";
+          "The garbage collection for your barangay was missed today. You will be notified of the rescheduled collection time. We apologize for the inconvenience.\n\n - Track the Truck";
         break;
       case "completed":
         message =
-          "Garbage collection in your barangay has been completed. Thank you for your cooperation! - Track the Truck";
+          "Garbage collection in your barangay has been completed. Thank you for your cooperation!\n\n - Track the Truck";
         break;
       default:
-        message = `Garbage collection status update: ${status}. - Track the Truck`;
+        message = `Garbage collection status update: ${status}.\n\n - Track the Truck`;
     }
 
     const notifications = [];

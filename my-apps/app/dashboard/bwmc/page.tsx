@@ -1271,6 +1271,26 @@ export default function BWMCdashboard() {
         return;
       }
 
+      if (selectedReport.user_id) {
+        try {
+          await fetch("/api/notifications/incident-status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              reportId: selectedReport.report_id,
+              userId: selectedReport.user_id,
+              status: "resolved",
+              actionTaken: actionRemarks || undefined,
+            }),
+          });
+        } catch (notifyError) {
+          console.error(
+            "Failed to notify resident about resolution",
+            notifyError,
+          );
+        }
+      }
+
       setReports((prev: any[]) =>
         prev.map((r) =>
           r.report_id === selectedReport.report_id
@@ -2093,9 +2113,7 @@ export default function BWMCdashboard() {
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors whitespace-nowrap"
             >
-              <span className="hidden sm:inline text-xs sm:text-sm">
-                {displayName}
-              </span>
+              <span className="text-xs sm:text-sm">{displayName}</span>
               <svg
                 className={`w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
                 fill="none"

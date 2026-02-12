@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(
-      `[Registration Status SMS] Found resident: ${resident.first_name} ${resident.last_name}, Phone: ${resident.contact_number}`,
+      `[Registration Status SMS] Found resident: ${resident.first_name} ${resident.last_name}, \nPhone: ${resident.contact_number}`,
     );
 
     // Validate phone number

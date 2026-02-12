@@ -661,6 +661,36 @@ function SubmitReportSection({
         return;
       }
 
+      let reporterName = authData.user.email || "Resident";
+      try {
+        const { data: profile } = await supabase
+          .from("users")
+          .select("first_name, last_name")
+          .eq("user_id", userId)
+          .single();
+
+        const fullName =
+          `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
+        if (fullName) reporterName = fullName;
+      } catch (profileError) {
+        console.error("Failed to load reporter name", profileError);
+      }
+
+      try {
+        await fetch("/api/notifications/incident-report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reportId: reportData.report_id,
+            barangayId: form.barangay_id,
+            location: form.location,
+            reporterName,
+          }),
+        });
+      } catch (notifyError) {
+        console.error("Failed to notify BWMC about new report", notifyError);
+      }
+
       // If you want to force photo requirement, uncomment:
       // if (!form.photoFile) {
       //   setFieldError("Please capture a photo.");
@@ -1570,9 +1600,7 @@ export default function ResidentDashboard() {
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors whitespace-nowrap"
             >
-              <span className="hidden sm:inline text-xs sm:text-sm">
-                {displayName}
-              </span>
+              <span className="text-xs sm:text-sm">{displayName}</span>
               <svg
                 className={`w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
                 fill="none"

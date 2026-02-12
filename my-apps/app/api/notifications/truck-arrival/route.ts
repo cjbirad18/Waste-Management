@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
         if (!recentNotif) {
           const phoneNumber = userData.contact_number;
           const name = `${userData.first_name} ${userData.last_name}`;
-          const message = `Hi ${name}! A garbage truck will arrive at your location in approximately ${eta} minutes. Please prepare your waste for collection. - Track the Truck`;
+          const message = `Hi ${name}! A garbage truck will arrive at your location in approximately ${eta} minutes. Please prepare your waste for collection.\n\n - Track the Truck`;
 
           // Send SMS
           const smsResponse = await fetch(

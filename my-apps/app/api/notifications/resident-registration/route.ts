@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const message = `New resident registration pending approval: ${residentName}. Please log in to the system to review and approve. - Track the Truck`;
+    const message = `New resident registration pending approval: ${residentName}. Please log in to the system to review and approve.\n\n - Track the Truck`;
 
     // Send SMS
     const smsResponse = await fetch(

@@ -32,10 +32,10 @@ export async function POST(req: NextRequest) {
       .eq("notification_enabled", true);
 
     // Message for staff
-    const staffMessage = `ALERT: Garbage collection was MISSED in ${barangayName}. The truck did not enter or complete the scheduled collection. Please review and reschedule. - Track the Truck`;
+    const staffMessage = `ALERT: Garbage collection was MISSED in ${barangayName}. The truck did not enter or complete the scheduled collection. Please review and reschedule.\n\n - Track the Truck`;
 
     // Message for residents
-    const residentMessage = `NOTICE: The scheduled garbage collection for ${barangayName} was missed today. We apologize for the inconvenience. You will be notified of the rescheduled collection. - Track the Truck`;
+    const residentMessage = `NOTICE: The scheduled garbage collection for ${barangayName} was missed today. We apologize for the inconvenience. You will be notified of the rescheduled collection.\n\n - Track the Truck`;
 
     // Notify Secretary
     if (secretary) {

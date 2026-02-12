@@ -1511,6 +1511,21 @@ function SecretaryReportsSection() {
       return;
     }
 
+    try {
+      await fetch("/api/notifications/incident-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportId: reportId,
+          gcpId: selectedGcpId,
+          location: selectedReport.location,
+          description: selectedReport.description || "",
+        }),
+      });
+    } catch (notifyError) {
+      console.error("Failed to notify GCP about assignment", notifyError);
+    }
+
     // 4) remove from Needs Action list in UI
     setReports((prev) => prev.filter((r) => r.report_id !== reportId));
 
@@ -2787,9 +2802,7 @@ export default function SecretaryDashboard() {
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors whitespace-nowrap"
             >
-              <span className="hidden sm:inline text-xs sm:text-sm">
-                {displayName}
-              </span>
+              <span className="text-xs sm:text-sm">{displayName}</span>
               <svg
                 className={`w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
                 fill="none"

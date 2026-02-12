@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
     } else if (updateType === "updated" && oldPattern && newPattern) {
       const newDays = getFullDayNames(newPattern);
       const oldDays = getFullDayNames(oldPattern);
-      message = `Garbage Collection Updated!!\n\nCollection days are now ${newDays} (${newPattern}) instead of ${oldDays} (${oldPattern}).\nKindly place your trash out on the new schedule. Thank you!\n\n - Track the Truck`;
+      message = `Garbage Collection Updated!!\nCollection days are now ${newDays} (${newPattern}) instead of ${oldDays} (${oldPattern}).\nKindly place your trash out on the new schedule. Thank you!\n\n - Track the Truck`;
     }
 
     console.log("Total recipients to notify:", recipients.length, recipients);
