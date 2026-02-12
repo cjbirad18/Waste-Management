@@ -510,7 +510,14 @@ function GCPAssignedTasksSection() {
 
       const { data: schedule, error: scheduleErr } = await supabase
         .from("collection_schedules")
-        .select("schedule_id, barangay:barangay_id (barangay_name)")
+        .select(
+          `
+          schedule_id,
+          barangay:barangay_id (
+            barangay_name
+          )
+        `,
+        )
         .eq("gcp_user_id", authData.user.id)
         .order("date_created", { ascending: false })
         .limit(1)
@@ -538,7 +545,9 @@ function GCPAssignedTasksSection() {
           .not("contact_number", "is", null);
 
         if (!secretaryError && secretaries?.length) {
-          const barangayName = schedule.barangay?.barangay_name || "Unknown";
+          const barangayName =
+            (schedule.barangay as unknown as { barangay_name: string } | null)
+              ?.barangay_name || "Unknown";
           const truckCode = truck.truck_code || "Unassigned";
           const message = `Waste collected recorded. Barangay: ${barangayName}. Truck: ${truckCode}. Date: ${collectionDate}. Weight: ${weightValue} kg. - Track the Truck`;
 
