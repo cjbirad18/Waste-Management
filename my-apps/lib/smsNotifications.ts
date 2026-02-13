@@ -159,3 +159,46 @@ export function isValidPhoneNumber(phone: string): boolean {
 
   return false;
 }
+
+/**
+ * Send collection delay notification to residents
+ */
+export async function notifyCollectionDelay(
+  recipient: NotificationRecipient,
+  barangay: string,
+  delayMinutes: number,
+  estimatedArrival?: string,
+) {
+  const message = estimatedArrival
+    ? `${barangay} collection delayed ${delayMinutes}min. ETA: ${estimatedArrival}. TTruck`
+    : `${barangay} collection delayed ${delayMinutes}min. Updates soon. TTruck`;
+
+  try {
+    await sendSMS(recipient.phoneNumber, message);
+    console.log(`Delay notification sent to ${recipient.name}`);
+  } catch (error) {
+    console.error(`Failed to notify ${recipient.name}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Send delay alert to BWMC officials
+ */
+export async function notifyBWMCDelay(
+  recipient: NotificationRecipient,
+  barangay: string,
+  delayMinutes: number,
+  gcpName?: string,
+) {
+  const gcpInfo = gcpName ? ` (GCP: ${gcpName})` : "";
+  const message = `ALERT: ${barangay} collection delayed ${delayMinutes}min${gcpInfo}. Check status. TTruck`;
+
+  try {
+    await sendSMS(recipient.phoneNumber, message);
+    console.log(`BWMC delay alert sent to ${recipient.name}`);
+  } catch (error) {
+    console.error(`Failed to notify BWMC ${recipient.name}:`, error);
+    throw error;
+  }
+}

@@ -193,6 +193,16 @@ function LeafletMap({
 
   const [role, setRole] = useState<AppRole>(null);
   const [autoCenter, setAutoCenter] = useState(true);
+  const [gcpTruckId, setGcpTruckId] = useState<number | null>(null);
+  const [gcpAssignedBarangayId, setGcpAssignedBarangayId] = useState<
+    number | null
+  >(null);
+  const [gcpAssignedBarangayName, setGcpAssignedBarangayName] = useState<
+    string | null
+  >(null);
+  const [gcpLocationWarning, setGcpLocationWarning] = useState<string | null>(
+    null,
+  );
 
   const [residentLocation, setResidentLocation] = useState<{
     lat: number;
@@ -278,6 +288,55 @@ function LeafletMap({
 
     loadUser();
   }, []);
+
+  // Load GCP assigned truck + barangay for location checks
+  useEffect(() => {
+    if (role !== "GCP") return;
+
+    let isActive = true;
+
+    const loadGcpAssignment = async () => {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError || !user) return;
+
+      const { data: truck, error: truckError } = await supabase
+        .from("garbage_trucks")
+        .select("truck_id")
+        .eq("gcp_user_id", user.id)
+        .maybeSingle();
+
+      if (!truckError && isActive) {
+        setGcpTruckId(truck?.truck_id ?? null);
+      }
+
+      const { data: schedule, error: scheduleError } = await supabase
+        .from("collection_schedules")
+        .select(
+          "barangay_id, status, date_created, barangay:barangay_id (barangay_name)",
+        )
+        .eq("gcp_user_id", user.id)
+        .in("status", ["pending", "ongoing", "Active"])
+        .order("date_created", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!scheduleError && isActive) {
+        setGcpAssignedBarangayId(
+          schedule?.barangay_id != null ? Number(schedule.barangay_id) : null,
+        );
+        const barangayName = (schedule as any)?.barangay?.barangay_name ?? null;
+        setGcpAssignedBarangayName(barangayName);
+      }
+    };
+
+    loadGcpAssignment();
+    return () => {
+      isActive = false;
+    };
+  }, [role]);
 
   // Sync residentLocation with live GPS prop (so it moves without refresh)
   useEffect(() => {
@@ -448,7 +507,11 @@ function LeafletMap({
     if (row.latitude == null || row.longitude == null) return;
 
     const assignedBarangayId = assignedByTruck[row.truck_id];
-    if (!assignedBarangayId) return;
+    const effectiveAssignedBarangayId =
+      role === "GCP" && gcpTruckId === row.truck_id
+        ? (gcpAssignedBarangayId ?? assignedBarangayId)
+        : assignedBarangayId;
+    if (!effectiveAssignedBarangayId) return;
 
     const barangayName = getBarangayFromPoint(
       [row.latitude, row.longitude],
@@ -459,8 +522,20 @@ function LeafletMap({
     const currentBarangayId = nameToId[barangayName];
     if (!currentBarangayId) return;
 
-    const isInsideAssigned = currentBarangayId === assignedBarangayId;
+    const isInsideAssigned = currentBarangayId === effectiveAssignedBarangayId;
     const state = (truckStates[row.truck_id] ??= { inside: false });
+
+    if (role === "GCP" && gcpTruckId === row.truck_id) {
+      if (!isInsideAssigned) {
+        const assignedName =
+          gcpAssignedBarangayName || "your assigned barangay";
+        setGcpLocationWarning(
+          `You are outside ${assignedName}. Move into the assigned barangay to start collection.`,
+        );
+      } else {
+        setGcpLocationWarning(null);
+      }
+    }
 
     if (isInsideAssigned && !state.inside) {
       state.inside = true;
@@ -468,7 +543,7 @@ function LeafletMap({
         clearTimeout(state.leaveTimeout);
         state.leaveTimeout = null;
       }
-      await startCollectionIfNeeded(assignedBarangayId);
+      await startCollectionIfNeeded(effectiveAssignedBarangayId);
       return;
     }
 
@@ -477,7 +552,7 @@ function LeafletMap({
         async () => {
           state.inside = false;
           state.leaveTimeout = null;
-          await endCollectionIfNeeded(assignedBarangayId);
+          await endCollectionIfNeeded(effectiveAssignedBarangayId);
         },
         20 * 60 * 1000,
       );
@@ -630,6 +705,11 @@ function LeafletMap({
 
       <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 md:p-1">
         <div className="flex items-center gap-3">
+          {role === "GCP" && gcpLocationWarning && (
+            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-200">
+              {gcpLocationWarning}
+            </div>
+          )}
           {/* Location Control for Residents */}
           {role === "Resident" && (
             <div className="inline-flex items-center rounded-2xl border border-slate-700/60 bg-slate-900/60 p-1 shadow-md">

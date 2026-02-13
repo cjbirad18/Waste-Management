@@ -10,8 +10,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  LineChart,
-  Line,
   Legend,
 } from "recharts";
 import TruckLoader from "../loading/TruckLoader";
@@ -647,7 +645,7 @@ export default function ReportsAnalytics({
 
                     <div className="h-80 bg-slate-900/60 rounded-2xl p-4 border border-slate-700/50">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
+                        <BarChart
                           data={performanceData}
                           margin={{ top: 20, right: 30, bottom: 60, left: 50 }}
                         >
@@ -702,21 +700,13 @@ export default function ReportsAnalytics({
                             }}
                             cursor={{ fill: "rgba(6, 182, 212, 0.1)" }}
                           />
-                          <Line
-                            type="monotone"
+                          <Bar
                             dataKey="efficiency"
-                            stroke="#06b6d4"
-                            strokeWidth={3}
-                            dot={{
-                              r: 5,
-                              strokeWidth: 2,
-                              stroke: "#1e293b",
-                              fill: "#06b6d4",
-                            }}
-                            activeDot={{ r: 7 }}
+                            fill="url(#effGrad)"
+                            radius={[8, 8, 0, 0]}
                             name="Efficiency (%)"
                           />
-                        </LineChart>
+                        </BarChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
@@ -889,21 +879,18 @@ export default function ReportsAnalytics({
                       />
                       <Bar
                         dataKey="needsAction"
-                        stackId="a"
                         fill="url(#needsActionGrad)"
                         name="Needs Action"
                         radius={[8, 8, 0, 0]}
                       />
                       <Bar
                         dataKey="ongoing"
-                        stackId="a"
                         fill="url(#ongoingGrad)"
                         name="Ongoing"
                         radius={[8, 8, 0, 0]}
                       />
                       <Bar
                         dataKey="resolved"
-                        stackId="a"
                         fill="url(#resolvedGrad)"
                         name="Resolved"
                         radius={[8, 8, 0, 0]}

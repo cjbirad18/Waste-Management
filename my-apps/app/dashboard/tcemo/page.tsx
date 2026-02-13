@@ -15,6 +15,43 @@ import ReportsAnalytics from "../../generatereport/generatereport";
 import BarangayConcernsAnalytics from "../../generatereport/barangayconcern";
 
 import TruckLoader from "../../loading/TruckLoader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const LeafletMap = dynamic(() => import("../../leafletmap"), { ssr: false });
 
@@ -50,14 +87,11 @@ function InputField({
   placeholder?: string;
 }) {
   return (
-    <div className="mb-4">
-      <label
-        htmlFor={name}
-        className="block mb-1 text-xs font-medium text-slate-300"
-      >
+    <div className="mb-4 space-y-2">
+      <Label htmlFor={name} className="text-xs font-medium text-slate-300">
         {label}
-      </label>
-      <input
+      </Label>
+      <Input
         id={name}
         name={name}
         type={type}
@@ -65,7 +99,6 @@ function InputField({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-slate-700 rounded-lg bg-slate-800 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
         autoComplete="off"
       />
     </div>
@@ -578,21 +611,30 @@ export default function TcemoDashboard() {
   // ---------- Render ----------
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-emerald-950/70 text-slate-100/90 flex flex-col relative overflow-hidden antialiased">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        <div className="absolute -top-48 left-1/4 h-[520px] w-[520px] rounded-full bg-emerald-500/12 blur-[130px]" />
+        <div className="absolute top-24 -right-40 h-[420px] w-[420px] rounded-full bg-sky-500/12 blur-[120px]" />
+        <div className="absolute bottom-0 left-0 h-[360px] w-[360px] rounded-full bg-amber-400/10 blur-[110px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.7),transparent_60%)]" />
+      </div>
       {/* Top navigation */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800 bg-slate-950">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-emerald-900/40 bg-slate-950/80 shadow-lg shadow-emerald-900/20 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/60">
         <div className="flex items-center justify-between px-2 sm:px-4 md:px-8 py-3 sm:py-4 min-h-16">
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors flex-shrink-0"
+              className="md:hidden inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-lg bg-slate-900/80 text-slate-100 hover:bg-slate-800 transition-colors flex-shrink-0 ring-1 ring-white/10"
               aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
               {sidebarOpen ? "✖" : "☰"}
             </button>
 
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-600/20 border border-emerald-600/30 text-lg flex-shrink-0">
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-lg flex-shrink-0 shadow-lg shadow-emerald-900/40">
                 🚛
               </div>
               <div className="min-w-0">
@@ -609,7 +651,7 @@ export default function TcemoDashboard() {
           <div className="relative flex-shrink-0">
             <button
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors whitespace-nowrap"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-100 font-medium transition-colors whitespace-nowrap ring-1 ring-white/10"
             >
               <span className="text-xs sm:text-sm">{displayName}</span>
               <svg
@@ -686,7 +728,7 @@ export default function TcemoDashboard() {
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
           md:fixed md:translate-x-0 md:top-20 md:left-0 md:bottom-0 md:w-64
-          bg-slate-950 border-r border-slate-800
+          bg-slate-950/90 border-r border-emerald-900/30 shadow-2xl shadow-black/30 backdrop-blur-xl
           flex flex-col py-6 px-4 transition-all duration-300
         `}
         >
@@ -715,7 +757,7 @@ export default function TcemoDashboard() {
                 }}
                 className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
                   activeTab === item.tab
-                    ? "bg-emerald-600 text-white"
+                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
                     : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                 }`}
               >
@@ -729,7 +771,7 @@ export default function TcemoDashboard() {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64 bg-slate-900/50">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-10 py-10 space-y-10 relative z-10 md:ml-64 bg-slate-900/40">
           {/* DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
@@ -744,12 +786,13 @@ export default function TcemoDashboard() {
                     </h1>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button
+                    <Button
                       onClick={() => setStatsVisible(!statsVisible)}
-                      className="px-3 py-2 rounded-md bg-white/10 text-slate-100 text-xs font-semibold hover:bg-white/20 transition"
+                      variant="secondary"
+                      className="h-auto"
                     >
                       {statsVisible ? "Hide Stats" : "Show Stats"}
-                    </button>
+                    </Button>
                     <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold">
                       <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                       Live
@@ -790,7 +833,7 @@ export default function TcemoDashboard() {
 
                 {/* Map Section with Toggle Button */}
                 <section>
-                  <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 overflow-hidden">
+                  <div className="dashboard-section overflow-hidden">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-xl font-bold text-slate-100">
                         Live Truck Tracking
@@ -813,7 +856,7 @@ export default function TcemoDashboard() {
           {activeTab === "manageUsers" && (
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Form */}
-              <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 hover:border-slate-700 transition-colors overflow-hidden">
+              <div className="dashboard-section overflow-hidden">
                 <div className="relative z-10">
                   <h2 className="text-lg font-bold mb-2 text-slate-100">
                     Add New SWMO Head
@@ -897,19 +940,16 @@ export default function TcemoDashboard() {
                       </div>
                     </div>
                     <div className="flex justify-end mt-4">
-                      <button
-                        type="submit"
-                        className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition-colors"
-                      >
+                      <Button type="submit" className="h-auto">
                         Add User
-                      </button>
+                      </Button>
                     </div>
                   </form>
                 </div>
               </div>
 
               {/* SWMO Head list */}
-              <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 hover:border-slate-700 transition-colors overflow-hidden">
+              <div className="dashboard-section overflow-hidden">
                 <div className="relative z-10">
                   <h3 className="text-lg font-bold mb-3 text-slate-100">
                     SWMO Head Accounts
@@ -955,7 +995,8 @@ export default function TcemoDashboard() {
                               </td>
                               <td className="px-3 py-2">
                                 {user.status.toLowerCase() === "active" ? (
-                                  <button
+                                  <Button
+                                    variant="destructive"
                                     onClick={() =>
                                       openConfirmModal(
                                         "deactivate",
@@ -963,12 +1004,11 @@ export default function TcemoDashboard() {
                                         `${user.first_name} ${user.last_name}`,
                                       )
                                     }
-                                    className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium whitespace-nowrap transition-colors"
                                   >
                                     Deactivate
-                                  </button>
+                                  </Button>
                                 ) : (
-                                  <button
+                                  <Button
                                     onClick={() =>
                                       openConfirmModal(
                                         "activate",
@@ -976,10 +1016,9 @@ export default function TcemoDashboard() {
                                         `${user.first_name} ${user.last_name}`,
                                       )
                                     }
-                                    className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium whitespace-nowrap transition-colors"
                                   >
                                     Activate
-                                  </button>
+                                  </Button>
                                 )}
                               </td>
                             </tr>
@@ -1016,7 +1055,7 @@ export default function TcemoDashboard() {
                 aria-hidden="true"
               />
               <div className="relative z-50 max-w-lg w-full mx-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-lg p-6">
+                <div className="dashboard-section">
                   <h3 className="text-lg font-bold mb-2 text-slate-100">
                     {confirmModalAction === "activate"
                       ? "Activate Account"
@@ -1030,25 +1069,24 @@ export default function TcemoDashboard() {
                     {confirmModalTarget?.name ?? "this account"}?
                   </p>
                   <div className="flex justify-end gap-3">
-                    <button
+                    <Button
+                      variant="secondary"
                       type="button"
                       onClick={() => {
                         setConfirmModalOpen(false);
                         setConfirmModalAction(null);
                         setConfirmModalTarget(null);
                       }}
-                      className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
                     >
                       Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={performConfirmAction}
                       disabled={confirmModalLoading}
-                      className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60 transition-colors"
                     >
                       {confirmModalLoading ? "Please wait..." : "Confirm"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -1158,12 +1196,7 @@ function ManageAccountSection({
             placeholder="Confirm your new password"
           />
           <div className="flex justify-end mt-6">
-            <button
-              type="submit"
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium transition-colors"
-            >
-              Update Account
-            </button>
+            <Button type="submit">Update Account</Button>
           </div>
         </form>
       </div>

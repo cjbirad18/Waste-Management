@@ -259,7 +259,7 @@ export default function BarangayConcernsAnalytics({
   return (
     <section className="print-report-page space-y-6 max-w-7xl mx-auto p-4 md:p-8">
       {/* Header Section */}
-      <div className="border border-gray-300 rounded-lg bg-slate-950/60 p-6 sm:p-8">
+      <div className="border border-slate-800 rounded-lg bg-slate-950/60 p-6 sm:p-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
             <h2 className="print-report-title text-3xl font-bold text-white/80">
@@ -279,7 +279,7 @@ export default function BarangayConcernsAnalytics({
                 className={`px-4 py-2 rounded-md text-sm font-semibold transition-all duration-300 ${
                   viewMode === "monthly"
                     ? "bg-blue-600 text-white"
-                    : "text-gray-700 hover:bg-gray-900"
+                    : "text-slate-300 hover:bg-gray-900"
                 }`}
               >
                 📅 Monthly
@@ -289,7 +289,7 @@ export default function BarangayConcernsAnalytics({
                 className={`px-4 py-2 rounded-md text-sm font-semibold transition-all duration-300 ${
                   viewMode === "yearly"
                     ? "bg-blue-600 text-white"
-                    : "text-gray-700 hover:bg-gray-100"
+                    : "text-slate-300 hover:bg-slate-800"
                 }`}
               >
                 📊 Yearly
@@ -301,7 +301,7 @@ export default function BarangayConcernsAnalytics({
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="rounded-lg bg-gray-900 border border-gray-300 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400 transition-all"
+                className="rounded-lg bg-gray-900 border border-slate-700 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-slate-600 transition-all"
               >
                 {availableMonths.length === 0 ? (
                   <option value={selectedMonth}>{selectedMonth}</option>
@@ -328,15 +328,15 @@ export default function BarangayConcernsAnalytics({
 
       {/* Loading State */}
       {loading ? (
-        <div className="border border-gray-300 rounded-lg bg-white p-8">
+        <div className="border border-slate-800 rounded-lg bg-slate-950/60 p-8">
           <TruckLoader />
         </div>
       ) : errorMsg ? (
-        <div className="border border-red-300 rounded-lg bg-red-50 p-6 sm:p-8 text-red-700">
+        <div className="border border-red-800 rounded-lg bg-red-950/60 p-6 sm:p-8 text-red-300">
           <p className="text-center font-semibold ">⚠️ {errorMsg}</p>
         </div>
       ) : !stats.length && viewMode === "monthly" ? (
-        <div className="border border-gray-300 rounded-lg bg-slate-950/60 p-8 text-gray-600 text-center">
+        <div className="border border-slate-800 rounded-lg bg-slate-950/60 p-8 text-slate-400 text-center">
           <p className="text-lg font-semibold mb-2 text-white/80">
             📭 No Data Available
           </p>
@@ -354,7 +354,7 @@ export default function BarangayConcernsAnalytics({
                 className={`border-2 ${card.borderColor} ${card.bgColor} rounded-lg p-6 transition-all duration-300`}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-700">
+                  <h3 className="text-sm font-semibold text-slate-300">
                     {card.label}
                   </h3>
                   <span className="text-2xl">{card.icon}</span>
@@ -363,7 +363,7 @@ export default function BarangayConcernsAnalytics({
                   {card.value}
                 </p>
                 {card.label === "Resolved" && totalConcerns > 0 && (
-                  <p className="text-xs text-gray-600 mt-2">
+                  <p className="text-xs text-slate-400 mt-2">
                     {resolution}% resolution rate
                   </p>
                 )}
@@ -372,7 +372,7 @@ export default function BarangayConcernsAnalytics({
           </div>
 
           {/* Chart Section */}
-          <div className="border border-gray-300 rounded-lg bg-slate-950/60 p-6 sm:p-8">
+          <div className="border border-slate-800 rounded-lg bg-slate-950/60 p-6 sm:p-8">
             <div className="mb-6">
               <h3 className="text-xl font-bold text-white/80">
                 {viewMode === "monthly"
@@ -387,7 +387,7 @@ export default function BarangayConcernsAnalytics({
             </div>
 
             {viewMode === "monthly" && stats.length > 0 ? (
-              <div className="h-96 bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <div className="h-96 bg-slate-900/50 rounded-lg p-4 border border-slate-700">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={stats}
@@ -451,39 +451,39 @@ export default function BarangayConcernsAnalytics({
                     </defs>
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      stroke="#e5e7eb"
-                      opacity={0.5}
+                      stroke="#475569"
+                      opacity={0.3}
                     />
                     <XAxis
                       dataKey="month"
-                      stroke="#6b7280"
+                      stroke="#94a3b8"
                       tick={{
-                        fill: "#6b7280",
+                        fill: "#cbd5e1",
                         fontSize: 12,
                         fontWeight: 600,
                       }}
                     />
                     <YAxis
-                      stroke="#6b7280"
-                      tick={{ fill: "#6b7280", fontSize: 12 }}
+                      stroke="#94a3b8"
+                      tick={{ fill: "#cbd5e1", fontSize: 12 }}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "#ffffff",
-                        borderColor: "#d1d5db",
+                        backgroundColor: "#1e293b",
+                        borderColor: "#475569",
                         borderRadius: "8px",
-                        color: "#1f2937",
+                        color: "#e2e8f0",
                         fontSize: 12,
                         padding: "12px",
-                        boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                        boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
                       }}
-                      cursor={{ fill: "rgba(37, 99, 235, 0.1)" }}
+                      cursor={{ fill: "rgba(59, 130, 246, 0.1)" }}
                     />
                     <Legend
                       verticalAlign="top"
                       align="right"
                       wrapperStyle={{
-                        color: "#6b7280",
+                        color: "#cbd5e1",
                         fontSize: 12,
                         fontWeight: 600,
                         paddingBottom: "20px",
@@ -491,21 +491,18 @@ export default function BarangayConcernsAnalytics({
                     />
                     <Bar
                       dataKey="needsAction"
-                      stackId="a"
                       fill="url(#needsActionGrad)"
                       name="Needs Action"
                       radius={[8, 8, 0, 0]}
                     />
                     <Bar
                       dataKey="ongoing"
-                      stackId="a"
                       fill="url(#ongoingGrad)"
                       name="Ongoing"
                       radius={[8, 8, 0, 0]}
                     />
                     <Bar
                       dataKey="resolved"
-                      stackId="a"
                       fill="url(#resolvedGrad)"
                       name="Resolved"
                       radius={[8, 8, 0, 0]}
@@ -514,7 +511,7 @@ export default function BarangayConcernsAnalytics({
                 </ResponsiveContainer>
               </div>
             ) : viewMode === "yearly" ? (
-              <div className="h-96 bg-slate-950/60 rounded-lg p-4 border border-gray-200">
+              <div className="h-96 bg-slate-950/60 rounded-lg p-4 border border-slate-700">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={allStats}
@@ -578,39 +575,39 @@ export default function BarangayConcernsAnalytics({
                     </defs>
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      stroke="#e5e7eb"
-                      opacity={0.5}
+                      stroke="#475569"
+                      opacity={0.3}
                     />
                     <XAxis
                       dataKey="month"
-                      stroke="#6b7280"
+                      stroke="#94a3b8"
                       tick={{
-                        fill: "#6b7280",
+                        fill: "#cbd5e1",
                         fontSize: 12,
                         fontWeight: 600,
                       }}
                     />
                     <YAxis
-                      stroke="#6b7280"
-                      tick={{ fill: "#6b7280", fontSize: 12 }}
+                      stroke="#94a3b8"
+                      tick={{ fill: "#cbd5e1", fontSize: 12 }}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "#ffffff",
-                        borderColor: "#d1d5db",
+                        backgroundColor: "#1e293b",
+                        borderColor: "#475569",
                         borderRadius: "8px",
-                        color: "#1f2937",
+                        color: "#e2e8f0",
                         fontSize: 12,
                         padding: "12px",
-                        boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                        boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
                       }}
-                      cursor={{ fill: "rgba(37, 99, 235, 0.1)" }}
+                      cursor={{ fill: "rgba(59, 130, 246, 0.1)" }}
                     />
                     <Legend
                       verticalAlign="top"
                       align="right"
                       wrapperStyle={{
-                        color: "#6b7280",
+                        color: "#cbd5e1",
                         fontSize: 12,
                         fontWeight: 600,
                         paddingBottom: "20px",
@@ -618,21 +615,18 @@ export default function BarangayConcernsAnalytics({
                     />
                     <Bar
                       dataKey="needsAction"
-                      stackId="a"
                       fill="url(#needsActionGrad)"
                       name="Needs Action"
                       radius={[8, 8, 0, 0]}
                     />
                     <Bar
                       dataKey="ongoing"
-                      stackId="a"
                       fill="url(#ongoingGrad)"
                       name="Ongoing"
                       radius={[8, 8, 0, 0]}
                     />
                     <Bar
                       dataKey="resolved"
-                      stackId="a"
                       fill="url(#resolvedGrad)"
                       name="Resolved"
                       radius={[8, 8, 0, 0]}

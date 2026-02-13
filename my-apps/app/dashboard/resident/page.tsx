@@ -21,6 +21,49 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import dynamic from "next/dynamic";
 import TruckLoader from "../../loading/TruckLoader";
+import {
+  getDelayedCollectionsForBarangay,
+  DelayedCollection,
+  getDelayStatusColor,
+  isCollectionDelayed,
+} from "@/lib/delayDetection";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const LeafletMap = dynamic(() => import("../../leafletmap"), { ssr: false });
 
@@ -92,11 +135,12 @@ function SidebarItem({
   const hasBadge = badgeCount && badgeCount > 0;
 
   return (
-    <button
+    <Button
+      variant={selected ? "default" : "ghost"}
       onClick={onClick}
-      className={`w-full flex items-center justify-between gap-3 rounded-lg px-4 py-3 mb-2 text-left transition-colors ${
+      className={`w-full flex items-center justify-between gap-3 rounded-lg px-4 py-3 mb-2 text-left h-auto ${
         selected
-          ? "bg-emerald-600 text-white"
+          ? "bg-emerald-600 text-white hover:bg-emerald-700"
           : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
       }`}
       aria-current={selected ? "page" : undefined}
@@ -109,11 +153,14 @@ function SidebarItem({
       </span>
 
       {hasBadge && (
-        <span className="inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-500 text-white shadow shadow-red-900/60">
+        <Badge
+          variant="destructive"
+          className="min-w-[1.5rem] px-2 py-0.5 text-[10px] font-bold"
+        >
           {badgeCount}
-        </span>
+        </Badge>
       )}
-    </button>
+    </Button>
   );
 }
 
@@ -354,35 +401,35 @@ function ResidentSchedulesFeature({
   );
 
   return (
-    <section className="w-full max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 px-4 py-5 md:p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl">
+    <section className="dashboard-section w-full max-w-4xl mx-auto">
+      <div className="dashboard-section-glow" />
       <h2 className="text-2xl md:text-3xl font-bold mb-4 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
         Schedules Overview
       </h2>
 
       {/* Barangay selector */}
       <div className="mb-4 md:mb-6">
-        <label
+        <Label
           htmlFor="barangay-select"
           className="block text-xs md:text-sm font-semibold mb-2 text-slate-100"
         >
           See other barangay schedules
-        </label>
-        <select
-          id="barangay-select"
+        </Label>
+        <Select
           value={selectedBarangayId}
-          onChange={(e) => setSelectedBarangayId(e.target.value)}
-          className="block w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+          onValueChange={(value: string) => setSelectedBarangayId(value)}
         >
-          {barangays.map((b) => (
-            <option
-              key={b.barangay_id}
-              value={b.barangay_id}
-              className="bg-slate-900 text-slate-100"
-            >
-              {b.barangay_name}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger id="barangay-select">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {barangays.map((b) => (
+              <SelectItem key={b.barangay_id} value={b.barangay_id}>
+                {b.barangay_name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {loading ? (
@@ -789,41 +836,43 @@ function SubmitReportSection({
         </div>
 
         {/* Barangay */}
-        <div>
-          <label className="block text-xs font-semibold mb-1 text-slate-100">
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold text-slate-100">
             Barangay
-          </label>
-          <select
+          </Label>
+          <Select
             name="barangay_id"
             value={form.barangay_id}
-            onChange={handleChange}
+            onValueChange={(value: string) =>
+              handleChange({
+                target: { name: "barangay_id", value },
+              } as ChangeEvent<HTMLSelectElement>)
+            }
             required
-            className="w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
           >
-            <option value="">Select Barangay</option>
-            {barangays.map((brgy) => (
-              <option
-                key={brgy.barangay_id}
-                value={brgy.barangay_id}
-                className="bg-slate-900 text-slate-100"
-              >
-                {brgy.barangay_name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue placeholder="Select Barangay" />
+            </SelectTrigger>
+            <SelectContent>
+              {barangays.map((brgy) => (
+                <SelectItem key={brgy.barangay_id} value={brgy.barangay_id}>
+                  {brgy.barangay_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Landmark */}
-        <div>
-          <label className="block text-xs font-semibold mb-1 text-slate-100">
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold text-slate-100">
             Landmark
-          </label>
-          <input
+          </Label>
+          <Input
             name="landmark"
             value={form.landmark}
             onChange={handleChange}
             required
-            className="w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
             placeholder="Nearby landmark"
             type="text"
           />
@@ -832,20 +881,16 @@ function SubmitReportSection({
         {/* Camera controls */}
         {!cameraActive && (
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={startCamera}
-              className="inline-flex items-center justify-center bg-gradient-to-r from-sky-500 to-sky-400 text-white rounded-full px-5 py-2 text-sm font-semibold shadow-lg shadow-sky-900/40 transition-transform hover:scale-[1.02]"
-            >
+            <Button type="button" onClick={startCamera} variant="outline">
               Start Camera
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={toggleCameraFacing}
-              className="inline-flex items-center justify-center border border-emerald-500 text-emerald-300 bg-transparent rounded-full px-4 py-2 text-sm font-semibold shadow-sm hover:bg-emerald-700/5 transition"
+              variant="secondary"
             >
               Use {cameraFacing === "user" ? "Back" : "Front"} Camera
-            </button>
+            </Button>
           </div>
         )}
 
@@ -859,27 +904,19 @@ function SubmitReportSection({
               className="rounded-2xl border border-slate-700 shadow-lg shadow-slate-900/60 bg-black/60 w-full max-w-md"
             />
             <div className="flex gap-3 flex-wrap mt-2">
-              <button
-                type="button"
-                onClick={capturePhoto}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full px-5 py-2 text-sm font-semibold shadow-lg shadow-emerald-900/40 transition-transform hover:scale-[1.02]"
-              >
+              <Button type="button" onClick={capturePhoto}>
                 Capture Photo
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={toggleCameraFacing}
-                className="border border-emerald-500 text-emerald-300 bg-transparent rounded-full px-4 py-2 text-sm font-semibold shadow-sm hover:bg-emerald-700/5 transition"
+                variant="secondary"
               >
                 Switch Camera
-              </button>
-              <button
-                type="button"
-                onClick={stopCamera}
-                className="bg-slate-700/80 text-slate-200 rounded-full px-4 py-2 text-sm font-medium hover:bg-slate-600 transition"
-              >
+              </Button>
+              <Button type="button" onClick={stopCamera} variant="secondary">
                 Cancel
-              </button>
+              </Button>
             </div>
             <canvas
               ref={canvasRef}
@@ -896,13 +933,13 @@ function SubmitReportSection({
               <img src={photoUrl} alt="Live Capture" className="w-full block" />
             </div>
             <div className="flex gap-3">
-              <button
+              <Button
                 type="button"
                 onClick={handleRetakePhoto}
-                className="inline-flex items-center justify-center bg-slate-800/90 hover:bg-slate-700 text-emerald-300 rounded-full px-4 py-2 text-sm font-semibold border border-emerald-500/50 shadow-sm transition"
+                variant="secondary"
               >
                 Retake Photo
-              </button>
+              </Button>
               <span className="text-xs text-slate-400 self-center">
                 Preview of captured image
               </span>
@@ -910,13 +947,13 @@ function SubmitReportSection({
           </div>
         )}
 
-        <button
+        <Button
           type="submit"
           disabled={loading || !form.photoFile}
-          className="w-full py-3 text-sm font-bold rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-xl hover:scale-[1.02] transition-transform disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full py-3 text-sm font-bold"
         >
           {loading ? "Submitting..." : "Submit Report"}
-        </button>
+        </Button>
       </form>
     </section>
   );
@@ -1026,12 +1063,7 @@ function ManageAccountSection({
         </div>
 
         <div className="flex justify-end pt-2">
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
-          >
-            Update Account
-          </button>
+          <Button type="submit">Update Account</Button>
         </div>
       </form>
     </section>
@@ -1056,14 +1088,11 @@ function InputField({
   placeholder?: string;
 }) {
   return (
-    <div className="mb-4">
-      <label
-        htmlFor={name}
-        className="block mb-1 text-xs font-semibold text-slate-100"
-      >
+    <div className="mb-4 space-y-2">
+      <Label htmlFor={name} className="text-xs font-semibold text-slate-100">
         {label}
-      </label>
-      <input
+      </Label>
+      <Input
         id={name}
         name={name}
         type={type}
@@ -1072,7 +1101,7 @@ function InputField({
         required={required}
         placeholder={placeholder}
         autoComplete="off"
-        className="w-full rounded-lg bg-slate-900/90 border border-slate-700 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+        className="text-xs"
       />
     </div>
   );
@@ -1213,6 +1242,12 @@ export default function ResidentDashboard() {
   const [reportsLoading, setReportsLoading] = useState<boolean>(false);
   const [reportsError, setReportsError] = useState<string | null>(null);
   const [unreadReportCount, setUnreadReportCount] = useState<number>(0);
+
+  // Delayed collections state
+  const [delayedCollections, setDelayedCollections] = useState<
+    DelayedCollection[]
+  >([]);
+  const [loadingDelays, setLoadingDelays] = useState(false);
 
   // Fetch current user's barangay_id when the dashboard mounts
   useEffect(() => {
@@ -1411,6 +1446,30 @@ export default function ResidentDashboard() {
     fetchUserReports();
   }, []);
 
+  // Fetch delayed collections for resident's barangay
+  useEffect(() => {
+    async function fetchDelayedCollections() {
+      if (!residentBarangayId) return;
+
+      setLoadingDelays(true);
+      try {
+        const delayed = await getDelayedCollectionsForBarangay(
+          Number(residentBarangayId),
+        );
+        setDelayedCollections(delayed);
+      } catch (error) {
+        console.error("Error fetching delayed collections:", error);
+      } finally {
+        setLoadingDelays(false);
+      }
+    }
+
+    fetchDelayedCollections();
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchDelayedCollections, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [residentBarangayId]);
+
   // Form Handlers
   const handleManageAccountFormChange = (e: ChangeEvent<HTMLInputElement>) => {
     setManageAccountForm({
@@ -1567,21 +1626,30 @@ export default function ResidentDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col relative">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-emerald-950/70 text-slate-100/90 flex flex-col relative overflow-hidden antialiased">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        <div className="absolute -top-48 left-1/4 h-[520px] w-[520px] rounded-full bg-emerald-500/12 blur-[130px]" />
+        <div className="absolute top-24 -right-40 h-[420px] w-[420px] rounded-full bg-sky-500/12 blur-[120px]" />
+        <div className="absolute bottom-0 left-0 h-[360px] w-[360px] rounded-full bg-amber-400/10 blur-[110px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.7),transparent_60%)]" />
+      </div>
       {/* Top navigation (same as SWMO) */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800 bg-slate-950">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-emerald-900/40 bg-slate-950/80 shadow-lg shadow-emerald-900/20 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/60">
         <div className="flex items-center justify-between px-2 sm:px-4 md:px-8 py-3 sm:py-4 min-h-16">
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors flex-shrink-0"
+              className="md:hidden inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-lg bg-slate-900/80 text-slate-100 hover:bg-slate-800 transition-colors flex-shrink-0 ring-1 ring-white/10"
               aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
               {sidebarOpen ? "✖" : "☰"}
             </button>
 
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-600/20 border border-emerald-600/30 text-lg flex-shrink-0">
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-lg flex-shrink-0 shadow-lg shadow-emerald-900/40">
                 🚛
               </div>
               <div className="min-w-0">
@@ -1598,7 +1666,7 @@ export default function ResidentDashboard() {
           <div className="relative flex-shrink-0">
             <button
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors whitespace-nowrap"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-100 font-medium transition-colors whitespace-nowrap ring-1 ring-white/10"
             >
               <span className="text-xs sm:text-sm">{displayName}</span>
               <svg
@@ -1670,7 +1738,7 @@ export default function ResidentDashboard() {
         {/* Sidebar and toggle button */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="md:hidden fixed top-4 left-4 z-[70] inline-flex items-center justify-center h-11 w-11 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
+          className="md:hidden fixed top-4 left-4 z-[70] inline-flex items-center justify-center h-11 w-11 rounded-lg bg-slate-900/80 text-slate-100 hover:bg-slate-800 transition-colors ring-1 ring-white/10"
           aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
         >
           {sidebarOpen ? "✖" : "☰"}
@@ -1682,7 +1750,7 @@ export default function ResidentDashboard() {
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
           md:fixed md:translate-x-0 md:top-16 md:left-0 md:bottom-0 md:w-64
-          bg-slate-950 border-r border-slate-800
+          bg-slate-950/90 border-r border-emerald-900/30 shadow-2xl shadow-black/30 backdrop-blur-xl
           flex flex-col py-6 px-4 transition-all duration-300
         `}
         >
@@ -1700,21 +1768,22 @@ export default function ResidentDashboard() {
               },
               { label: "My Reports", icon: "📅", tab: "myReports" },
             ].map((item) => (
-              <button
+              <Button
                 key={item.tab}
+                variant={activeTab === item.tab ? "default" : "ghost"}
                 onClick={() => {
                   setActiveTab(item.tab as ResidentActiveTab);
                   if (item.tab !== "dashboard") setSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
+                className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left h-auto ${
                   activeTab === item.tab
-                    ? "bg-emerald-600 text-white"
+                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
                     : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                 }`}
               >
                 <span className="text-xl">{item.icon}</span>
                 <span className="font-medium">{item.label}</span>
-              </button>
+              </Button>
             ))}
 
             <div className="pt-6 mt-6 border-t border-slate-800"></div>
@@ -1722,7 +1791,7 @@ export default function ResidentDashboard() {
         </aside>
 
         {/* Main content area */}
-        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64 bg-slate-900/50">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-10 py-10 space-y-10 relative z-10 md:ml-64 bg-slate-900/40">
           {/* Success modal */}
           {reportSuccessModalOpen && (
             <div
@@ -1747,12 +1816,12 @@ export default function ResidentDashboard() {
                   {reportSuccess || "Your report was submitted successfully."}
                 </p>
                 <div className="mt-4 flex justify-center">
-                  <button
+                  <Button
                     onClick={() => setReportSuccessModalOpen(false)}
-                    className="px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-500 transition-colors"
+                    className="h-auto"
                   >
                     OK
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1764,8 +1833,8 @@ export default function ResidentDashboard() {
               {/* Responsive metrics grid */}
               {/* Map + small stats layout */}
               <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
-                <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                <div className="dashboard-section overflow-hidden">
+                  <div className="dashboard-section-glow" />
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
@@ -1817,6 +1886,82 @@ export default function ResidentDashboard() {
                   </div>
                 </div>
               </section>
+
+              {/* Delayed Collections Alert Banner */}
+              {delayedCollections.length > 0 && (
+                <section className="dashboard-section">
+                  <div className="dashboard-section-glow" />
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent drop-shadow-lg">
+                          ⚠️ Collection Delay Alert
+                        </h3>
+                        <p className="text-sm text-slate-400 mt-1">
+                          Your barangay collection is delayed
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {delayedCollections.map((delayed, idx) => {
+                        const delayStatus = getDelayStatusColor(
+                          delayed.delay_minutes,
+                        );
+                        return (
+                          <div
+                            key={`${delayed.schedule_id}-${idx}`}
+                            className="rounded-xl border border-red-800/60 bg-gradient-to-br from-red-900/20 to-orange-900/20 p-5 shadow-lg"
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <span
+                                    className={`px-3 py-1 rounded-full text-xs font-bold ${delayStatus.bg} ${delayStatus.text} border ${delayStatus.text.replace("text-", "border-")}/30`}
+                                  >
+                                    {delayStatus.label}
+                                  </span>
+                                  <span className="text-slate-400 text-xs">
+                                    Delay:{" "}
+                                    <span className="text-red-400 font-semibold">
+                                      {delayed.delay_minutes} min
+                                    </span>
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                                  <p className="text-slate-300">
+                                    <span className="text-slate-500">
+                                      Scheduled:
+                                    </span>{" "}
+                                    {delayed.scheduled_date} at{" "}
+                                    {delayed.scheduled_time}
+                                  </p>
+                                  <p className="text-slate-300">
+                                    <span className="text-slate-500">
+                                      Status:
+                                    </span>{" "}
+                                    <span className="text-amber-400">
+                                      {delayed.status}
+                                    </span>
+                                  </p>
+                                </div>
+                                <p className="text-xs text-slate-400 mt-2">
+                                  The collection truck is running behind
+                                  schedule. Please keep your waste ready for
+                                  pickup.
+                                </p>
+                              </div>
+                              <div className="flex-shrink-0">
+                                <div className="text-4xl">🚛</div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </section>
+              )}
             </>
           )}
 
@@ -1850,7 +1995,8 @@ export default function ResidentDashboard() {
 
           {/* My Reports */}
           {activeTab === "myReports" && (
-            <section className="max-w-3xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl">
+            <section className="dashboard-section max-w-3xl mx-auto">
+              <div className="dashboard-section-glow" />
               <h2 className="text-2xl font-bold text-emerald-300 mb-4">
                 My Recent Reports
               </h2>

@@ -13,6 +13,43 @@ import dynamic from "next/dynamic";
 import TruckLoader from "../../loading/TruckLoader";
 import ReportsAnalytics from "../../generatereport/generatereport";
 import BarangayConcernsAnalytics from "../../generatereport/barangayconcern";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const LeafletMap = dynamic(() => import("../../leafletmap"), { ssr: false });
 
@@ -49,12 +86,13 @@ function SidebarItem({
   textClassName,
 }: SidebarItemProps) {
   return (
-    <button
+    <Button
+      variant={selected ? "default" : "ghost"}
       onClick={onClick}
-      className={`flex gap-2 items-center w-full px-4 py-3 mb-2 text-left rounded-lg transition
+      className={`flex gap-2 items-center w-full justify-start px-4 py-3 mb-2 text-left rounded-lg h-auto
         ${
           selected
-            ? "bg-slate-100 text-slate-900 font-semibold" // ✅ dark text on light bg
+            ? "bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold"
             : "text-slate-200 hover:bg-slate-900/60"
         }`}
       aria-current={selected ? "page" : undefined}
@@ -63,7 +101,7 @@ function SidebarItem({
         {icon}
       </span>
       <span className={textClassName}>{label}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -85,14 +123,11 @@ function InputField({
   placeholder?: string;
 }) {
   return (
-    <div className="mb-4">
-      <label
-        htmlFor={name}
-        className="block mb-1 text-xs font-medium text-slate-300"
-      >
+    <div className="mb-4 space-y-2">
+      <Label htmlFor={name} className="text-xs font-medium text-slate-300">
         {label}
-      </label>
-      <input
+      </Label>
+      <Input
         id={name}
         name={name}
         type={type}
@@ -100,7 +135,6 @@ function InputField({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
       />
     </div>
   );
@@ -123,31 +157,38 @@ function SelectField({
   options: { value: string; label: string }[];
   placeholder?: string;
 }) {
+  // Adapt shadcn Select's onValueChange to the expected onChange signature
+  const handleValueChange = (newValue: string) => {
+    const syntheticEvent = {
+      target: {
+        name,
+        value: newValue,
+      },
+    } as ChangeEvent<HTMLSelectElement>;
+    onChange(syntheticEvent);
+  };
+
   return (
-    <div className="mb-4">
-      <label
-        htmlFor={name}
-        className="block mb-1 text-xs font-medium text-slate-300"
-      >
+    <div className="mb-4 space-y-2">
+      <Label htmlFor={name} className="text-xs font-medium text-slate-300">
         {label}
-      </label>
-      <select
-        id={name}
-        name={name}
-        value={value}
-        onChange={onChange}
+      </Label>
+      <Select
+        value={value || ""}
+        onValueChange={handleValueChange}
         required={required}
-        className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
       >
-        <option value="" disabled>
-          {placeholder}
-        </option>
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger id={name}>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
@@ -1622,149 +1663,135 @@ export default function AdminDashboard() {
 
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           {/* Username */}
-          <div>
-            <label
+          <div className="space-y-2">
+            <Label
               htmlFor="username"
-              className="block text-xs font-medium text-slate-300 mb-1"
+              className="text-xs font-medium text-slate-300"
             >
               Username
-            </label>
-            <input
+            </Label>
+            <Input
               id="username"
               name="username"
               type="text"
               value={form.username}
               onChange={onChange}
               required
-              className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
               placeholder="Enter your username"
             />
           </div>
 
           {/* First / Last */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label
+            <div className="space-y-2">
+              <Label
                 htmlFor="first_name"
-                className="block text-xs font-medium text-slate-300 mb-1"
+                className="text-xs font-medium text-slate-300"
               >
                 First Name
-              </label>
-              <input
+              </Label>
+              <Input
                 id="first_name"
                 name="first_name"
                 type="text"
                 value={form.first_name}
                 onChange={onChange}
                 required
-                className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
                 placeholder="Enter your first name"
               />
             </div>
-            <div>
-              <label
+            <div className="space-y-2">
+              <Label
                 htmlFor="last_name"
-                className="block text-xs font-medium text-slate-300 mb-1"
+                className="text-xs font-medium text-slate-300"
               >
                 Last Name
-              </label>
-              <input
+              </Label>
+              <Input
                 id="last_name"
                 name="last_name"
                 type="text"
                 value={form.last_name}
                 onChange={onChange}
                 required
-                className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
                 placeholder="Enter your last name"
               />
             </div>
           </div>
 
-          {/* Contact / Email */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label
+            <div className="space-y-2">
+              <Label
                 htmlFor="contact_number"
-                className="block text-xs font-medium text-slate-300 mb-1"
+                className="text-xs font-medium text-slate-300"
               >
                 Contact Number
-              </label>
-              <input
+              </Label>
+              <Input
                 id="contact_number"
                 name="contact_number"
                 type="tel"
                 value={form.contact_number}
                 onChange={onChange}
                 required
-                className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
                 placeholder="09123456789"
               />
             </div>
-            <div>
-              <label
+            <div className="space-y-2">
+              <Label
                 htmlFor="email"
-                className="block text-xs font-medium text-slate-300 mb-1"
+                className="text-xs font-medium text-slate-300"
               >
                 Email
-              </label>
-              <input
+              </Label>
+              <Input
                 id="email"
                 name="email"
                 type="email"
                 value={form.email}
                 onChange={onChange}
                 required
-                className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
                 placeholder="user@tagbilaran.gov.ph"
               />
             </div>
           </div>
 
-          {/* Passwords */}
-          <div>
-            <label
+          <div className="space-y-2">
+            <Label
               htmlFor="password"
-              className="block text-xs font-medium text-slate-300 mb-1"
+              className="text-xs font-medium text-slate-300"
             >
               Password
-            </label>
-            <input
+            </Label>
+            <Input
               id="password"
               name="password"
               type="password"
               value={form.password}
               onChange={onChange}
-              className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
               placeholder="Leave blank to keep current password"
             />
           </div>
 
-          <div>
-            <label
+          <div className="space-y-2">
+            <Label
               htmlFor="confirm_password"
-              className="block text-xs font-medium text-slate-300 mb-1"
+              className="text-xs font-medium text-slate-300"
             >
               Confirm Password
-            </label>
-            <input
+            </Label>
+            <Input
               id="confirm_password"
               name="confirm_password"
               type="password"
               value={form.confirm_password}
               onChange={onChange}
-              className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
               placeholder="Confirm your new password"
             />
           </div>
 
           <div className="flex justify-end pt-3">
-            <button
-              type="submit"
-              className="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
-            >
-              Update Account
-            </button>
+            <Button type="submit">Update Account</Button>
           </div>
         </form>
       </section>
@@ -1780,26 +1807,31 @@ export default function AdminDashboard() {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
-      {/* Subtle background animation */}
-      <div className="fixed inset-0 opacity-30 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10 animate-pulse" />
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-emerald-950/70 text-slate-100/90 flex flex-col relative overflow-hidden antialiased">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        <div className="absolute -top-48 left-1/4 h-[520px] w-[520px] rounded-full bg-emerald-500/12 blur-[130px]" />
+        <div className="absolute top-24 -right-40 h-[420px] w-[420px] rounded-full bg-sky-500/12 blur-[120px]" />
+        <div className="absolute bottom-0 left-0 h-[360px] w-[360px] rounded-full bg-amber-400/10 blur-[110px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.7),transparent_60%)]" />
       </div>
 
       {/* Top navigation */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800 bg-slate-950">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-emerald-900/40 bg-slate-950/80 shadow-lg shadow-emerald-900/20 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/60">
         <div className="flex items-center justify-between px-4 md:px-8 py-4 min-h-16">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors"
+              className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg bg-slate-900/80 text-slate-100 hover:bg-slate-800 transition-colors ring-1 ring-white/10"
               aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
               {sidebarOpen ? "✖" : "☰"}
             </button>
 
             <div className="flex items-center gap-2 min-w-0">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-600 text-lg font-bold text-white flex-shrink-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-lg flex-shrink-0 shadow-lg shadow-emerald-900/40">
                 🚛
               </div>
               <div className="min-w-0">
@@ -1816,7 +1848,7 @@ export default function AdminDashboard() {
           <div className="relative flex-shrink-0">
             <button
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-100 font-medium transition-colors ring-1 ring-white/10"
             >
               {displayName}
               <svg
@@ -1888,8 +1920,8 @@ export default function AdminDashboard() {
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
           md:fixed md:translate-x-0 md:top-16 md:left-0 md:bottom-0 md:w-64
-          bg-slate-950 border-r border-slate-800
-          flex flex-col py-4 px-3 transition-all duration-300
+          bg-slate-950/90 border-r border-emerald-900/30 shadow-2xl shadow-black/30 backdrop-blur-xl
+          flex flex-col py-6 px-4 transition-all duration-300
         `}
         >
           <nav
@@ -1931,7 +1963,7 @@ export default function AdminDashboard() {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64 bg-slate-900/50">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-10 py-10 space-y-10 relative z-10 md:ml-64 bg-slate-900/40">
           {/* DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
@@ -1946,12 +1978,12 @@ export default function AdminDashboard() {
                     </h1>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button
+                    <Button
+                      variant="secondary"
                       onClick={() => setStatsVisible(!statsVisible)}
-                      className="px-3 py-2 rounded-md bg-white/10 text-slate-100 text-xs font-semibold hover:bg-white/20 transition"
                     >
                       {statsVisible ? "Hide Stats" : "Show Stats"}
-                    </button>
+                    </Button>
                     <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold">
                       <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                       Live
@@ -2091,7 +2123,7 @@ export default function AdminDashboard() {
           {activeTab === "userAdmin" && (
             <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               {/* Add user */}
-              <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 hover:border-slate-700 transition-colors overflow-hidden">
+              <div className="dashboard-section overflow-hidden">
                 <div className="relative z-10">
                   <h2 className="text-lg font-bold mb-4 text-slate-100">
                     Add User
@@ -2200,9 +2232,9 @@ export default function AdminDashboard() {
                         Password
                       </label>
                       <div className="relative">
-                        <input
+                        <Input
                           id="password"
-                          className="w-full rounded-lg bg-slate-800 border border-slate-700 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors text-slate-200 placeholder:text-slate-400"
+                          className="pr-10"
                           type={showPassword ? "text" : "password"}
                           name="password"
                           value={userForm.password}
@@ -2224,19 +2256,14 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="flex justify-end pt-2">
-                      <button
-                        type="submit"
-                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-xs font-medium text-white transition-colors"
-                      >
-                        ＋ Add User
-                      </button>
+                      <Button type="submit">＋ Add User</Button>
                     </div>
                   </form>
                 </div>
               </div>
 
               {/* User list */}
-              <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 hover:border-slate-700 transition-colors overflow-hidden max-h-[600px]">
+              <div className="dashboard-section overflow-hidden max-h-[600px]">
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-bold text-slate-100">
@@ -2307,21 +2334,22 @@ export default function AdminDashboard() {
                   User Accounts
                 </h2>
                 <div className="flex items-center gap-2">
-                  <input
+                  <Input
                     type="text"
                     value={userAccountsSearch}
                     onChange={(e) => setUserAccountsSearch(e.target.value)}
                     placeholder="Search users..."
-                    className="w-full md:w-64 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full md:w-64"
                   />
-                  <button
+                  <Button
+                    variant="secondary"
                     type="button"
                     onClick={() => setShowUserFilters(!showUserFilters)}
-                    className="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-slate-300 hover:bg-slate-700"
+                    className="px-2 py-2"
                     aria-label="Toggle filters"
                   >
                     ▼
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -2348,42 +2376,52 @@ export default function AdminDashboard() {
 
                   {showUserFilters && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-slate-400">
                           Barangay
-                        </label>
-                        <select
+                        </Label>
+                        <Select
                           value={userBarangayFilter}
-                          onChange={(e) =>
-                            setUserBarangayFilter(e.target.value)
+                          onValueChange={(value: string) =>
+                            setUserBarangayFilter(value)
                           }
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         >
-                          <option value="all">All Barangays</option>
-                          {barangayOptions.map((barangay) => (
-                            <option
-                              key={barangay.value}
-                              value={String(barangay.value)}
-                            >
-                              {barangay.label}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Barangays</SelectItem>
+                            {barangayOptions.map((barangay) => (
+                              <SelectItem
+                                key={barangay.value}
+                                value={String(barangay.value)}
+                              >
+                                {barangay.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-slate-400">
                           Status
-                        </label>
-                        <select
+                        </Label>
+                        <Select
                           value={userStatusFilter}
-                          onChange={(e) => setUserStatusFilter(e.target.value)}
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          onValueChange={(value: string) =>
+                            setUserStatusFilter(value)
+                          }
                         >
-                          <option value="all">All Statuses</option>
-                          <option value="active">Active</option>
-                          <option value="archived">Archived</option>
-                          <option value="pending">Pending</option>
-                        </select>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="archived">Archived</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   )}
@@ -2606,12 +2644,12 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <input
+                      <Input
                         type="text"
                         value={reportSearch}
                         onChange={(e) => setReportSearch(e.target.value)}
                         placeholder="Search reports..."
-                        className="w-full md:w-64 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full md:w-64"
                       />
                       <button
                         type="button"
@@ -2626,37 +2664,54 @@ export default function AdminDashboard() {
 
                   {showReportFilters && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-slate-400">
                           Barangay
-                        </label>
-                        <select
+                        </Label>
+                        <Select
                           value={selectedBarangay}
-                          onChange={(e) => setSelectedBarangay(e.target.value)}
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          onValueChange={(value: string) =>
+                            setSelectedBarangay(value)
+                          }
                         >
-                          <option value="all">All Barangays</option>
-                          {barangayOptions.map((barangay) => (
-                            <option key={barangay.value} value={barangay.value}>
-                              {barangay.label}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Barangays</SelectItem>
+                            {barangayOptions.map((barangay) => (
+                              <SelectItem
+                                key={barangay.value}
+                                value={barangay.value}
+                              >
+                                {barangay.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-slate-400">
                           Sort By
-                        </label>
-                        <select
+                        </Label>
+                        <Select
                           value={sortBy}
-                          onChange={(e) => setSortBy(e.target.value)}
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          onValueChange={(value: string) => setSortBy(value)}
                         >
-                          <option value="date_desc">Date (Newest First)</option>
-                          <option value="date_asc">Date (Oldest First)</option>
-                          <option value="status">Status</option>
-                          <option value="barangay">Barangay</option>
-                        </select>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="date_desc">
+                              Date (Newest First)
+                            </SelectItem>
+                            <SelectItem value="date_asc">
+                              Date (Oldest First)
+                            </SelectItem>
+                            <SelectItem value="status">Status</SelectItem>
+                            <SelectItem value="barangay">Barangay</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   )}
@@ -2853,11 +2908,11 @@ export default function AdminDashboard() {
                           required
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-slate-400">
                           Location
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                           value={createReportForm.location}
                           onChange={(e) =>
                             setCreateReportForm((prev) => ({
@@ -2865,15 +2920,14 @@ export default function AdminDashboard() {
                               location: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                           required
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-slate-400">
                           Landmark (optional)
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                           value={createReportForm.landmark}
                           onChange={(e) =>
                             setCreateReportForm((prev) => ({
@@ -2881,51 +2935,60 @@ export default function AdminDashboard() {
                               landmark: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-slate-400">
                           Barangay
-                        </label>
-                        <select
+                        </Label>
+                        <Select
                           value={createReportForm.barangay_id}
-                          onChange={(e) =>
+                          onValueChange={(value: string) =>
                             setCreateReportForm((prev) => ({
                               ...prev,
-                              barangay_id: e.target.value,
+                              barangay_id: value,
                             }))
                           }
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         >
-                          <option value="">Select barangay</option>
-                          {barangayOptions.map((barangay) => (
-                            <option key={barangay.value} value={barangay.value}>
-                              {barangay.label}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select barangay" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {barangayOptions.map((barangay) => (
+                              <SelectItem
+                                key={barangay.value}
+                                value={barangay.value}
+                              >
+                                {barangay.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-slate-400">
                           Status
-                        </label>
-                        <select
+                        </Label>
+                        <Select
                           value={createReportForm.current_status}
-                          onChange={(e) =>
+                          onValueChange={(value: string) =>
                             setCreateReportForm((prev) => ({
                               ...prev,
-                              current_status: e.target.value,
+                              current_status: value,
                             }))
                           }
-                          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         >
-                          {incidentStatusOptions.map((status) => (
-                            <option key={status} value={status}>
-                              {status}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {incidentStatusOptions.map((status) => (
+                              <SelectItem key={status} value={status}>
+                                {status}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="flex justify-end gap-2">
                         <button
@@ -3167,7 +3230,7 @@ export default function AdminDashboard() {
             </>
           )}
           {activeTab === "manageAccount" && (
-            <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 hover:border-slate-700 transition-colors max-w-2xl mx-auto">
+            <div className="dashboard-section max-w-2xl mx-auto">
               <div className="relative z-10">
                 <ManageAccountSection
                   form={manageAccountForm}
@@ -3225,11 +3288,11 @@ export default function AdminDashboard() {
 
                   {/* Form Fields */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-300 mb-2">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-slate-300">
                         First Name
-                      </label>
-                      <input
+                      </Label>
+                      <Input
                         type="text"
                         value={editingUserForm.first_name}
                         onChange={(e) =>
@@ -3238,14 +3301,13 @@ export default function AdminDashboard() {
                             first_name: e.target.value,
                           })
                         }
-                        className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-300 mb-2">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-slate-300">
                         Last Name
-                      </label>
-                      <input
+                      </Label>
+                      <Input
                         type="text"
                         value={editingUserForm.last_name}
                         onChange={(e) =>
@@ -3254,16 +3316,15 @@ export default function AdminDashboard() {
                             last_name: e.target.value,
                           })
                         }
-                        className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-2">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium text-slate-300">
                       📧 Email Address
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="email"
                       value={editingUserForm.email}
                       onChange={(e) =>
@@ -3272,15 +3333,14 @@ export default function AdminDashboard() {
                           email: e.target.value,
                         })
                       }
-                      className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-2">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium text-slate-300">
                       📱 Contact Number
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       type="tel"
                       value={editingUserForm.contact_number}
                       onChange={(e) =>
@@ -3289,27 +3349,27 @@ export default function AdminDashboard() {
                           contact_number: e.target.value,
                         })
                       }
-                      className="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
                     />
                   </div>
                 </div>
 
                 {/* Modal Footer */}
                 <div className="sticky bottom-0 bg-slate-950 border-t border-slate-800 p-6 flex gap-3">
-                  <button
+                  <Button
                     onClick={() => handleSaveUserEdit(editingUserId || "")}
-                    className="flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition-colors flex items-center justify-center gap-2"
+                    className="flex-1"
                   >
                     <span>💾</span>
                     Save Changes
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="secondary"
                     onClick={handleCancelEdit}
-                    className="flex-1 rounded-lg bg-slate-800 hover:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition-colors flex items-center justify-center gap-2"
+                    className="flex-1"
                   >
                     <span>✖️</span>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

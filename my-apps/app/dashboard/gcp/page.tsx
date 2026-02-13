@@ -1,12 +1,6 @@
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  ChangeEvent,
-  FormEvent,
-} from "react";
+import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import {
   format,
   startOfMonth,
@@ -19,6 +13,27 @@ import {
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import dynamic from "next/dynamic";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 const LeafletMap = dynamic(() => import("../../leafletmap"), { ssr: false });
 import TruckLoader from "../../loading/TruckLoader";
@@ -154,11 +169,13 @@ function SidebarItem({
   onClick?: () => void;
 }) {
   return (
-    <button
+    <Button
+      type="button"
       onClick={onClick}
-      className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
+      variant="ghost"
+      className={`w-full justify-start gap-3 rounded-lg px-4 py-3 mb-2 text-left transition-colors h-auto ${
         selected
-          ? "bg-emerald-600 text-white"
+          ? "bg-emerald-600 text-white hover:bg-emerald-600"
           : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
       }`}
       aria-current={selected ? "page" : undefined}
@@ -167,7 +184,7 @@ function SidebarItem({
         {icon}
       </span>
       <span className="font-medium">{label}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -357,8 +374,8 @@ function GCPScheduleSection() {
   }, []);
 
   return (
-    <section className="group relative max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 md:p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+    <section className="dashboard-section max-w-4xl mx-auto overflow-hidden">
+      <div className="dashboard-section-glow" />
       <div className="relative z-10">
         <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
           My Assigned Schedule
@@ -715,35 +732,39 @@ function GCPAssignedTasksSection() {
 
   if (loading) {
     return (
-      <section className="max-w-4xl mx-auto bg-white rounded-xl shadow p-8 mt-8">
-        <TruckLoader />
-      </section>
+      <Card className="max-w-4xl mx-auto mt-8">
+        <CardContent className="p-8">
+          <TruckLoader />
+        </CardContent>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <section className="max-w-4xl mx-auto bg-white rounded-xl shadow p-8 mt-8">
-        <p className="text-red-600">Error loading assigned tasks: {error}</p>
-      </section>
+      <Card className="max-w-4xl mx-auto mt-8">
+        <CardContent className="p-8">
+          <p className="text-red-600">Error loading assigned tasks: {error}</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <section className="group relative max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 md:p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70">
-      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+    <section className="dashboard-section max-w-4xl mx-auto">
+      <div className="dashboard-section-glow" />
       <div className="relative z-10">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
             Assigned Incident Tasks
           </h2>
-          <button
+          <Button
             type="button"
-            className="px-4 py-2 text-xs sm:text-sm rounded-2xl font-semibold bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500/70 shadow-sm shadow-emerald-700/40 transition-colors"
+            className="h-auto"
             onClick={handleOpenWasteModal}
           >
             Record Waste Collected
-          </button>
+          </Button>
         </div>
 
         {wasteSuccess && (
@@ -765,9 +786,9 @@ function GCPAssignedTasksSection() {
                   <h3 className="font-semibold text-lg text-slate-100">
                     Location: {t.report?.location || "N/A"}
                   </h3>
-                  <span className="text-[11px] px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 font-semibold">
+                  <Badge className="text-[11px] px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 font-semibold">
                     Status: {t.report?.current_status || "N/A"}
-                  </span>
+                  </Badge>
                 </div>
 
                 <p className="text-sm text-slate-300 mb-1">
@@ -778,36 +799,38 @@ function GCPAssignedTasksSection() {
                 </p>
 
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button
+                  <Button
                     type="button"
-                    className="px-4 py-1 text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-slate-50 rounded-2xl font-semibold disabled:bg-slate-600 disabled:text-slate-400 transition-colors"
+                    className="h-auto"
                     onClick={() => setActiveIncident(t.report)}
                     disabled={!t.report?.description}
                   >
                     View Incident Description
-                  </button>
+                  </Button>
 
-                  <button
+                  <Button
                     type="button"
-                    className="px-4 py-1 text-xs sm:text-sm bg-sky-600 hover:bg-sky-500 text-slate-50 rounded-2xl font-semibold disabled:bg-slate-600 disabled:text-slate-400 transition-colors"
+                    variant="secondary"
+                    className="h-auto"
                     onClick={() => setActiveTask(t)}
                     disabled={!t.task_details}
                   >
                     View Task from Secretary
-                  </button>
+                  </Button>
 
                   {t.gcp_response ? (
-                    <span className="px-4 py-1 text-xs sm:text-sm rounded-2xl font-semibold bg-slate-800 text-slate-300 border border-slate-600">
+                    <Badge className="px-4 py-1 text-xs sm:text-sm rounded-2xl font-semibold bg-slate-800 text-slate-300 border border-slate-600">
                       Already responded
-                    </span>
+                    </Badge>
                   ) : (
-                    <button
+                    <Button
                       type="button"
-                      className="px-4 py-1 text-xs sm:text-sm bg-purple-600 hover:bg-purple-500 text-slate-50 rounded-2xl font-semibold transition-colors"
+                      variant="outline"
+                      className="h-auto"
                       onClick={() => handleOpenResponse(t)}
                     >
                       Add Response
-                    </button>
+                    </Button>
                   )}
                 </div>
 
@@ -832,330 +855,194 @@ function GCPAssignedTasksSection() {
         )}
 
         {/* Response modal */}
-        {responseModalOpen && responseAssignment && (
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center"
-            onClick={() => setResponseModalOpen(false)}
+        {responseAssignment && (
+          <Dialog
+            open={responseModalOpen}
+            onOpenChange={(open: boolean) => {
+              setResponseModalOpen(open);
+              if (!open) setResponseAssignment(null);
+            }}
           >
-            <div
-              className="relative max-w-md w-full text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/70 bg-slate-900/95 backdrop-blur-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Title bar */}
-              <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-2 border-b border-emerald-700/70">
-                <div className="flex items-center gap-2">
-                  <span className="flex gap-1">
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/90 shadow-sm shadow-emerald-900" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80 shadow-sm shadow-amber-900" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-slate-400/80 shadow-sm shadow-slate-900" />
-                  </span>
-                  <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
-                    Add Response •{" "}
-                    {responseAssignment.report?.location || "Unknown"}
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => setResponseModalOpen(false)}
-                  className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
-                  aria-label="Close"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="p-5">
-                <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-1">
-                  INCIDENT
+            <DialogContent className="max-w-md bg-slate-900/95 text-slate-100 border-emerald-700/70">
+              <DialogHeader>
+                <DialogTitle className="text-slate-100">
+                  Add Response
+                </DialogTitle>
+                <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80">
+                  Incident
                 </p>
-                <p className="text-sm mb-3 text-slate-200">
-                  <span className="font-semibold text-slate-100">
-                    Location:{" "}
-                  </span>
-                  {responseAssignment.report?.location || "N/A"}
-                </p>
+              </DialogHeader>
 
-                <label className="block text-xs font-semibold mb-1 text-slate-100">
-                  Your response
-                </label>
-                <textarea
-                  className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm mb-3 bg-slate-900/80 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 resize-none"
-                  rows={4}
-                  value={responseText}
-                  onChange={(e) => setResponseText(e.target.value)}
-                />
-
-                {responseError && (
-                  <p className="text-xs text-red-300 mb-2">{responseError}</p>
-                )}
-
-                {/* Footer */}
-                <div className="flex justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setResponseModalOpen(false)}
-                    className="px-4 py-1 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 disabled:opacity-60 transition-colors"
-                    disabled={responseSaving}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSubmitResponse}
-                    className="px-4 py-1 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 disabled:bg-slate-600 disabled:text-slate-300 disabled:border-slate-500 transition-colors"
-                    disabled={responseSaving}
-                  >
-                    {responseSaving ? "Saving..." : "Submit response"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {wasteModalOpen && (
-          <div
-            className="fixed inset-0 rounded-3xl backdrop-blur z-50 flex items-center justify-center px-4 pt-20 -pb-20"
-            onClick={() => setWasteModalOpen(false)}
-          >
-            <div
-              className="relative max-w-md w-full max-h-[90vh] overflow-y-auto text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/70 bg-slate-900/95 backdrop-blur-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-2 border-b border-emerald-700/70">
-                <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
-                  Record Waste Collected
-                </span>
-                <button
-                  onClick={() => setWasteModalOpen(false)}
-                  className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
-                  aria-label="Close"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="p-5">
-                <label className="block text-xs font-semibold mb-1 text-slate-100">
-                  Collection date
-                </label>
-                <input
-                  type="date"
-                  className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm mb-3 bg-slate-900/80 text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500"
-                  value={collectionDate}
-                  onChange={(e) => setCollectionDate(e.target.value)}
-                />
-
-                <label className="block text-xs font-semibold mb-1 text-slate-100">
-                  Waste weight collected (kg)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm mb-3 bg-slate-900/80 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500"
-                  value={wasteWeight}
-                  onChange={(e) => setWasteWeight(e.target.value)}
-                  placeholder="e.g. 120.5"
-                />
-
-                {wasteError && (
-                  <p className="text-xs text-red-300 mb-2">{wasteError}</p>
-                )}
-
-                <div className="flex justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setWasteModalOpen(false)}
-                    className="px-4 py-1 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 disabled:opacity-60 transition-colors"
-                    disabled={wasteSaving}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSubmitWaste}
-                    className="px-4 py-1 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 disabled:bg-slate-600 disabled:text-slate-300 disabled:border-slate-500 transition-colors"
-                    disabled={wasteSaving}
-                  >
-                    {wasteSaving ? "Saving..." : "Save"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Incident description modal */}
-        {activeIncident && (
-          <div
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm px-4 pt-20 pb-8"
-            onClick={() => setActiveIncident(null)}
-          >
-            <div
-              className="relative max-w-md w-full max-h-[90vh] overflow-y-auto text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/70 bg-slate-900/95 backdrop-blur-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Title bar */}
-              <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-2 border-b border-emerald-700/70">
-                <div className="flex items-center gap-2">
-                  <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
-                    Incident Description
-                  </span>
-                </div>
-
-                <button
-                  className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
-                  onClick={() => setActiveIncident(null)}
-                  aria-label="Close"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="p-5">
-                <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-2">
-                  DETAILS
-                </p>
-                <div className="max-h-60 overflow-y-auto pr-1 rounded-lg bg-slate-900/80 border border-slate-700/70 px-3 py-2">
-                  <p className="text-sm text-slate-200 whitespace-pre-line leading-relaxed">
-                    {activeIncident.description}
-                  </p>
-                </div>
-
-                <div className="mt-4 flex justify-end">
-                  <button
-                    onClick={() => setActiveIncident(null)}
-                    className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Task from secretary modal */}
-        {activeTask && (
-          <div
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm overflow-y-auto px-4 pt-20 pb-8"
-            onClick={() => setActiveTask(null)}
-          >
-            <div
-              className="relative max-w-lg w-[90vw] md:w-[32rem] max-h-[90vh] overflow-y-auto text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-emerald-700/70 bg-slate-900/95 backdrop-blur-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Title bar */}
-              <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-2 border-b border-emerald-700/70">
-                <div className="flex items-center gap-2">
-                  <span className="flex gap-1">
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/90 shadow-sm shadow-emerald-900" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80 shadow-sm shadow-amber-900" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-slate-400/80 shadow-sm shadow-slate-900" />
-                  </span>
-                  <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
-                    Task from Secretary
-                  </span>
-                </div>
-
-                <button
-                  className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
-                  onClick={() => setActiveTask(null)}
-                  aria-label="Close"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="p-5">
-                <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-2">
-                  TASK DETAILS
-                </p>
-                <div className="rounded-lg bg-slate-900/80 border border-slate-700/70 px-3 py-2">
-                  <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed break-words">
-                    {activeTask.task_details}
-                  </p>
-                </div>
-
-                <div className="mt-4 flex justify-end">
-                  <button
-                    onClick={() => setActiveTask(null)}
-                    className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Response form modal (detailed) */}
-        {responseModalOpen && responseAssignment && (
-          <div
-            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm px-4 pt-20 pb-8"
-            onClick={() => setResponseModalOpen(false)}
-          >
-            <div
-              className="relative max-w-md w-full max-h-[90vh] overflow-y-auto bg-slate-900/95 rounded-2xl shadow-2xl border border-green-800/60 p-6 text-slate-100 backdrop-blur-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-bold text-emerald-300">
-                  GCP Incident Response
-                </h3>
-                <button
-                  className="text-xl text-slate-500 hover:text-red-400"
-                  onClick={() => setResponseModalOpen(false)}
-                >
-                  ×
-                </button>
-              </div>
-
-              <p className="text-sm text-slate-300 mb-2">
+              <p className="text-sm text-slate-200">
                 <span className="font-semibold text-slate-100">Location:</span>{" "}
                 {responseAssignment.report?.location || "N/A"}
               </p>
 
-              <label className="block text-xs font-semibold mb-1 text-slate-100">
-                Response / action taken
-              </label>
-              <textarea
-                className="w-full border border-slate-700 rounded-lg px-2 py-1 text-sm mb-3 bg-slate-900/80 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                rows={4}
-                value={responseText}
-                onChange={(e) => setResponseText(e.target.value)}
-                placeholder="Describe what you did to respond to this incident..."
-              />
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-100">
+                  Your response
+                </Label>
+                <Textarea
+                  rows={4}
+                  value={responseText}
+                  onChange={(e) => setResponseText(e.target.value)}
+                  className="bg-slate-900/80 text-slate-100"
+                />
+              </div>
 
               {responseError && (
-                <p className="text-xs text-red-300 mb-2">{responseError}</p>
+                <p className="text-xs text-red-300">{responseError}</p>
               )}
 
-              <div className="flex justify-end gap-2">
-                <button
+              <DialogFooter className="sm:justify-end">
+                <Button
                   type="button"
-                  className="px-3 py-1 text-sm rounded-lg border border-slate-600 text-slate-200 hover:bg-slate-800/80"
+                  variant="secondary"
                   onClick={() => setResponseModalOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="px-4 py-1 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 disabled:bg-slate-500 disabled:text-slate-300"
-                  onClick={handleSubmitResponse}
                   disabled={responseSaving}
                 >
-                  {responseSaving ? "Saving..." : "Save Response"}
-                </button>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSubmitResponse}
+                  disabled={responseSaving}
+                  className="h-auto"
+                >
+                  {responseSaving ? "Saving..." : "Submit response"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        <Dialog open={wasteModalOpen} onOpenChange={setWasteModalOpen}>
+          <DialogContent className="max-w-md bg-slate-900/95 text-slate-100 border-emerald-700/70">
+            <DialogHeader>
+              <DialogTitle className="text-slate-100">
+                Record Waste Collected
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-100">
+                  Collection date
+                </Label>
+                <Input
+                  type="date"
+                  value={collectionDate}
+                  onChange={(e) => setCollectionDate(e.target.value)}
+                  className="bg-slate-900/80 text-slate-100"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold text-slate-100">
+                  Waste weight collected (kg)
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={wasteWeight}
+                  onChange={(e) => setWasteWeight(e.target.value)}
+                  placeholder="e.g. 120.5"
+                  className="bg-slate-900/80 text-slate-100"
+                />
               </div>
             </div>
-          </div>
-        )}
+
+            {wasteError && <p className="text-xs text-red-300">{wasteError}</p>}
+
+            <DialogFooter className="sm:justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setWasteModalOpen(false)}
+                disabled={wasteSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSubmitWaste}
+                disabled={wasteSaving}
+                className="h-auto"
+              >
+                {wasteSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Incident description modal */}
+        <Dialog
+          open={!!activeIncident}
+          onOpenChange={(open: boolean) => !open && setActiveIncident(null)}
+        >
+          <DialogContent className="max-w-md bg-slate-900/95 text-slate-100 border-emerald-700/70">
+            <DialogHeader>
+              <DialogTitle className="text-slate-100">
+                Incident Description
+              </DialogTitle>
+              <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80">
+                Details
+              </p>
+            </DialogHeader>
+
+            <div className="max-h-60 overflow-y-auto rounded-lg bg-slate-900/80 border border-slate-700/70 px-3 py-2">
+              <p className="text-sm text-slate-200 whitespace-pre-line leading-relaxed">
+                {activeIncident?.description}
+              </p>
+            </div>
+
+            <DialogFooter className="sm:justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setActiveIncident(null)}
+                className="h-auto"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Task from secretary modal */}
+        <Dialog
+          open={!!activeTask}
+          onOpenChange={(open: boolean) => !open && setActiveTask(null)}
+        >
+          <DialogContent className="max-w-lg bg-slate-900/95 text-slate-100 border-emerald-700/70">
+            <DialogHeader>
+              <DialogTitle className="text-slate-100">
+                Task from Secretary
+              </DialogTitle>
+              <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80">
+                Task Details
+              </p>
+            </DialogHeader>
+
+            <div className="rounded-lg bg-slate-900/80 border border-slate-700/70 px-3 py-2">
+              <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed break-words">
+                {activeTask?.task_details}
+              </p>
+            </div>
+
+            <DialogFooter className="sm:justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setActiveTask(null)}
+                className="h-auto"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </section>
   );
@@ -1168,7 +1055,6 @@ export default function GCPDashboard() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [statsVisible, setStatsVisible] = useState(true);
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [displayName, setDisplayName] = useState("User");
   const [activeTab, setActiveTab] = useState<
     | "dashboard"
@@ -1364,22 +1250,33 @@ export default function GCPDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-emerald-950/70 text-slate-100/90 flex flex-col relative overflow-hidden antialiased">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        <div className="absolute -top-48 left-1/4 h-[520px] w-[520px] rounded-full bg-emerald-500/12 blur-[130px]" />
+        <div className="absolute top-24 -right-40 h-[420px] w-[420px] rounded-full bg-sky-500/12 blur-[120px]" />
+        <div className="absolute bottom-0 left-0 h-[360px] w-[360px] rounded-full bg-amber-400/10 blur-[110px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.7),transparent_60%)]" />
+      </div>
       {/* Top navigation (SWMO style) */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800 bg-slate-950">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-emerald-900/40 bg-slate-950/80 shadow-lg shadow-emerald-900/20 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/60">
         <div className="flex items-center justify-between px-2 sm:px-4 md:px-8 py-3 sm:py-4 min-h-16">
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
             {/* Mobile hamburger */}
-            <button
+            <Button
+              type="button"
+              variant="ghost"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors flex-shrink-0"
+              className="md:hidden inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-lg bg-slate-900/80 text-slate-100 hover:bg-slate-800 transition-colors flex-shrink-0 ring-1 ring-white/10"
               aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
               {sidebarOpen ? "✖" : "☰"}
-            </button>
+            </Button>
 
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-600/20 border border-emerald-600/30 text-lg flex-shrink-0">
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-lg flex-shrink-0 shadow-lg shadow-emerald-900/40">
                 🚚
               </div>
               <div className="min-w-0">
@@ -1393,65 +1290,56 @@ export default function GCPDashboard() {
             </div>
           </div>
           {/* Profile Dropdown */}
-          <div className="relative flex-shrink-0">
-            <button
-              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors whitespace-nowrap"
-            >
-              <span className="text-xs sm:text-sm">{displayName}</span>
-              <svg
-                className={`w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-100 font-medium transition-colors whitespace-nowrap ring-1 ring-white/10"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
-            {profileDropdownOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setProfileDropdownOpen(false)}
-                />
-                <div className="absolute right-0 mt-2 w-56 rounded-lg bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-50">
-                  <div className="p-3 border-b border-slate-800">
-                    <p className="text-xs text-slate-400 font-medium">
-                      {displayName}
-                    </p>
-                  </div>
-                  <div className="py-2">
-                    <button
-                      onClick={() => {
-                        setActiveTab("manageAccount");
-                        setProfileDropdownOpen(false);
-                        setSidebarOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-200 hover:bg-slate-800 transition-colors"
-                    >
-                      <span className="text-lg">⚙️</span>
-                      <span>Manage Account</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setProfileDropdownOpen(false);
-                        handleLogout();
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-red-400 hover:bg-slate-800 transition-colors"
-                    >
-                      <span className="text-lg">🚪</span>
-                      <span>Logout</span>
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+                <span className="text-xs sm:text-sm">{displayName}</span>
+                <svg
+                  className="w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-56 bg-slate-900 border border-slate-800 text-slate-200"
+            >
+              <DropdownMenuLabel className="text-slate-400">
+                {displayName}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-slate-800" />
+              <DropdownMenuItem
+                onClick={() => {
+                  setActiveTab("manageAccount");
+                  setSidebarOpen(false);
+                }}
+                className="gap-2"
+              >
+                <span className="text-lg">⚙️</span>
+                <span>Manage Account</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="gap-2 text-red-400 focus:text-red-300"
+              >
+                <span className="text-lg">🚪</span>
+                <span>Logout</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -1473,7 +1361,7 @@ export default function GCPDashboard() {
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
           md:fixed md:translate-x-0 md:top-20 md:left-0 md:bottom-0 md:w-64
-          bg-slate-950 border-r border-slate-800
+          bg-slate-950/90 border-r border-emerald-900/30 shadow-2xl shadow-black/30 backdrop-blur-xl
           flex flex-col py-6 px-4 transition-all duration-300
         `}
         >
@@ -1514,79 +1402,84 @@ export default function GCPDashboard() {
         </aside>
 
         {/* Main content (unchanged components) */}
-        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64 bg-slate-900/50">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-10 py-10 space-y-10 relative z-10 md:ml-64 bg-slate-900/40">
           {activeTab === "dashboard" && (
             <>
               <section className="space-y-6">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
+                    <p className="text-xs uppercase tracking-[0.32em] text-emerald-400/90 font-semibold">
                       Dashboard
                     </p>
-                    <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
+                    <h1 className="text-2xl font-semibold text-slate-50 md:text-3xl tracking-tight">
                       Track-the-Truck Overview
                     </h1>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button
+                    <Button
+                      type="button"
+                      variant="secondary"
                       onClick={() => setStatsVisible(!statsVisible)}
-                      className="px-3 py-2 rounded-md bg-white/10 text-slate-100 text-xs font-semibold hover:bg-white/20 transition"
+                      className="h-auto"
                     >
                       {statsVisible ? "Hide Stats" : "Show Stats"}
-                    </button>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold">
+                    </Button>
+                    <Badge className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold border border-emerald-500/40 shadow-sm shadow-emerald-900/30">
                       <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                       Live
-                    </span>
+                    </Badge>
                   </div>
                 </div>
 
                 {statsVisible && (
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     {summaryCards.map((card) => (
-                      <div
+                      <Card
                         key={card.label}
-                        className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40"
+                        className="dashboard-card"
                         role="region"
                         aria-label={card.label}
                       >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-slate-400 text-sm">
-                              {card.label}
-                            </p>
-                            <h3 className="text-2xl font-bold text-slate-100">
-                              {card.count}
-                            </h3>
-                            <p className={`text-sm ${card.trendClass}`}>
-                              {card.trend}
-                            </p>
+                        <CardContent className="relative p-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-slate-400 text-sm">
+                                {card.label}
+                              </p>
+                              <CardTitle className="text-3xl font-semibold text-slate-50 tracking-tight">
+                                {card.count}
+                              </CardTitle>
+                              <p className={`text-sm ${card.trendClass}`}>
+                                {card.trend}
+                              </p>
+                            </div>
+                            <div
+                              className={`${card.iconBg} ${card.iconColor} p-3 rounded-full text-xl ring-1 ring-white/10 shadow-lg shadow-emerald-900/30`}
+                            >
+                              {card.icon}
+                            </div>
                           </div>
-                          <div
-                            className={`${card.iconBg} ${card.iconColor} p-3 rounded-full text-xl`}
-                          >
-                            {card.icon}
-                          </div>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 )}
               </section>
 
               <section>
-                <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 overflow-hidden">
+                <div className="relative bg-slate-900/70 border border-emerald-900/40 rounded-2xl p-6 overflow-hidden shadow-2xl shadow-emerald-900/20">
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-sky-500/5 opacity-70 pointer-events-none" />
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-slate-100">
                       Live Truck Tracking
                     </h2>
                     <div className="flex items-center gap-2">
-                      <span className="px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-sm font-medium">
+                      <span className="px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-300 text-sm font-medium border border-emerald-500/30">
                         🟢 Live
                       </span>
                     </div>
                   </div>
-                  <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px]">
+                  <div className="relative rounded-xl overflow-hidden border border-slate-800/80 bg-slate-950 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px] ring-1 ring-emerald-500/10">
                     <LeafletMap />
                   </div>
                 </div>
@@ -1599,8 +1492,8 @@ export default function GCPDashboard() {
           {activeTab === "assignedTasks" && <GCPAssignedTasksSection />}
 
           {activeTab === "manageAccount" && (
-            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 max-w-2xl mx-auto">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+            <div className="dashboard-section max-w-2xl mx-auto">
+              <div className="dashboard-section-glow" />
               <div className="relative z-10">
                 <ManageAccountSection
                   form={manageAccountForm}
@@ -1666,20 +1559,20 @@ export default function GCPDashboard() {
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           {/* Username */}
           <div>
-            <label
+            <Label
               htmlFor="username"
               className="block text-xs font-semibold text-slate-100 mb-1"
             >
               Username
-            </label>
-            <input
+            </Label>
+            <Input
               id="username"
               name="username"
               type="text"
               value={form.username}
               onChange={onChange}
               required
-              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
               placeholder="Enter your username"
             />
           </div>
@@ -1687,38 +1580,38 @@ export default function GCPDashboard() {
           {/* First / Last */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label
+              <Label
                 htmlFor="first_name"
                 className="block text-xs font-semibold text-slate-100 mb-1"
               >
                 First Name
-              </label>
-              <input
+              </Label>
+              <Input
                 id="first_name"
                 name="first_name"
                 type="text"
                 value={form.first_name}
                 onChange={onChange}
                 required
-                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
                 placeholder="Enter your first name"
               />
             </div>
             <div>
-              <label
+              <Label
                 htmlFor="last_name"
                 className="block text-xs font-semibold text-slate-100 mb-1"
               >
                 Last Name
-              </label>
-              <input
+              </Label>
+              <Input
                 id="last_name"
                 name="last_name"
                 type="text"
                 value={form.last_name}
                 onChange={onChange}
                 required
-                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
                 placeholder="Enter your last name"
               />
             </div>
@@ -1727,38 +1620,38 @@ export default function GCPDashboard() {
           {/* Contact / Email */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label
+              <Label
                 htmlFor="contact_number"
                 className="block text-xs font-semibold text-slate-100 mb-1"
               >
                 Contact Number
-              </label>
-              <input
+              </Label>
+              <Input
                 id="contact_number"
                 name="contact_number"
                 type="tel"
                 value={form.contact_number}
                 onChange={onChange}
                 required
-                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
                 placeholder="09123456789"
               />
             </div>
             <div>
-              <label
+              <Label
                 htmlFor="email"
                 className="block text-xs font-semibold text-slate-100 mb-1"
               >
                 Email
-              </label>
-              <input
+              </Label>
+              <Input
                 id="email"
                 name="email"
                 type="email"
                 value={form.email}
                 onChange={onChange}
                 required
-                className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
                 placeholder="user@tagbilaran.gov.ph"
               />
             </div>
@@ -1766,48 +1659,45 @@ export default function GCPDashboard() {
 
           {/* Passwords */}
           <div>
-            <label
+            <Label
               htmlFor="password"
               className="block text-xs font-semibold text-slate-100 mb-1"
             >
               Password
-            </label>
-            <input
+            </Label>
+            <Input
               id="password"
               name="password"
               type="password"
               value={form.password}
               onChange={onChange}
-              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
               placeholder="Leave blank to keep current password"
             />
           </div>
 
           <div>
-            <label
+            <Label
               htmlFor="confirm_password"
               className="block text-xs font-semibold text-slate-100 mb-1"
             >
               Confirm Password
-            </label>
-            <input
+            </Label>
+            <Input
               id="confirm_password"
               name="confirm_password"
               type="password"
               value={form.confirm_password}
               onChange={onChange}
-              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
               placeholder="Confirm your new password"
             />
           </div>
 
           <div className="flex justify-end pt-3">
-            <button
-              type="submit"
-              className="inline-flex items-center rounded-md bg-emerald-600 px-6 py-2.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
-            >
+            <Button type="submit" className="h-auto">
               Update Account
-            </button>
+            </Button>
           </div>
         </form>
       </section>
@@ -1833,13 +1723,13 @@ export default function GCPDashboard() {
   }) {
     return (
       <div className="mb-4">
-        <label
+        <Label
           htmlFor={name}
           className="block mb-1 text-xs font-semibold text-slate-100"
         >
           {label}
-        </label>
-        <input
+        </Label>
+        <Input
           id={name}
           name={name}
           type={type}
@@ -1848,7 +1738,7 @@ export default function GCPDashboard() {
           required={required}
           placeholder={placeholder}
           autoComplete="off"
-          className="w-full rounded-lg bg-slate-900/90 border border-slate-700 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          className="bg-slate-900/90 border-slate-700 text-slate-100 placeholder:text-slate-400 focus-visible:ring-emerald-500"
         />
       </div>
     );

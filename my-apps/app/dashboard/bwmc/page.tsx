@@ -14,6 +14,12 @@ import dynamic from "next/dynamic";
 import TruckLoader from "../../loading/TruckLoader";
 import { sendSMS } from "@/lib/sms";
 import {
+  getDelayedCollectionsForBarangay,
+  DelayedCollection,
+  getDelayStatusColor,
+} from "@/lib/delayDetection";
+import { notifyCollectionDelay, notifyBWMCDelay } from "@/lib/smsNotifications";
+import {
   startOfMonth,
   endOfMonth,
   addDays,
@@ -25,6 +31,43 @@ import {
 import Image from "next/image";
 
 import BarangayConcernsAnalytics from "../../generatereport/barangayconcern";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const LeafletMap = dynamic(() => import("../../leafletmap"), { ssr: false });
 
@@ -69,11 +112,12 @@ function SidebarItem({
   onClick?: () => void;
 }) {
   return (
-    <button
+    <Button
+      variant={selected ? "default" : "ghost"}
       onClick={onClick}
-      className={`flex gap-2 items-center w-full px-4 py-3 mb-2 text-left rounded-lg transition-colors ${
+      className={`flex gap-2 items-center w-full px-4 py-3 mb-2 text-left rounded-lg h-auto ${
         selected
-          ? "bg-emerald-600 text-white font-medium"
+          ? "bg-emerald-600 text-white hover:bg-emerald-700 font-medium"
           : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
       }`}
       aria-current={selected ? "page" : undefined}
@@ -83,11 +127,11 @@ function SidebarItem({
       </span>
       <span className="flex-1">{label}</span>
       {badge !== undefined && (
-        <span className="ml-auto bg-red-600 text-white rounded-full px-2 py-0.5 text-xs font-bold">
+        <Badge variant="destructive" className="ml-auto px-2 py-0.5 text-xs font-bold">
           {badge}
-        </span>
+        </Badge>
       )}
-    </button>
+    </Button>
   );
 }
 
@@ -139,7 +183,14 @@ export default function BWMCdashboard() {
     activeTrucks: 0,
     dailyCollections: 0,
     incidentReports: 0,
+    delayedCollections: 0,
   });
+
+  const [delayedCollections, setDelayedCollections] = useState<
+    DelayedCollection[]
+  >([]);
+  const [loadingDelays, setLoadingDelays] = useState(false);
+  const [sendingSMS, setSendingSMS] = useState(false);
 
   const [sortOption, setSortOption] = useState<
     "latest" | "oldest" | "status" | "ongoing" | "needs" | "resolved"
@@ -318,6 +369,7 @@ export default function BWMCdashboard() {
           activeTrucks: trucksRes.count || 0,
           dailyCollections: collectionsRes.count || 0,
           incidentReports: reportsRes.count || 0,
+          delayedCollections: 0,
         });
       } catch (err) {
         console.error("Unexpected error fetching dashboard counts:", err);
@@ -325,6 +377,34 @@ export default function BWMCdashboard() {
     }
 
     fetchDashboardCounts();
+  }, [currentUser?.barangay?.barangay_id]);
+
+  // Fetch delayed collections for the barangay
+  useEffect(() => {
+    async function fetchDelayedCollections() {
+      if (!currentUser?.barangay?.barangay_id) return;
+
+      setLoadingDelays(true);
+      try {
+        const delayed = await getDelayedCollectionsForBarangay(
+          currentUser.barangay.barangay_id,
+        );
+        setDelayedCollections(delayed);
+        setDashboardCounts((prev) => ({
+          ...prev,
+          delayedCollections: delayed.length,
+        }));
+      } catch (error) {
+        console.error("Error fetching delayed collections:", error);
+      } finally {
+        setLoadingDelays(false);
+      }
+    }
+
+    fetchDelayedCollections();
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchDelayedCollections, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, [currentUser?.barangay?.barangay_id]);
 
   const summaryCards = [
@@ -354,6 +434,15 @@ export default function BWMCdashboard() {
       trend: "Today",
       trendClass: "text-slate-500",
       count: dashboardCounts.dailyCollections,
+    },
+    {
+      label: "Delayed Collections",
+      icon: "⏰",
+      iconBg: "bg-red-500/15",
+      iconColor: "text-red-300",
+      trend: "Requires attention",
+      trendClass: "text-red-400",
+      count: dashboardCounts.delayedCollections,
     },
     {
       label: "Incident Reports",
@@ -1830,24 +1919,19 @@ export default function BWMCdashboard() {
 
                 {/* Footer / buttons */}
                 <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
-                  <button
+                  <Button
+                    variant="secondary"
                     onClick={() => setSelectedReport(null)}
-                    className="px-3 py-1.5 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 transition-colors"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleSubmitResponse}
                     disabled={!responseType}
                     aria-disabled={!responseType}
-                    className={`px-4 py-1.5 text-sm rounded-lg text-slate-50 border shadow-sm transition-colors ${
-                      responseType
-                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 border-emerald-500/80 shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500"
-                        : "bg-slate-700 text-slate-400 border-slate-600 cursor-not-allowed opacity-60"
-                    }`}
                   >
                     Submit response
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1923,21 +2007,18 @@ export default function BWMCdashboard() {
 
                 {/* Footer */}
                 <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
-                  <button
+                  <Button
+                    variant="secondary"
                     onClick={() => {
                       setRejectModalOpen(false);
                       setSelectedReport(null);
                     }}
-                    className="px-3 py-1.5 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 transition-colors"
                   >
                     Cancel
-                  </button>
-                  <button
-                    onClick={handleSubmitReject}
-                    className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 border border-red-500/80 shadow-sm shadow-red-700/60 hover:from-red-500 hover:to-rose-500 transition-colors"
-                  >
+                  </Button>
+                  <Button variant="destructive" onClick={handleSubmitReject}>
                     Submit rejection
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -2003,21 +2084,22 @@ export default function BWMCdashboard() {
 
                 {/* Footer */}
                 <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
-                  <button
+                  <Button
                     onClick={() => {
                       setActionModalOpen(false);
                       setSelectedReport(null);
                     }}
-                    className="px-3 py-1.5 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 transition-colors"
+                    variant="secondary"
+                    className="h-auto"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleSubmitActionReport}
-                    className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 transition-colors"
+                    className="h-auto"
                   >
                     Submit action
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -2081,20 +2163,29 @@ export default function BWMCdashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-emerald-950/70 text-slate-100/90 flex flex-col relative overflow-hidden antialiased">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        <div className="absolute -top-48 left-1/4 h-[520px] w-[520px] rounded-full bg-emerald-500/12 blur-[130px]" />
+        <div className="absolute top-24 -right-40 h-[420px] w-[420px] rounded-full bg-sky-500/12 blur-[120px]" />
+        <div className="absolute bottom-0 left-0 h-[360px] w-[360px] rounded-full bg-amber-400/10 blur-[110px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.7),transparent_60%)]" />
+      </div>
       {/* Top navigation (same as SWMO, BWMC text) */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800 bg-slate-950">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-emerald-900/40 bg-slate-950/80 shadow-lg shadow-emerald-900/20 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/60">
         <div className="flex items-center justify-between px-2 sm:px-4 md:px-8 py-3 sm:py-4 min-h-16">
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors flex-shrink-0"
+              className="md:hidden inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-lg bg-slate-900/80 text-slate-100 hover:bg-slate-800 transition-colors flex-shrink-0 ring-1 ring-white/10"
               aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
               {sidebarOpen ? "✖" : "☰"}
             </button>
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-600/20 border border-emerald-600/30 text-lg flex-shrink-0">
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-lg flex-shrink-0 shadow-lg shadow-emerald-900/40">
                 🗑️
               </div>
               <div className="min-w-0">
@@ -2111,7 +2202,7 @@ export default function BWMCdashboard() {
           <div className="relative flex-shrink-0">
             <button
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors whitespace-nowrap"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-100 font-medium transition-colors whitespace-nowrap ring-1 ring-white/10"
             >
               <span className="text-xs sm:text-sm">{displayName}</span>
               <svg
@@ -2188,7 +2279,7 @@ export default function BWMCdashboard() {
               sidebarOpen ? "translate-x-0" : "-translate-x-full"
             }
             md:fixed md:translate-x-0 md:top-20 md:left-0 md:bottom-0 md:w-64
-            bg-slate-950 border-r border-slate-800
+            bg-slate-950/90 border-r border-emerald-900/30 shadow-2xl shadow-black/30 backdrop-blur-xl
             flex flex-col py-6 px-4 transition-all duration-300
           `}
         >
@@ -2208,8 +2299,9 @@ export default function BWMCdashboard() {
               { label: "Schedules", icon: "📅", tab: "schedules" },
               { label: "Generate Reports", icon: "📊", tab: "generateReports" },
             ].map((item) => (
-              <button
+              <Button
                 key={item.tab}
+                variant={activeTab === item.tab ? "default" : "ghost"}
                 onClick={() => {
                   setActiveTab(
                     item.tab as
@@ -2223,15 +2315,11 @@ export default function BWMCdashboard() {
                   );
                   setSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
-                  activeTab === item.tab
-                    ? "bg-emerald-600 text-white"
-                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                }`}
+                className="w-full flex items-center gap-3 justify-start rounded-lg px-4 py-3 h-auto"
               >
                 <span className="text-xl">{item.icon}</span>
                 <span className="font-medium">{item.label}</span>
-              </button>
+              </Button>
             ))}
 
             <div className="pt-6 mt-6 border-t border-green-800/40"></div>
@@ -2239,7 +2327,7 @@ export default function BWMCdashboard() {
         </aside>
 
         {/* Main content – same paddings, structure as SWMO */}
-        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64 bg-slate-900/50">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-10 py-10 space-y-10 relative z-10 md:ml-64 bg-slate-900/40">
           {/* DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
@@ -2254,12 +2342,12 @@ export default function BWMCdashboard() {
                     </h1>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button
+                    <Button
+                      variant="secondary"
                       onClick={() => setStatsVisible(!statsVisible)}
-                      className="px-3 py-2 rounded-md bg-white/10 text-slate-100 text-xs font-semibold hover:bg-white/20 transition"
                     >
                       {statsVisible ? "Hide Stats" : "Show Stats"}
-                    </button>
+                    </Button>
                     <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold">
                       <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                       Live
@@ -2268,7 +2356,7 @@ export default function BWMCdashboard() {
                 </div>
 
                 {statsVisible && (
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                     {summaryCards.map((card) => (
                       <div
                         key={card.label}
@@ -2300,10 +2388,175 @@ export default function BWMCdashboard() {
                 )}
               </section>
 
+              {/* Delayed Collections Alert Section */}
+              {delayedCollections.length > 0 && (
+                <section className="dashboard-section">
+                  <div className="dashboard-section-glow" />
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h2 className="text-2xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent drop-shadow-lg">
+                          ⚠️ Delayed Collections
+                        </h2>
+                        <p className="text-sm text-slate-400 mt-1">
+                          Collections past their scheduled time
+                        </p>
+                      </div>
+                      <Button
+                        onClick={async () => {
+                          if (!currentUser?.barangay?.barangay_id) return;
+                          setSendingSMS(true);
+                          try {
+                            const delayed =
+                              await getDelayedCollectionsForBarangay(
+                                currentUser.barangay.barangay_id,
+                              );
+                            setDelayedCollections(delayed);
+                            setDashboardCounts((prev) => ({
+                              ...prev,
+                              delayedCollections: delayed.length,
+                            }));
+                          } catch (error) {
+                            console.error("Error refreshing delays:", error);
+                          } finally {
+                            setSendingSMS(false);
+                          }
+                        }}
+                        variant="secondary"
+                        className="h-auto"
+                        disabled={loadingDelays}
+                      >
+                        🔄 Refresh
+                      </Button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {delayedCollections.map((delayed, idx) => {
+                        const delayStatus = getDelayStatusColor(
+                          delayed.delay_minutes,
+                        );
+                        return (
+                          <div
+                            key={`${delayed.schedule_id}-${idx}`}
+                            className="rounded-xl border border-red-800/60 bg-slate-900/80 p-4 shadow-lg"
+                          >
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h3 className="text-lg font-semibold text-slate-100">
+                                    {delayed.barangay_name}
+                                  </h3>
+                                  <span
+                                    className={`px-2 py-1 rounded text-xs font-semibold ${delayStatus.bg} ${delayStatus.text}`}
+                                  >
+                                    {delayStatus.label}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-slate-300">
+                                  <p>
+                                    <span className="text-slate-500">
+                                      Scheduled:
+                                    </span>{" "}
+                                    {delayed.scheduled_date} at{" "}
+                                    {delayed.scheduled_time}
+                                  </p>
+                                  <p>
+                                    <span className="text-slate-500">
+                                      Delay:
+                                    </span>{" "}
+                                    <span className="text-red-400 font-semibold">
+                                      {delayed.delay_minutes} minutes
+                                    </span>
+                                  </p>
+                                  <p>
+                                    <span className="text-slate-500">GCP:</span>{" "}
+                                    {delayed.gcp_name}
+                                  </p>
+                                  <p>
+                                    <span className="text-slate-500">
+                                      Status:
+                                    </span>{" "}
+                                    {delayed.status}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                <Button
+                                  onClick={async () => {
+                                    // Notify residents in the barangay
+                                    if (
+                                      !confirm(
+                                        `Send delay notification to residents in ${delayed.barangay_name}?`,
+                                      )
+                                    )
+                                      return;
+
+                                    setSendingSMS(true);
+                                    try {
+                                      // Fetch residents in this barangay
+                                      const { data: residents, error } =
+                                        await supabase
+                                          .from("users")
+                                          .select(
+                                            "first_name, last_name, contact_number",
+                                          )
+                                          .eq("role", "Resident")
+                                          .eq(
+                                            "barangay_id",
+                                            delayed.barangay_id,
+                                          )
+                                          .eq("status", "approved");
+
+                                      if (error) throw error;
+
+                                      // Send SMS to each resident
+                                      for (const resident of residents || []) {
+                                        await notifyCollectionDelay(
+                                          {
+                                            name: `${resident.first_name} ${resident.last_name}`,
+                                            phoneNumber:
+                                              resident.contact_number,
+                                          },
+                                          delayed.barangay_name,
+                                          delayed.delay_minutes,
+                                        );
+                                      }
+
+                                      alert(
+                                        `Delay notifications sent to ${residents?.length || 0} residents`,
+                                      );
+                                    } catch (error) {
+                                      console.error(
+                                        "Error sending notifications:",
+                                        error,
+                                      );
+                                      alert(
+                                        "Failed to send notifications. Check console for details.",
+                                      );
+                                    } finally {
+                                      setSendingSMS(false);
+                                    }
+                                  }}
+                                  variant="outline"
+                                  className="text-sm h-auto"
+                                  disabled={sendingSMS}
+                                >
+                                  📱 Notify Residents
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </section>
+              )}
+
               {/* Map Section with Toggle Button */}
               <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
-                <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                <div className="dashboard-section overflow-hidden">
+                  <div className="dashboard-section-glow" />
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
@@ -2521,7 +2774,7 @@ export default function BWMCdashboard() {
             <section className="my-6 space-y-4 px-2 md:px-10">
               {/* Header Section */}
               <div className="group relative rounded-2xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-emerald-800/50 p-4 sm:p-5 shadow-xl shadow-emerald-900/30 backdrop-blur-2xl overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl pointer-events-none" />
 
                 <div className="relative z-10">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -2547,7 +2800,7 @@ export default function BWMCdashboard() {
                   {/* Summary Stats Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div className="group relative rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4 backdrop-blur-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 overflow-hidden">
-                      <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-50 transition-opacity blur-xl" />
+                      <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-50 transition-opacity blur-xl pointer-events-none" />
                       <div className="relative z-10">
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="text-xs font-semibold text-slate-300">
@@ -2565,7 +2818,7 @@ export default function BWMCdashboard() {
                     </div>
 
                     <div className="group relative rounded-xl bg-red-500/10 border border-red-500/30 p-4 backdrop-blur-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 overflow-hidden">
-                      <div className="absolute inset-0 bg-red-500/10 opacity-0 group-hover:opacity-50 transition-opacity blur-xl" />
+                      <div className="absolute inset-0 bg-red-500/10 opacity-0 group-hover:opacity-50 transition-opacity blur-xl pointer-events-none" />
                       <div className="relative z-10">
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="text-xs font-semibold text-slate-300">
@@ -2581,7 +2834,7 @@ export default function BWMCdashboard() {
                     </div>
 
                     <div className="group relative rounded-xl bg-blue-500/10 border border-blue-500/30 p-4 backdrop-blur-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 overflow-hidden">
-                      <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-50 transition-opacity blur-xl" />
+                      <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-50 transition-opacity blur-xl pointer-events-none" />
                       <div className="relative z-10">
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="text-xs font-semibold text-slate-300">
@@ -2599,7 +2852,7 @@ export default function BWMCdashboard() {
                     </div>
 
                     <div className="group relative rounded-xl bg-cyan-500/10 border border-cyan-500/30 p-4 backdrop-blur-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 overflow-hidden">
-                      <div className="absolute inset-0 bg-cyan-500/10 opacity-0 group-hover:opacity-50 transition-opacity blur-xl" />
+                      <div className="absolute inset-0 bg-cyan-500/10 opacity-0 group-hover:opacity-50 transition-opacity blur-xl pointer-events-none" />
                       <div className="relative z-10">
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="text-xs font-semibold text-slate-300">
@@ -2628,7 +2881,7 @@ export default function BWMCdashboard() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Approved Accounts */}
                     <div className="group relative rounded-2xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-emerald-800/50 overflow-hidden shadow-xl shadow-emerald-900/30 backdrop-blur-2xl flex flex-col">
-                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl pointer-events-none" />
 
                       <div className="relative z-10 flex flex-col h-full">
                         <div className="flex items-center justify-between px-5 py-2 bg-gradient-to-r from-emerald-900/40 to-teal-900/40 border-b border-emerald-800/50 flex-shrink-0">
@@ -2695,7 +2948,7 @@ export default function BWMCdashboard() {
 
                     {/* Rejected Accounts */}
                     <div className="group relative rounded-2xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-red-800/50 overflow-hidden shadow-xl shadow-red-900/30 backdrop-blur-2xl flex flex-col">
-                      <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-transparent to-rose-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-transparent to-rose-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl pointer-events-none" />
 
                       <div className="relative z-10 flex flex-col h-full">
                         <div className="flex items-center justify-between px-5 py-2 bg-gradient-to-r from-red-900/40 to-rose-900/40 border-b border-red-800/50 flex-shrink-0">
@@ -2784,8 +3037,8 @@ export default function BWMCdashboard() {
             )}
 
           {activeTab === "manageAccount" && (
-            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 max-w-2xl mx-auto">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+            <div className="dashboard-section max-w-2xl mx-auto">
+              <div className="dashboard-section-glow" />
               <div className="relative z-10">
                 <ManageAccountSection
                   form={manageAccountForm}
@@ -2855,60 +3108,57 @@ function ManageAccountSection(props: ManageAccountSectionProps) {
 
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         {/* Username */}
-        <div>
-          <label
+        <div className="space-y-2">
+          <Label
             htmlFor="username"
-            className="block text-xs font-semibold text-slate-100 mb-1"
+            className="text-xs font-semibold text-slate-100"
           >
             Username
-          </label>
-          <input
+          </Label>
+          <Input
             id="username"
             name="username"
             type="text"
             value={form.username}
             onChange={onChange}
             required
-            className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             placeholder="Enter your username"
           />
         </div>
 
         {/* First / Last */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label
+          <div className="space-y-2">
+            <Label
               htmlFor="first_name"
-              className="block text-xs font-semibold text-slate-100 mb-1"
+              className="text-xs font-semibold text-slate-100"
             >
               First Name
-            </label>
-            <input
+            </Label>
+            <Input
               id="first_name"
               name="first_name"
               type="text"
               value={form.first_name}
               onChange={onChange}
               required
-              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="Enter your first name"
             />
           </div>
-          <div>
-            <label
+          <div className="space-y-2">
+            <Label
               htmlFor="last_name"
-              className="block text-xs font-semibold text-slate-100 mb-1"
+              className="text-xs font-semibold text-slate-100"
             >
               Last Name
-            </label>
-            <input
+            </Label>
+            <Input
               id="last_name"
               name="last_name"
               type="text"
               value={form.last_name}
               onChange={onChange}
               required
-              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="Enter your last name"
             />
           </div>
@@ -2916,88 +3166,81 @@ function ManageAccountSection(props: ManageAccountSectionProps) {
 
         {/* Contact / Email */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label
+          <div className="space-y-2">
+            <Label
               htmlFor="contact_number"
-              className="block text-xs font-semibold text-slate-100 mb-1"
+              className="text-xs font-semibold text-slate-100"
             >
               Contact Number
-            </label>
-            <input
+            </Label>
+            <Input
               id="contact_number"
               name="contact_number"
               type="tel"
               value={form.contact_number}
               onChange={onChange}
               required
-              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="09123456789"
             />
           </div>
-          <div>
-            <label
+          <div className="space-y-2">
+            <Label
               htmlFor="email"
-              className="block text-xs font-semibold text-slate-100 mb-1"
+              className="text-xs font-semibold text-slate-100"
             >
               Email
-            </label>
-            <input
+            </Label>
+            <Input
               id="email"
               name="email"
               type="email"
               value={form.email}
               onChange={onChange}
               required
-              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="user@tagbilaran.gov.ph"
             />
           </div>
         </div>
 
         {/* Passwords */}
-        <div>
-          <label
+        <div className="space-y-2">
+          <Label
             htmlFor="password"
-            className="block text-xs font-semibold text-slate-100 mb-1"
+            className="text-xs font-semibold text-slate-100"
           >
             Password
-          </label>
-          <input
+          </Label>
+          <Input
             id="password"
             name="password"
             type="password"
             value={form.password}
             onChange={onChange}
-            className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             placeholder="Leave blank to keep current password"
           />
         </div>
 
-        <div>
-          <label
+        <div className="space-y-2">
+          <Label
             htmlFor="confirm_password"
-            className="block text-xs font-semibold text-slate-100 mb-1"
+            className="text-xs font-semibold text-slate-100"
           >
             Confirm Password
-          </label>
-          <input
+          </Label>
+          <Input
             id="confirm_password"
             name="confirm_password"
             type="password"
             value={form.confirm_password}
             onChange={onChange}
-            className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             placeholder="Confirm your new password"
           />
         </div>
 
         <div className="flex justify-end pt-3">
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-md bg-emerald-600 px-6 py-2.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
-          >
+          <Button type="submit">
             Update Account
-          </button>
+          </Button>
         </div>
       </form>
     </section>
@@ -3022,14 +3265,14 @@ function InputField({
   placeholder?: string;
 }) {
   return (
-    <div className="mb-4">
-      <label
+    <div className="mb-4 space-y-2">
+      <Label
         htmlFor={name}
-        className="block mb-1 text-sm font-semibold text-slate-100"
+        className="text-sm font-semibold text-slate-100"
       >
         {label}
-      </label>
-      <input
+      </Label>
+      <Input
         id={name}
         name={name}
         type={type}
@@ -3037,9 +3280,6 @@ function InputField({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        className="w-full px-3 py-2 rounded-lg border border-slate-700
-                   bg-slate-900/80 text-slate-100 placeholder:text-slate-400
-                   focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
         autoComplete="off"
       />
     </div>

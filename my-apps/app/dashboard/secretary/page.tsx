@@ -15,7 +15,43 @@ import { supabase } from "@/lib/supabaseClient";
 import dynamic from "next/dynamic";
 import TruckLoader from "../../loading/TruckLoader";
 import SharedCalendar from "../../components/SharedCalendar";
-import { start } from "repl";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const LeafletMap = dynamic(() => import("../../leafletmap"), { ssr: false });
 
@@ -87,11 +123,12 @@ function SidebarItem({
   onClick?: () => void;
 }) {
   return (
-    <button
+    <Button
+      variant={selected ? "default" : "ghost"}
       onClick={onClick}
-      className={`flex gap-2 items-center w-full px-4 py-3 mb-2 text-left rounded-lg transition-colors ${
+      className={`flex gap-2 items-center w-full justify-start px-4 py-3 mb-2 text-left rounded-lg ${
         selected
-          ? "bg-emerald-600 text-white font-medium"
+          ? "bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
           : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
       }`}
       aria-current={selected ? "page" : undefined}
@@ -100,7 +137,7 @@ function SidebarItem({
         {icon}
       </span>
       <span>{label}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -359,7 +396,7 @@ function ScheduleFormWithCalendar({
         style={{ maxWidth: 450 }}
       >
         {/* Glow effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+        <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl pointer-events-none" />
 
         <div className="relative z-10 space-y-6">
           <h2 className="text-3xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
@@ -610,7 +647,7 @@ function ScheduleFormWithCalendar({
               <span className="relative z-10 tracking-wide uppercase">
                 Save Schedule
               </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
             </button>
           </div>
         </div>
@@ -633,7 +670,7 @@ function ScheduleFormWithCalendar({
                 title="Show previous 2 months"
               >
                 <span className="text-xl">&lt;</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm" />
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm pointer-events-none" />
               </button>
               <button
                 className="group relative p-3 rounded-2xl bg-slate-700/50 border border-green-800/50 text-slate-200 hover:bg-green-500/20 hover:border-green-600/70 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-105"
@@ -641,7 +678,7 @@ function ScheduleFormWithCalendar({
                 title="Show next 2 months"
               >
                 <span className="text-xl">&gt;</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm" />
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm pointer-events-none" />
               </button>
             </div>
           </div>
@@ -1260,88 +1297,79 @@ function ManageAccountSection({
 
         {/* Contact / Email */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label
+          <div className="space-y-2">
+            <Label
               htmlFor="contact_number"
-              className="block text-xs font-semibold text-slate-100 mb-1"
+              className="text-xs font-semibold text-slate-100"
             >
               Contact Number
-            </label>
-            <input
+            </Label>
+            <Input
               id="contact_number"
               name="contact_number"
               type="tel"
               value={form.contact_number}
               onChange={onChange}
               required
-              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="09123456789"
             />
           </div>
-          <div>
-            <label
+          <div className="space-y-2">
+            <Label
               htmlFor="email"
-              className="block text-xs font-semibold text-slate-100 mb-1"
+              className="text-xs font-semibold text-slate-100"
             >
               Email
-            </label>
-            <input
+            </Label>
+            <Input
               id="email"
               name="email"
               type="email"
               value={form.email}
               onChange={onChange}
               required
-              className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="user@tagbilaran.gov.ph"
             />
           </div>
         </div>
 
         {/* Passwords */}
-        <div>
-          <label
+        <div className="space-y-2">
+          <Label
             htmlFor="password"
-            className="block text-xs font-semibold text-slate-100 mb-1"
+            className="text-xs font-semibold text-slate-100"
           >
             Password
-          </label>
-          <input
+          </Label>
+          <Input
             id="password"
             name="password"
             type="password"
             value={form.password}
             onChange={onChange}
-            className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             placeholder="Leave blank to keep current password"
           />
         </div>
 
-        <div>
-          <label
+        <div className="space-y-2">
+          <Label
             htmlFor="confirm_password"
-            className="block text-xs font-semibold text-slate-100 mb-1"
+            className="text-xs font-semibold text-slate-100"
           >
             Confirm Password
-          </label>
-          <input
+          </Label>
+          <Input
             id="confirm_password"
             name="confirm_password"
             type="password"
             value={form.confirm_password}
             onChange={onChange}
-            className="w-full rounded-md bg-slate-950/80 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             placeholder="Confirm your new password"
           />
         </div>
 
         <div className="flex justify-end pt-3">
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-md bg-emerald-600 px-6 py-2.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
-          >
-            Update Account
-          </button>
+          <Button type="submit">Update Account</Button>
         </div>
       </form>
     </section>
@@ -1542,9 +1570,9 @@ function SecretaryReportsSection() {
   return (
     <>
       {/* Main card with passed incidents */}
-      <section className="group relative h-190 max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+      <section className="dashboard-section h-190 max-w-4xl mx-auto overflow-hidden">
         {/* Glow effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+        <div className="dashboard-section-glow" />
 
         <div className="relative z-500">
           <h2 className="text-2xl font-black mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
@@ -1611,7 +1639,7 @@ function SecretaryReportsSection() {
                           <span className="relative z-10 uppercase tracking-wide">
                             Assign GCP &amp; Task
                           </span>
-                          <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                         </button>
                       </td>
                     </tr>
@@ -1690,45 +1718,38 @@ function SecretaryReportsSection() {
               </div>
 
               {/* GCP Select */}
-              <div className="mb-4">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">
+              <div className="mb-4 space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">
                   Select GCP
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedGcpId}
-                    onChange={(e) => setSelectedGcpId(e.target.value)}
-                    className="w-full rounded-xl bg-slate-950/80 border border-emerald-700/60 px-4 py-3 text-sm text-slate-100 
-                         focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-400 
-                         transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/25 
-                         appearance-none pr-10 [&:invalid]:text-slate-400"
-                  >
-                    <option value="">-- Choose GCP --</option>
+                </Label>
+                <Select
+                  value={selectedGcpId}
+                  onValueChange={(value: string) => setSelectedGcpId(value)}
+                >
+                  <SelectTrigger className="w-full rounded-xl bg-slate-950/80 border-emerald-700/60 backdrop-blur-xl shadow-md hover:shadow-emerald-500/25">
+                    <SelectValue placeholder="-- Choose GCP --" />
+                  </SelectTrigger>
+                  <SelectContent>
                     {gcpUsers.map((u) => (
-                      <option key={u.user_id} value={u.user_id}>
+                      <SelectItem key={u.user_id} value={u.user_id}>
                         {u.first_name} {u.last_name}
-                      </option>
+                      </SelectItem>
                     ))}
-                  </select>
-                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-emerald-300/80 text-xs">
-                    ▼
-                  </span>
-                </div>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Task details */}
-              <div className="mb-6">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">
+              <div className="mb-6 space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">
                   Task Details
-                </label>
-                <textarea
+                </Label>
+                <Textarea
                   rows={3}
                   value={taskDetails}
                   onChange={(e) => setTaskDetails(e.target.value)}
                   placeholder="Describe what the GCP should do..."
-                  className="w-full rounded-xl bg-slate-950/80 border border-emerald-700/60 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 resize-vertical 
-                       focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-400 
-                       transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/25"
+                  className="rounded-xl bg-slate-950/80 border-emerald-700/60 backdrop-blur-xl shadow-md hover:shadow-emerald-500/25"
                 />
               </div>
 
@@ -1740,20 +1761,16 @@ function SecretaryReportsSection() {
 
               {/* Bottom actions */}
               <div className="flex flex-col gap-3 border-t border-emerald-800/40 pt-4 sm:flex-row sm:justify-end">
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
                   onClick={() => setAssignModalOpen(false)}
-                  className="relative inline-flex items-center justify-center rounded-xl border border-slate-500/60 bg-slate-800/90 px-6 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-100 shadow-md backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:bg-slate-700/95"
                 >
                   Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSubmitAssign}
-                  className="relative inline-flex items-center justify-center rounded-xl border border-emerald-500/60 bg-gradient-to-r from-emerald-600/95 to-teal-500/95 px-6 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-50 shadow-lg shadow-emerald-500/40 backdrop-blur-xl transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl hover:shadow-emerald-400/60"
-                >
+                </Button>
+                <Button type="button" onClick={handleSubmitAssign}>
                   Assign Task
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -1838,9 +1855,9 @@ function SecretaryGcpResponsesSection() {
   if (error) return <div className="text-red-700">{error}</div>;
 
   return (
-    <section className="group relative h-150 max-w-9xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
+    <section className="dashboard-section h-150 max-w-9xl mx-auto overflow-hidden">
       {/* Glow effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+      <div className="dashboard-section-glow" />
 
       <div className="relative z-10">
         <h2 className="text-3xl font-black mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
@@ -1907,7 +1924,7 @@ function SecretaryGcpResponsesSection() {
                         <span className="relative z-10 uppercase tracking-wide">
                           View Response
                         </span>
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                       </button>
                     </td>
                   </tr>
@@ -1925,7 +1942,7 @@ function SecretaryGcpResponsesSection() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl rounded-2xl" />
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl rounded-2xl pointer-events-none" />
 
               <div className="relative z-10">
                 {/* Close button */}
@@ -1934,7 +1951,7 @@ function SecretaryGcpResponsesSection() {
                   className="group absolute -top-4 -right-4 w-12 h-12 bg-slate-900/90 border-2 border-slate-600/50 rounded-2xl shadow-xl hover:bg-red-600/90 hover:border-red-500/70 hover:shadow-2xl hover:shadow-red-500/40 hover:scale-110 transition-all duration-300 backdrop-blur-xl flex items-center justify-center text-slate-300 hover:text-white font-bold text-2xl"
                 >
                   <span className="relative z-10">✕</span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm pointer-events-none" />
                 </button>
 
                 <h3 className="font-black text-2xl mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
@@ -2103,9 +2120,9 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
   };
 
   return (
-    <section className="group relative max-w-2xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-6 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 space-y-6 h-fit">
+    <section className="dashboard-section max-w-2xl mx-auto space-y-6 h-fit">
       {/* Glow effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+      <div className="dashboard-section-glow" />
 
       <div className="relative z-10">
         <h2 className="text-2xl font-black mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
@@ -2197,30 +2214,6 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
             </div>
           </div>
 
-          {/* GCP - Full width */}
-          <div>
-            <label
-              htmlFor="gcp_user_id"
-              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
-            >
-              Assigned GCP (optional)
-            </label>
-            <select
-              id="gcp_user_id"
-              name="gcp_user_id"
-              value={form.gcp_user_id}
-              onChange={handleChange}
-              className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/20 appearance-none bg-no-repeat pr-8"
-            >
-              <option value="">No default GCP</option>
-              {gcps.map((g) => (
-                <option key={g.user_id} value={g.user_id}>
-                  {g.first_name} {g.last_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {/* Compact error/success */}
           {error && (
             <div className="rounded-xl bg-gradient-to-r from-orange-500/15 to-red-500/15 border border-orange-500/40 p-3 text-orange-200 text-sm backdrop-blur-xl shadow-lg animate-pulse">
@@ -2243,7 +2236,7 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
               <span className="relative z-10 uppercase tracking-wide">
                 ＋ Add Truck
               </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
             </button>
           </div>
         </form>
@@ -2769,21 +2762,30 @@ export default function SecretaryDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200 flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-emerald-950/70 text-slate-100/90 flex flex-col relative overflow-hidden antialiased">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        <div className="absolute -top-48 left-1/4 h-[520px] w-[520px] rounded-full bg-emerald-500/12 blur-[130px]" />
+        <div className="absolute top-24 -right-40 h-[420px] w-[420px] rounded-full bg-sky-500/12 blur-[120px]" />
+        <div className="absolute bottom-0 left-0 h-[360px] w-[360px] rounded-full bg-amber-400/10 blur-[110px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.7),transparent_60%)]" />
+      </div>
       {/* Top navigation (same as SWMO) */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-800 bg-slate-950">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-emerald-900/40 bg-slate-950/80 shadow-lg shadow-emerald-900/20 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/60">
         <div className="flex items-center justify-between px-2 sm:px-4 md:px-8 py-3 sm:py-4 min-h-16">
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors flex-shrink-0"
+              className="md:hidden inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-lg bg-slate-900/80 text-slate-100 hover:bg-slate-800 transition-colors flex-shrink-0 ring-1 ring-white/10"
               aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
               {sidebarOpen ? "✖" : "☰"}
             </button>
 
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-600/20 border border-emerald-600/30 text-lg flex-shrink-0">
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-lg flex-shrink-0 shadow-lg shadow-emerald-900/40">
                 🚛
               </div>
               <div className="min-w-0">
@@ -2800,7 +2802,7 @@ export default function SecretaryDashboard() {
           <div className="relative flex-shrink-0">
             <button
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium transition-colors whitespace-nowrap"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-100 font-medium transition-colors whitespace-nowrap ring-1 ring-white/10"
             >
               <span className="text-xs sm:text-sm">{displayName}</span>
               <svg
@@ -2877,8 +2879,8 @@ export default function SecretaryDashboard() {
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
           md:fixed md:translate-x-0 md:top-16 md:left-0 md:bottom-0 md:w-64
-          bg-slate-950 border-r border-slate-800
-          flex flex-col py-4 px-3 transition-all duration-300
+          bg-slate-950/90 border-r border-emerald-900/30 shadow-2xl shadow-black/30 backdrop-blur-xl
+          flex flex-col py-6 px-4 transition-all duration-300
         `}
         >
           <nav
@@ -2915,7 +2917,7 @@ export default function SecretaryDashboard() {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto px-6 md:px-8 py-8 space-y-8 relative z-10 md:ml-64 bg-slate-900/50">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-10 py-10 space-y-10 relative z-10 md:ml-64 bg-slate-900/40">
           {/* DASHBOARD */}
           {activeTab === "dashboard" && (
             <>
@@ -2964,15 +2966,16 @@ export default function SecretaryDashboard() {
                       Collection Coverage Map
                     </h2>
                     <div className="flex items-center gap-2">
-                      <button
+                      <Button
                         onClick={() => setStatsVisible(!statsVisible)}
-                        className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm transition-colors"
+                        variant="secondary"
+                        className="h-auto"
                         title={
                           statsVisible ? "Hide Statistics" : "Show Statistics"
                         }
                       >
                         {statsVisible ? "📊 Hide Stats" : "📈 Show Stats"}
-                      </button>
+                      </Button>
                       <span className="px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-sm font-medium">
                         🟢 Live
                       </span>
@@ -2988,8 +2991,8 @@ export default function SecretaryDashboard() {
 
           {/* Manage Account */}
           {activeTab === "manageAccount" && (
-            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 max-w-2xl mx-auto">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+            <div className="dashboard-section max-w-2xl mx-auto">
+              <div className="dashboard-section-glow" />
               <div className="relative z-10">
                 <ManageAccountSection
                   form={manageAccountForm}
@@ -3005,8 +3008,8 @@ export default function SecretaryDashboard() {
 
           {/* Create Schedules */}
           {activeTab === "inputSchedule" && (
-            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+            <div className="dashboard-section overflow-hidden">
+              <div className="dashboard-section-glow" />
               <div className="relative z-10">
                 <ScheduleFormWithCalendar
                   barangays={barangays}
@@ -3019,8 +3022,8 @@ export default function SecretaryDashboard() {
 
           {/* Garbage Trucks */}
           {activeTab === "garbageTrucks" && (
-            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+            <div className="dashboard-section overflow-hidden">
+              <div className="dashboard-section-glow" />
               <div className="relative z-10">
                 <GarbageTrucksSection gcps={gcps} />
               </div>
@@ -3029,8 +3032,8 @@ export default function SecretaryDashboard() {
 
           {/* Schedules */}
           {activeTab === "schedules" && (
-            <div className="group relative max-w-6xl mx-auto rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+            <div className="dashboard-section max-w-6xl mx-auto overflow-hidden">
+              <div className="dashboard-section-glow" />
               <div className="relative z-10">
                 <h2 className="text-3xl font-black mb-8 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-2xl">
                   Schedules Overview
@@ -3042,8 +3045,8 @@ export default function SecretaryDashboard() {
 
           {/* Passed Incidents */}
           {activeTab === "passedIncidents" && (
-            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+            <div className="dashboard-section overflow-hidden">
+              <div className="dashboard-section-glow" />
               <div className="relative z-10">
                 <SecretaryReportsSection />
               </div>
@@ -3052,8 +3055,8 @@ export default function SecretaryDashboard() {
 
           {/* GCP Responses */}
           {activeTab === "gcpResponses" && (
-            <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 p-8 shadow-2xl shadow-green-900/30 backdrop-blur-2xl hover:shadow-3xl hover:shadow-green-600/40 transition-all duration-500 hover:border-green-600/70 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+            <div className="dashboard-section overflow-hidden">
+              <div className="dashboard-section-glow" />
               <div className="relative z-10">
                 <SecretaryGcpResponsesSection />
               </div>
