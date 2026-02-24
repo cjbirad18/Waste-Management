@@ -165,6 +165,18 @@ export default function RegisterPage() {
     return /^09\d{9}$/.test(value);
   };
 
+  // Password strength checker
+  const isStrongPassword = (pw: string) => {
+    // At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+    return (
+      pw.length >= 8 &&
+      /[A-Z]/.test(pw) &&
+      /[a-z]/.test(pw) &&
+      /[0-9]/.test(pw) &&
+      /[^A-Za-z0-9]/.test(pw)
+    );
+  };
+
   // Fetch all barangays from table on mount
   useEffect(() => {
     async function fetchBarangays() {
@@ -189,10 +201,23 @@ export default function RegisterPage() {
       return;
     }
 
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
+
+    if (!isStrongPassword(password)) {
+      setError(
+        "Password must be strong: at least 8 characters, include uppercase, lowercase, number, and special character.",
+      );
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
+
     if (!barangayId) {
       setError("Please select a barangay.");
       return;
@@ -407,6 +432,16 @@ export default function RegisterPage() {
               required
               placeholder="Enter your password"
             />
+            {/* Password strength display */}
+            {password && (
+              <p
+                className={`mt-2 text-xs font-semibold ${isStrongPassword(password) ? "text-emerald-400" : "text-red-400"}`}
+              >
+                {isStrongPassword(password)
+                  ? "Password is strong"
+                  : "Password is weak (min 8 chars, uppercase, lowercase, number, special character)"}
+              </p>
+            )}
           </div>
           <div>
             <label

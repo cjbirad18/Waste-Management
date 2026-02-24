@@ -13,6 +13,8 @@ import {
   Legend,
 } from "recharts";
 import TruckLoader from "../loading/TruckLoader";
+import { WasteCollectionPDFDownload } from "./WasteCollectionPDF";
+import { BarangayConcernsPDFDownload } from "./BarangayConcernsPDF";
 
 type ReportsAnalyticsProps = {
   barangayId?: number | null;
@@ -280,12 +282,6 @@ export default function ReportsAnalytics({
     loadBarangayConcerns();
   }, [activeReportOption, barangayId, timePeriod, selectedMonth]);
 
-  const handleDownloadPDF = () => {
-    if (typeof window !== "undefined") {
-      window.print();
-    }
-  };
-
   // Calculate waste collection stats
   const totalWaste = wasteCollectionData.reduce(
     (sum, item) => sum + item.tons,
@@ -412,13 +408,26 @@ export default function ReportsAnalytics({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={handleDownloadPDF}
-              className="no-print inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white border border-emerald-500/50 transition-colors"
-            >
-              📄 PDF Report
-            </button>
+            <div className="no-print">
+              {activeReportOption === "wasteCollection" ? (
+                <WasteCollectionPDFDownload
+                  wasteData={wasteCollectionData}
+                  performanceData={performanceData}
+                  timePeriod={timePeriod}
+                  barangayName={
+                    barangayId ? `Barangay ${barangayId}` : undefined
+                  }
+                />
+              ) : (
+                <BarangayConcernsPDFDownload
+                  concernData={concernStats}
+                  barangayName={
+                    barangayId ? `Barangay ${barangayId}` : undefined
+                  }
+                  viewMode="Monthly"
+                />
+              )}
+            </div>
           </div>
 
           {/* Controls */}

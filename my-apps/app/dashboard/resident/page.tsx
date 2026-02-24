@@ -400,6 +400,20 @@ function ResidentSchedulesFeature({
     (s) => String(s.barangay?.barangay_id) === String(selectedBarangayId),
   );
 
+  // Pagination state for collection details
+  const [detailsPage, setDetailsPage] = useState(1);
+  const detailsPageSize = 5;
+  const collectionDetails = Array.isArray(schedule?.collection_details)
+    ? schedule.collection_details
+    : [];
+  const detailsTotalPages = Math.ceil(
+    collectionDetails.length / detailsPageSize,
+  );
+  const paginatedDetails = collectionDetails.slice(
+    (detailsPage - 1) * detailsPageSize,
+    detailsPage * detailsPageSize,
+  );
+
   return (
     <section className="dashboard-section w-full max-w-4xl mx-auto">
       <div className="dashboard-section-glow" />
@@ -465,48 +479,73 @@ function ResidentSchedulesFeature({
             </div>
           </div>
 
-          {/* Collection details list */}
-          {Array.isArray(schedule.collection_details) &&
-          schedule.collection_details.length > 0 ? (
-            <ul className="space-y-3 text-slate-200">
-              {schedule.collection_details.map((detail) => (
-                <li
-                  key={detail.collectiondetails_id}
-                  className="border border-green-800/40 rounded-2xl p-3 bg-slate-900/80 text-xs md:text-sm"
-                >
-                  <div className="flex flex-col gap-1">
-                    <div>
-                      <span className="font-semibold text-emerald-300">
-                        Truck:
-                      </span>{" "}
-                      {detail.truck?.plate_number || "N/A"}
+          {/* Collection details list with pagination */}
+          {collectionDetails.length > 0 ? (
+            <>
+              <ul className="space-y-3 text-slate-200">
+                {paginatedDetails.map((detail) => (
+                  <li
+                    key={detail.collectiondetails_id}
+                    className="border border-green-800/40 rounded-2xl p-3 bg-slate-900/80 text-xs md:text-sm"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <div>
+                        <span className="font-semibold text-emerald-300">
+                          Truck:
+                        </span>{" "}
+                        {detail.truck?.plate_number || "N/A"}
+                      </div>
+                      <div>
+                        <span className="font-semibold text-emerald-300">
+                          Collection Date:
+                        </span>{" "}
+                        {detail.collection_date
+                          ? new Date(
+                              detail.collection_date,
+                            ).toLocaleDateString()
+                          : "N/A"}
+                      </div>
+                      <div>
+                        <span className="font-semibold text-emerald-300">
+                          Status:
+                        </span>{" "}
+                        {detail.status}
+                      </div>
+                      <div>
+                        <span className="font-semibold text-emerald-300">
+                          Assigned User:
+                        </span>{" "}
+                        {detail.gcp_assignment?.user
+                          ? `${detail.gcp_assignment.user.first_name} ${detail.gcp_assignment.user.last_name}`
+                          : "Unassigned"}
+                      </div>
                     </div>
-                    <div>
-                      <span className="font-semibold text-emerald-300">
-                        Collection Date:
-                      </span>{" "}
-                      {detail.collection_date
-                        ? new Date(detail.collection_date).toLocaleDateString()
-                        : "N/A"}
-                    </div>
-                    <div>
-                      <span className="font-semibold text-emerald-300">
-                        Status:
-                      </span>{" "}
-                      {detail.status}
-                    </div>
-                    <div>
-                      <span className="font-semibold text-emerald-300">
-                        Assigned User:
-                      </span>{" "}
-                      {detail.gcp_assignment?.user
-                        ? `${detail.gcp_assignment.user.first_name} ${detail.gcp_assignment.user.last_name}`
-                        : "Unassigned"}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  </li>
+                ))}
+              </ul>
+              {/* Pagination controls */}
+              {detailsTotalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-4">
+                  <Button
+                    disabled={detailsPage === 1}
+                    onClick={() => setDetailsPage(detailsPage - 1)}
+                    variant="outline"
+                  >
+                    Prev
+                  </Button>
+                  <span className="text-xs text-slate-300">
+                    Page {detailsPage} of {detailsTotalPages}
+                  </span>
+                  <Button
+                    disabled={detailsPage === detailsTotalPages}
+                    onClick={() => setDetailsPage(detailsPage + 1)}
+                    variant="outline"
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </>
           ) : (
             <p className="text-slate-400 text-xs md:text-sm">
               No collection details for this schedule.
@@ -2020,7 +2059,7 @@ export default function ResidentDashboard() {
                       key={report.report_id}
                       className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-emerald-700/50 rounded-2xl px-4 bg-slate-900/70"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <span className="font-bold text-slate-200">
                           {index + 1}.
                         </span>
@@ -2034,7 +2073,7 @@ export default function ResidentDashboard() {
                             setSelectedMessage(report.description);
                             setModalOpen(true);
                           }}
-                          className="ml-2 px-3 py-1 bg-emerald-600 text-white text-xs font-semibold rounded-2xl shadow hover:bg-emerald-500 transition-colors"
+                          className="ml-2 px-3 py- bg-emerald-600 text-white text-xs font-semibold rounded-2xl shadow hover:bg-emerald-500 transition-colors"
                         >
                           View Message
                         </button>

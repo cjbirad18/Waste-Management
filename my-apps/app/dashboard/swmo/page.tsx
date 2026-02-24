@@ -1802,7 +1802,7 @@ export default function AdminDashboard() {
     { label: "Dashboard", icon: "📊", tab: "dashboard" },
     { label: "Manage Users", icon: "👥", tab: "userAdmin" },
     { label: "User Accounts", icon: "📋", tab: "manageUsers" },
-    { label: "Reports", icon: "📈", tab: "reports" },
+    { label: "Generate Report", icon: "📈", tab: "reports" },
     { label: "Account", icon: "⚙️", tab: "manageAccount" },
   ] as const;
 
@@ -1933,7 +1933,7 @@ export default function AdminDashboard() {
               { label: "Manage Users", icon: "👥", tab: "userAdmin" },
               { label: "User Accounts", icon: "📋", tab: "manageUsers" },
               { label: "Incident Reports", icon: "🚨", tab: "incidentReports" },
-              { label: "Reports", icon: "📈", tab: "reports" },
+              { label: "Generate Report", icon: "📈", tab: "reports" },
             ].map((item) => (
               <button
                 key={item.tab}
@@ -1979,8 +1979,9 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       onClick={() => setStatsVisible(!statsVisible)}
+                      className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
                     >
                       {statsVisible ? "Hide Stats" : "Show Stats"}
                     </Button>
@@ -2345,7 +2346,7 @@ export default function AdminDashboard() {
                     variant="secondary"
                     type="button"
                     onClick={() => setShowUserFilters(!showUserFilters)}
-                    className="px-2 py-2"
+                    className="px-2 py-2 bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold"
                     aria-label="Toggle filters"
                   >
                     ▼
@@ -3225,10 +3226,59 @@ export default function AdminDashboard() {
           )}
           {/* REPORTS */}
           {activeTab === "reports" && (
-            <>
-              <ReportsAnalytics />
-            </>
+            <section className="space-y-6">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
+                    Analytics
+                  </p>
+                  <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
+                    Generate Reports
+                  </h1>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setActiveReportOption("wasteCollection")}
+                  variant={
+                    activeReportOption === "wasteCollection"
+                      ? "default"
+                      : "outline"
+                  }
+                  className={
+                    activeReportOption === "wasteCollection"
+                      ? ""
+                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                  }
+                >
+                  📊 Waste Collection
+                </Button>
+                <Button
+                  onClick={() => setActiveReportOption("barangayConcerns")}
+                  variant={
+                    activeReportOption === "barangayConcerns"
+                      ? "default"
+                      : "outline"
+                  }
+                  className={
+                    activeReportOption === "barangayConcerns"
+                      ? ""
+                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                  }
+                >
+                  🚩 Barangay Concerns
+                </Button>
+              </div>
+
+              {activeReportOption === "wasteCollection" && <ReportsAnalytics />}
+
+              {activeReportOption === "barangayConcerns" && (
+                <BarangayConcernsAnalytics />
+              )}
+            </section>
           )}
+
           {activeTab === "manageAccount" && (
             <div className="dashboard-section max-w-2xl mx-auto">
               <div className="relative z-10">

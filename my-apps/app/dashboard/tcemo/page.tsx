@@ -111,6 +111,13 @@ export default function TcemoDashboard() {
   // SWMO Head Management
   const [swmoHeads, setSwmoHeads] = useState<User[]>([]);
   const [loadingSWMOHeads, setLoadingSWMOHeads] = useState(false);
+  const [swmoPage, setSwmoPage] = useState(1);
+  const swmoPageSize = 5; // Show 5 per page
+  const swmoTotalPages = Math.ceil(swmoHeads.length / swmoPageSize);
+  const swmoHeadsPage = swmoHeads.slice(
+    (swmoPage - 1) * swmoPageSize,
+    swmoPage * swmoPageSize,
+  );
 
   const fetchSWMOHeads = useCallback(async () => {
     setLoadingSWMOHeads(true);
@@ -788,8 +795,8 @@ export default function TcemoDashboard() {
                   <div className="flex items-center gap-3">
                     <Button
                       onClick={() => setStatsVisible(!statsVisible)}
-                      variant="secondary"
-                      className="h-auto"
+                      variant="outline"
+                      className="h-auto border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
                     >
                       {statsVisible ? "Hide Stats" : "Show Stats"}
                     </Button>
@@ -912,6 +919,110 @@ export default function TcemoDashboard() {
                       onChange={handleUserFormChange}
                       required
                     />
+                    {/* SWMO Head list */}
+                    <div className="dashboard-section overflow-hidden">
+                      <div className="relative z-10">
+                        <h3 className="text-lg font-bold mb-3 text-slate-100">
+                          SWMO Head Accounts
+                        </h3>
+                        {loadingSWMOHeads ? (
+                          <TruckLoader />
+                        ) : (
+                          <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-950">
+                            <table className="min-w-full text-sm">
+                              <thead className="bg-slate-800 text-slate-200 sticky top-0 z-10">
+                                <tr>
+                                  <th className="px-3 py-2 text-left text-xs font-medium">
+                                    Name
+                                  </th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium hidden sm:table-cell">
+                                    Email
+                                  </th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium">
+                                    Status
+                                  </th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium">
+                                    Action
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {swmoHeadsPage.map((user) => (
+                                  <tr
+                                    key={user.user_id}
+                                    className="border-t border-slate-800 hover:bg-slate-800 transition-colors"
+                                  >
+                                    <td className="px-3 py-2">
+                                      {user.first_name} {user.last_name}
+                                      <div className="sm:hidden text-xs text-slate-400">
+                                        {user.email}
+                                      </div>
+                                    </td>
+                                    <td className="px-3 py-2 hidden sm:table-cell">
+                                      {user.email}
+                                    </td>
+                                    <td className="px-3 py-2 capitalize">
+                                      {user.status}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      {user.status.toLowerCase() ===
+                                      "active" ? (
+                                        <Button
+                                          variant="destructive"
+                                          onClick={() =>
+                                            openConfirmModal(
+                                              "deactivate",
+                                              user.user_id,
+                                              `${user.first_name} ${user.last_name}`,
+                                            )
+                                          }
+                                        >
+                                          Deactivate
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          onClick={() =>
+                                            openConfirmModal(
+                                              "activate",
+                                              user.user_id,
+                                              `${user.first_name} ${user.last_name}`,
+                                            )
+                                          }
+                                        >
+                                          Activate
+                                        </Button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            {/* Pagination controls for SWMO Head list */}
+                            {swmoTotalPages > 1 && (
+                              <div className="flex justify-center items-center gap-2 mt-4">
+                                <Button
+                                  disabled={swmoPage === 1}
+                                  onClick={() => setSwmoPage(swmoPage - 1)}
+                                  variant="outline"
+                                >
+                                  Prev
+                                </Button>
+                                <span className="text-xs text-slate-300">
+                                  Page {swmoPage} of {swmoTotalPages}
+                                </span>
+                                <Button
+                                  disabled={swmoPage === swmoTotalPages}
+                                  onClick={() => setSwmoPage(swmoPage + 1)}
+                                  variant="outline"
+                                >
+                                  Next
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     <div className="mb-4">
                       <label
                         className="block mb-1 text-xs font-medium text-slate-300"
@@ -1032,7 +1143,59 @@ export default function TcemoDashboard() {
             </section>
           )}
 
-          {activeTab === "generateReports" && <ReportsAnalytics />}
+          {activeTab === "generateReports" && (
+            <section className="space-y-6">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
+                    Analytics
+                  </p>
+                  <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
+                    Generate Reports
+                  </h1>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setActiveReportOption("wasteCollection")}
+                  variant={
+                    activeReportOption === "wasteCollection"
+                      ? "default"
+                      : "outline"
+                  }
+                  className={
+                    activeReportOption === "wasteCollection"
+                      ? ""
+                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                  }
+                >
+                  📊 Waste Collection
+                </Button>
+                <Button
+                  onClick={() => setActiveReportOption("barangayConcerns")}
+                  variant={
+                    activeReportOption === "barangayConcerns"
+                      ? "default"
+                      : "outline"
+                  }
+                  className={
+                    activeReportOption === "barangayConcerns"
+                      ? ""
+                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                  }
+                >
+                  🚩 Barangay Concerns
+                </Button>
+              </div>
+
+              {activeReportOption === "wasteCollection" && <ReportsAnalytics />}
+
+              {activeReportOption === "barangayConcerns" && (
+                <BarangayConcernsAnalytics />
+              )}
+            </section>
+          )}
 
           {/* MANAGE ACCOUNT – card style */}
           {activeTab === "manageAccount" && (

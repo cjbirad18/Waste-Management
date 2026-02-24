@@ -2968,8 +2968,8 @@ export default function SecretaryDashboard() {
                     <div className="flex items-center gap-2">
                       <Button
                         onClick={() => setStatsVisible(!statsVisible)}
-                        variant="secondary"
-                        className="h-auto"
+                        variant="outline"
+                        className="h-auto border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
                         title={
                           statsVisible ? "Hide Statistics" : "Show Statistics"
                         }

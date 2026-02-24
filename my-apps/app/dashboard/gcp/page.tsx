@@ -1418,9 +1418,9 @@ export default function GCPDashboard() {
                   <div className="flex items-center gap-3">
                     <Button
                       type="button"
-                      variant="secondary"
+                      variant="outline"
                       onClick={() => setStatsVisible(!statsVisible)}
-                      className="h-auto"
+                      className="h-auto border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
                     >
                       {statsVisible ? "Hide Stats" : "Show Stats"}
                     </Button>

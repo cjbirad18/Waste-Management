@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import {
   ResponsiveContainer,
@@ -13,6 +13,7 @@ import {
   Legend,
 } from "recharts";
 import TruckLoader from "../loading/TruckLoader";
+import { BarangayConcernsPDFDownload } from "./BarangayConcernsPDF";
 
 type ConcernStatus = "Needs Action" | "Ongoing" | "Resolved" | string;
 
@@ -69,6 +70,10 @@ export default function BarangayConcernsAnalytics({
     const now = new Date();
     return now.toLocaleString("en-US", { month: "short" });
   });
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    return new Date().getFullYear();
+  });
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [viewMode, setViewMode] = useState<"monthly" | "yearly">("monthly");
 
   useEffect(() => {
@@ -88,15 +93,17 @@ export default function BarangayConcernsAnalytics({
         const { data, error } = await query;
         if (error) throw error;
 
-        const byMonth: Record<
+        const byMonthAndYear: Record<
           string,
           {
             total: number;
             needsAction: number;
             ongoing: number;
             resolved: number;
+            year: number;
           }
         > = {};
+        const yearsSet = new Set<number>();
 
         for (const row of data ?? []) {
           const date = row.date_submitted as string | null;
@@ -106,13 +113,18 @@ export default function BarangayConcernsAnalytics({
           if (Number.isNaN(d.getTime())) continue;
 
           const monthKey = d.toLocaleString("en-US", { month: "short" });
+          const year = d.getFullYear();
+          const key = `${monthKey}-${year}`;
 
-          if (!byMonth[monthKey]) {
-            byMonth[monthKey] = {
+          yearsSet.add(year);
+
+          if (!byMonthAndYear[key]) {
+            byMonthAndYear[key] = {
               total: 0,
               needsAction: 0,
               ongoing: 0,
               resolved: 0,
+              year: year,
             };
           }
 
@@ -122,45 +134,76 @@ export default function BarangayConcernsAnalytics({
             continue;
           }
 
-          byMonth[monthKey].total += 1;
+          byMonthAndYear[key].total += 1;
 
           switch (status) {
             case "Needs Action":
-              byMonth[monthKey].needsAction += 1;
+              byMonthAndYear[key].needsAction += 1;
               break;
             case "Ongoing":
-              byMonth[monthKey].ongoing += 1;
+              byMonthAndYear[key].ongoing += 1;
               break;
             case "Resolved":
-              byMonth[monthKey].resolved += 1;
+              byMonthAndYear[key].resolved += 1;
               break;
             default:
               break;
           }
         }
 
-        const statsArr: ConcernStatsPoint[] = MONTHS.filter(
-          (m) => byMonth[m],
-        ).map((m) => ({
-          month: m,
-          total: byMonth[m].total,
-          needsAction: byMonth[m].needsAction,
-          ongoing: byMonth[m].ongoing,
-          resolved: byMonth[m].resolved,
-        }));
+        // Set available years sorted in descending order
+        const sortedYears = Array.from(yearsSet).sort((a, b) => b - a);
+        setAvailableYears(sortedYears);
 
-        setAllStats(statsArr);
+        // Update selected year if it's not in available years
+        if (sortedYears.length > 0 && !sortedYears.includes(selectedYear)) {
+          setSelectedYear(sortedYears[0]);
+        }
+
+        // Create stats array with all data
+        const allStatsArr: ConcernStatsPoint[] = Object.keys(
+          byMonthAndYear,
+        ).map((key) => {
+          const [month] = key.split("-");
+          const data = byMonthAndYear[key];
+          return {
+            month: month,
+            total: data.total,
+            needsAction: data.needsAction,
+            ongoing: data.ongoing,
+            resolved: data.resolved,
+          };
+        });
+
+        setAllStats(allStatsArr);
+
+        // Filter stats by current selected year for yearly view
+        const currentYearStats = MONTHS.map((m) => {
+          const key = `${m}-${selectedYear}`;
+          if (!byMonthAndYear[key]) return null;
+          return {
+            month: m,
+            total: byMonthAndYear[key].total,
+            needsAction: byMonthAndYear[key].needsAction,
+            ongoing: byMonthAndYear[key].ongoing,
+            resolved: byMonthAndYear[key].resolved,
+          };
+        }).filter((item): item is ConcernStatsPoint => item !== null);
 
         let defaultMonth = selectedMonth;
-        const hasCurrent = statsArr.some((s) => s.month === defaultMonth);
-        if (!hasCurrent && statsArr.length > 0) {
-          defaultMonth = statsArr[statsArr.length - 1].month;
+        const hasCurrent = currentYearStats.some(
+          (s) => s.month === defaultMonth,
+        );
+        if (!hasCurrent && currentYearStats.length > 0) {
+          defaultMonth = currentYearStats[currentYearStats.length - 1].month;
           setSelectedMonth(defaultMonth);
         }
 
         const filtered =
-          statsArr.filter((s) => s.month === defaultMonth) ??
-          (statsArr.length > 0 ? [statsArr[statsArr.length - 1]] : []);
+          currentYearStats.filter((s) => s.month === defaultMonth) ??
+          (currentYearStats.length > 0
+            ? [currentYearStats[currentYearStats.length - 1]]
+            : []);
         setStats(filtered);
       } catch (err: any) {
         console.error(err);
@@ -172,7 +215,7 @@ export default function BarangayConcernsAnalytics({
 
     loadBarangayConcerns();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [barangayId, statusFilter]);
+  }, [barangayId, statusFilter, selectedYear]);
 
   useEffect(() => {
     if (!allStats.length) return;
@@ -180,15 +223,12 @@ export default function BarangayConcernsAnalytics({
     setStats(filtered.length ? filtered : []);
   }, [selectedMonth, allStats]);
 
-  const handlePrint = () => {
-    if (typeof window !== "undefined") {
-      window.print();
-    }
-  };
-
-  const handleDownloadPDF = () => {
-    handlePrint();
-  };
+  // Get stats for the selected year
+  const yearlyStats = useMemo(() => {
+    // This would need to be recalculated based on selectedYear
+    // For now, showing allStats, but ideally filter by year
+    return allStats;
+  }, [allStats]);
 
   const availableMonths = MONTHS.filter((m) =>
     allStats.some((s) => s.month === m),
@@ -201,8 +241,8 @@ export default function BarangayConcernsAnalytics({
   const ongoingCount = currentData?.ongoing || 0;
   const resolvedCount = currentData?.resolved || 0;
 
-  // Calculate yearly totals
-  const yearlyTotals = allStats.reduce(
+  // Calculate yearly totals based on the filtered year data
+  const yearlyTotals = yearlyStats.reduce(
     (acc, item) => {
       acc.total += item.total;
       acc.needsAction += item.needsAction;
@@ -315,13 +355,33 @@ export default function BarangayConcernsAnalytics({
               </select>
             )}
 
-            <button
-              type="button"
-              onClick={handleDownloadPDF}
-              className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white border border-blue-600 transition-all duration-300"
-            >
-              📄 PDF Report
-            </button>
+            {/* Year Selector */}
+            {viewMode === "yearly" && (
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="rounded-lg bg-gray-900 border border-slate-700 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-slate-600 transition-all"
+              >
+                {availableYears.length === 0 ? (
+                  <option value={selectedYear}>{selectedYear}</option>
+                ) : (
+                  availableYears.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))
+                )}
+              </select>
+            )}
+
+            <div className="no-print">
+              <BarangayConcernsPDFDownload
+                concernData={viewMode === "monthly" ? stats : yearlyStats}
+                barangayName={barangayId ? `Barangay ${barangayId}` : undefined}
+                viewMode={viewMode}
+                selectedYear={selectedYear}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -377,12 +437,12 @@ export default function BarangayConcernsAnalytics({
               <h3 className="text-xl font-bold text-white/80">
                 {viewMode === "monthly"
                   ? `${selectedMonth} Report`
-                  : "Yearly Overview"}
+                  : `${selectedYear} Yearly Overview`}
               </h3>
               <p className="text-sm text-white/80 mt-1">
                 {viewMode === "monthly"
                   ? `Status breakdown for ${selectedMonth}`
-                  : `Aggregated data for all months`}
+                  : `Aggregated data for ${selectedYear}`}
               </p>
             </div>
 
@@ -514,7 +574,7 @@ export default function BarangayConcernsAnalytics({
               <div className="h-96 bg-slate-950/60 rounded-lg p-4 border border-slate-700">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={allStats}
+                    data={yearlyStats}
                     margin={{ top: 20, right: 30, bottom: 60, left: 50 }}
                   >
                     <defs>

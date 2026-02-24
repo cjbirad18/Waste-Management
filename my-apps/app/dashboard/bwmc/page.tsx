@@ -127,7 +127,10 @@ function SidebarItem({
       </span>
       <span className="flex-1">{label}</span>
       {badge !== undefined && (
-        <Badge variant="destructive" className="ml-auto px-2 py-0.5 text-xs font-bold">
+        <Badge
+          variant="destructive"
+          className="ml-auto px-2 py-0.5 text-xs font-bold"
+        >
           {badge}
         </Badge>
       )}
@@ -1072,6 +1075,19 @@ export default function BWMCdashboard() {
       (typeof reports)[0] | null
     >(null);
 
+    // New state for table view
+    const [reportTab, setReportTab] = useState<
+      | "All Reports"
+      | "Submitted"
+      | "Ongoing"
+      | "Needs Action"
+      | "Resolved"
+      | "Rejected"
+    >("All Reports");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const reportsPerPage = 5;
+
     useEffect(() => {
       const fetchReports = async () => {
         setLoading(true);
@@ -1108,7 +1124,15 @@ export default function BWMCdashboard() {
 
         const { data, error: reportError } = await supabase
           .from("community_reports")
-          .select("*")
+          .select(
+            `
+            *,
+            reporter:user_id (
+              first_name,
+              last_name
+            )
+          `,
+          )
           .eq("barangay_id", userData.barangay_id)
           .order("date_submitted", { ascending: false });
 
@@ -1393,60 +1417,73 @@ export default function BWMCdashboard() {
       setActionRemarks("");
     };
 
-    const sortedReports = useMemo(() => {
+    // Filter and paginate reports
+    const filteredReports = useMemo(() => {
       let filtered = [...reports];
 
-      if (sortOption === "ongoing") {
-        filtered = reports.filter((r) => r.current_status === "Ongoing");
-      } else if (sortOption === "needs") {
-        filtered = reports.filter((r) => r.current_status === "Needs Action");
-      } else if (sortOption === "resolved") {
-        filtered = reports.filter((r) => r.current_status === "Resolved");
+      // Filter by tab
+      if (reportTab === "Submitted") {
+        filtered = filtered.filter((r) => r.current_status === "Submitted");
+      } else if (reportTab === "Ongoing") {
+        filtered = filtered.filter((r) => r.current_status === "Ongoing");
+      } else if (reportTab === "Needs Action") {
+        filtered = filtered.filter((r) => r.current_status === "Needs Action");
+      } else if (reportTab === "Resolved") {
+        filtered = filtered.filter((r) => r.current_status === "Resolved");
+      } else if (reportTab === "Rejected") {
+        filtered = filtered.filter((r) => r.current_status === "Rejected");
       }
 
-      if (
-        sortOption === "latest" ||
-        sortOption === "ongoing" ||
-        sortOption === "needs" ||
-        sortOption === "resolved"
-      ) {
-        return filtered.sort(
-          (a, b) =>
-            new Date(b.date_submitted).getTime() -
-            new Date(a.date_submitted).getTime(),
-        );
-      }
-
-      if (sortOption === "oldest") {
-        return filtered.sort(
-          (a, b) =>
-            new Date(a.date_submitted).getTime() -
-            new Date(b.date_submitted).getTime(),
-        );
-      }
-
-      if (sortOption === "status") {
-        const order: Record<string, number> = {
-          "Needs Action": 1,
-          Ongoing: 2,
-          Resolved: 3,
-          Rejected: 4,
-          Submitted: 5,
-        };
-
-        return filtered.sort((a, b) => {
-          const aRank = order[a.current_status] ?? 99;
-          const bRank = order[b.current_status] ?? 99;
-          if (aRank !== bRank) return aRank - bRank;
-          return (
-            new Date(b.date_submitted).getTime() -
-            new Date(a.date_submitted).getTime()
-          );
+      // Filter by search query
+      if (searchQuery.trim()) {
+        const search = searchQuery.toLowerCase();
+        filtered = filtered.filter((r) => {
+          const reporterName = r.reporter
+            ? `${r.reporter.first_name || ""} ${r.reporter.last_name || ""}`.trim()
+            : "";
+          const haystack = [
+            r.location,
+            r.description,
+            r.landmark,
+            r.current_status,
+            r.report_id,
+            reporterName,
+          ]
+            .filter(Boolean)
+            .map((v) => String(v).toLowerCase())
+            .join(" ");
+          return haystack.includes(search);
         });
       }
 
-      return filtered;
-    }, [reports, sortOption]);
+      // Sort by most recent
+      return filtered.sort(
+        (a, b) =>
+          new Date(b.date_submitted).getTime() -
+          new Date(a.date_submitted).getTime(),
+      );
+    }, [reports, reportTab, searchQuery]);
+
+    const totalPages = Math.max(
+      1,
+      Math.ceil(filteredReports.length / reportsPerPage),
+    );
+    const currentPageNum = Math.min(currentPage, totalPages);
+    const startIndex = (currentPageNum - 1) * reportsPerPage;
+    const pagedReports = filteredReports.slice(
+      startIndex,
+      startIndex + reportsPerPage,
+    );
+
+    const visiblePages = (() => {
+      const start = Math.max(1, currentPageNum - 1);
+      const end = Math.min(totalPages, start + 2);
+      return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+    })();
+
+    useEffect(() => {
+      setCurrentPage(1);
+    }, [reportTab, searchQuery]);
 
     if (loading) {
       return (
@@ -1458,259 +1495,274 @@ export default function BWMCdashboard() {
 
     if (error) return <div className="text-red-700">{error}</div>;
 
+    const reportTabs = [
+      "All Reports",
+      "Submitted",
+      "Ongoing",
+      "Needs Action",
+      "Resolved",
+      "Rejected",
+    ] as const;
+
     return (
-      <section className="max-w-6xl mx-auto mt-10 space-y-5">
-        {/* Header + stats */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <section className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent drop-shadow-2xl">
-              Incident Reports ({barangayName || "Your Barangay"})
+            <h2 className="text-2xl font-bold text-slate-100">
+              Incident Reports
             </h2>
-            <p className="text-base md:text-lg text-slate-300">
-              Monitor reported incidents and coordinate actions with BWMC and
-              SWMO.
+            <p className="text-sm text-slate-400 mt-1">
+              Monitor reported incidents for {barangayName || "Your Barangay"}
             </p>
           </div>
-
-          <div className="flex flex-wrap gap-2 text-[11px] sm:text-xs">
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-2xl bg-slate-800/80 text-slate-200 border border-emerald-700/50 shadow-md backdrop-blur-xl">
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-              <span className="font-medium">Total:</span>
-              <span className="font-bold text-base text-emerald-300">
-                {reports.length}
-              </span>
-            </span>
-
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-2xl bg-slate-800/80 text-blue-200 border border-blue-700/60 shadow-md backdrop-blur-xl">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-              <span className="font-medium">Ongoing:</span>
-              <span className="font-bold text-base text-blue-300">
-                {reports.filter((r) => r.current_status === "Ongoing").length}
-              </span>
-            </span>
-
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-2xl bg-slate-800/80 text-amber-200 border border-amber-700/60 shadow-md backdrop-blur-xl">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-              <span className="font-medium">Needs action:</span>
-              <span className="font-bold text-base text-amber-300">
-                {
-                  reports.filter((r) => r.current_status === "Needs Action")
-                    .length
-                }
-              </span>
-            </span>
-
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-2xl bg-slate-800/80 text-emerald-200 border border-emerald-700/60 shadow-md backdrop-blur-xl">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              <span className="font-medium">Resolved:</span>
-              <span className="font-bold text-base text-emerald-300">
-                {reports.filter((r) => r.current_status === "Resolved").length}
-              </span>
-            </span>
+          <div className="flex items-center gap-2">
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search users..."
+              className="w-full md:w-64"
+            />
           </div>
         </div>
 
-        {/* List wrapper */}
-        <div className="space-y-4">
-          {/* Filter and Sort Bar */}
-          <div className="flex items-center justify-between px-5 py-3 rounded-2xl bg-gradient-to-r from-slate-800/80 to-slate-800/50 border border-emerald-800/30 backdrop-blur-xl">
-            <span className="text-sm font-semibold text-slate-300">
-              Sort by:
-            </span>
-
-            <div className="inline-flex items-center gap-2 rounded-xl bg-slate-900/60 border border-emerald-600/40 px-3 py-1.5 shadow-sm">
-              <span className="text-emerald-400 text-sm">⇅</span>
-              <select
-                value={sortOption}
-                onChange={(e) =>
-                  setSortOption(
-                    e.target.value as
-                      | "latest"
-                      | "oldest"
-                      | "status"
-                      | "ongoing"
-                      | "needs"
-                      | "resolved",
-                  )
-                }
-                className="text-xs bg-transparent border-none text-slate-100 focus:outline-none focus:ring-0 cursor-pointer"
-              >
-                <option className="bg-slate-900" value="latest">
-                  Most recent
-                </option>
-                <option className="bg-slate-900" value="oldest">
-                  Oldest first
-                </option>
-                <option className="bg-slate-900" value="status">
-                  Status (grouped)
-                </option>
-                <option className="bg-slate-900" value="ongoing">
-                  Ongoing only
-                </option>
-                <option className="bg-slate-900" value="needs">
-                  Needs action only
-                </option>
-                <option className="bg-slate-900" value="resolved">
-                  Resolved only
-                </option>
-              </select>
-            </div>
-          </div>
-
-          {sortedReports.length === 0 ? (
-            <div className="relative px-6 py-12 text-center rounded-2xl bg-gradient-to-br from-slate-800/60 to-slate-900/60 border border-slate-700/50">
-              <p className="text-slate-400 text-sm">
-                📭 No reports found for this barangay.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-2.5">
-              {sortedReports.map((report) => {
-                const statusConfig = {
-                  "Needs Action": {
-                    bg: "bg-amber-500/10",
-                    border: "border-amber-500/40",
-                    text: "text-amber-300",
-                    badgeBg: "bg-amber-500/20",
-                    icon: "⚠️",
-                  },
-                  Ongoing: {
-                    bg: "bg-blue-500/10",
-                    border: "border-blue-500/40",
-                    text: "text-blue-300",
-                    badgeBg: "bg-blue-500/20",
-                    icon: "🔄",
-                  },
-                  Rejected: {
-                    bg: "bg-red-500/10",
-                    border: "border-red-500/40",
-                    text: "text-red-300",
-                    badgeBg: "bg-red-500/20",
-                    icon: "❌",
-                  },
-                  Resolved: {
-                    bg: "bg-emerald-500/10",
-                    border: "border-emerald-500/40",
-                    text: "text-emerald-300",
-                    badgeBg: "bg-emerald-500/20",
-                    icon: "✅",
-                  },
-                  Submitted: {
-                    bg: "bg-slate-800/50",
-                    border: "border-slate-700/50",
-                    text: "text-slate-300",
-                    badgeBg: "bg-slate-700/40",
-                    icon: "📋",
-                  },
-                };
-
-                const config =
-                  statusConfig[
-                    report.current_status as keyof typeof statusConfig
-                  ] || statusConfig.Submitted;
-
-                return (
-                  <div
-                    key={report.report_id}
-                    className={`group relative rounded-xl border overflow-hidden transition-all duration-200 hover:shadow-md ${config.bg} ${config.border} backdrop-blur-xl`}
+        {/* Table Section */}
+        <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 shadow-xl shadow-black/40">
+          <div className="p-5 md:p-6 space-y-4">
+            {/* Tabs */}
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap gap-2">
+                {reportTabs.map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setReportTab(tab)}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+                      reportTab === tab
+                        ? "bg-emerald-500/15 text-emerald-200 border border-emerald-500/30"
+                        : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                    }`}
                   >
-                    <div className="relative p-3">
-                      {/* Header Row: Location, Date, Status */}
-                      <div className="flex items-center justify-between gap-3 mb-2">
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-bold text-slate-50 truncate">
-                            {report.location}
-                          </h4>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            {new Date(report.date_submitted).toLocaleString()}
-                          </p>
-                        </div>
-                        <span
-                          className={`px-2 py-1 rounded-md text-[10px] font-semibold flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${config.text} ${config.badgeBg}`}
-                        >
-                          <span className="text-xs">{config.icon}</span>
-                          <span>{report.current_status || "Submitted"}</span>
-                        </span>
-                      </div>
-
-                      {/* Content Row: Landmark & Description */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                        <div className="px-2 py-1.5 rounded-md bg-slate-900/30 border border-slate-700/40">
-                          <span className="text-[10px] text-slate-400">
-                            📍{" "}
-                          </span>
-                          <span className="text-[10px] font-medium text-slate-200">
-                            {report.landmark || (
-                              <span className="text-slate-500 italic">
-                                No landmark
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                        <div className="px-2 py-1.5 rounded-md bg-slate-900/20 border border-slate-700/30">
-                          <p className="text-[10px] text-slate-300 line-clamp-1">
-                            {report.description || "No description"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons - Compact Row */}
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => {
-                            console.log("REPORT CLICKED:", report);
-                            setSelectedDescReport(report);
-                            setDescText(report.description);
-                            setDescModalOpen(true);
-                          }}
-                          className="px-2 py-1 rounded-md text-[15px] font-medium bg-slate-700/40 hover:bg-slate-700/60 text-slate-200 border border-slate-600/30 transition-all duration-150"
-                        >
-                          View
-                        </button>
-
-                        {report.current_status === "Needs Action" ||
-                        report.current_status === "Ongoing" ||
-                        report.current_status === "Rejected" ||
-                        report.current_status === "Resolved" ? (
-                          <button
-                            onClick={() => {
-                              setViewRemarkTitle(
-                                report.current_status === "Rejected"
-                                  ? "Reject Remark"
-                                  : "Response Remark",
-                              );
-                              setViewRemarkText(
-                                report.latest_remarks || "No remarks provided.",
-                              );
-                              setViewRemarkModalOpen(true);
-                            }}
-                            className="px-2 py-1 text-[15px] font-medium rounded-md bg-blue-600/70 hover:bg-blue-600/80 text-slate-50 border border-blue-500/40 transition-all duration-150"
-                          >
-                            📝 Remark
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => handleOpenResponse(report)}
-                              className="px-2 py-1 text-[15px] font-medium rounded-md bg-emerald-600/70 hover:bg-emerald-600/80 text-slate-50 border border-emerald-500/40 transition-all duration-150"
-                            >
-                              Response
-                            </button>
-                            <button
-                              onClick={() => handleOpenReject(report)}
-                              className="px-2 py-1 text-[15px] font-medium rounded-md bg-red-600/70 hover:bg-red-600/80 text-slate-50 border border-red-500/40 transition-all duration-150"
-                            >
-                              Reject
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                    {tab}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
+
+            {/* Table */}
+            {loading && <TruckLoader />}
+
+            {!loading && filteredReports.length === 0 && (
+              <div className="rounded-lg border border-dashed border-slate-800 px-4 py-8 text-center text-sm text-slate-400">
+                No reports match the selected filters.
+              </div>
+            )}
+
+            {!loading && filteredReports.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-800">
+                  <thead className="bg-slate-950/60">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        Report ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        Reported By
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        Location
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        Description
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        Date Submitted
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 bg-slate-900/40">
+                    {pagedReports.map((report) => {
+                      const statusConfig: Record<
+                        string,
+                        { className: string; label: string }
+                      > = {
+                        "Needs Action": {
+                          className:
+                            "bg-amber-500/15 text-amber-300 border border-amber-500/30",
+                          label: "Needs Action",
+                        },
+                        Ongoing: {
+                          className:
+                            "bg-blue-500/15 text-blue-300 border border-blue-500/30",
+                          label: "Ongoing",
+                        },
+                        Rejected: {
+                          className:
+                            "bg-rose-500/15 text-rose-300 border border-rose-500/30",
+                          label: "Rejected",
+                        },
+                        Resolved: {
+                          className:
+                            "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+                          label: "Resolved",
+                        },
+                        Submitted: {
+                          className:
+                            "bg-slate-500/15 text-slate-300 border border-slate-500/30",
+                          label: "Submitted",
+                        },
+                      };
+
+                      const statusInfo =
+                        statusConfig[report.current_status] ||
+                        statusConfig.Submitted;
+
+                      const reporterName = report.reporter
+                        ? `${report.reporter.first_name || ""} ${report.reporter.last_name || ""}`.trim() ||
+                          "Unknown"
+                        : "Unknown";
+
+                      return (
+                        <tr key={report.report_id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-100">
+                            RP-{report.report_id}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-100">
+                            <div className="max-w-xs truncate">
+                              {reporterName}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-100">
+                            <div className="max-w-xs truncate">
+                              {report.location || "N/A"}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-200">
+                            <div className="max-w-md truncate">
+                              {report.description || "No description"}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <span
+                              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.className}`}
+                            >
+                              {statusInfo.label}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
+                            {new Date(report.date_submitted).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <button
+                              onClick={() => {
+                                setSelectedDescReport(report);
+                                setDescText(report.description);
+                                setDescModalOpen(true);
+                              }}
+                              className="text-emerald-300 hover:text-emerald-200 mr-4"
+                            >
+                              View
+                            </button>
+                            {report.current_status === "Submitted" ? (
+                              <>
+                                <button
+                                  onClick={() => handleOpenResponse(report)}
+                                  className="text-blue-300 hover:text-blue-200 mr-4"
+                                >
+                                  Response
+                                </button>
+                                <button
+                                  onClick={() => handleOpenReject(report)}
+                                  className="text-red-300 hover:text-red-200"
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setViewRemarkTitle(
+                                    report.current_status === "Rejected"
+                                      ? "Reject Remark"
+                                      : "Response Remark",
+                                  );
+                                  setViewRemarkText(
+                                    report.latest_remarks ||
+                                      "No remarks provided.",
+                                  );
+                                  setViewRemarkModalOpen(true);
+                                }}
+                                className="text-slate-300 hover:text-slate-100"
+                              >
+                                Remark
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {!loading && filteredReports.length > 0 && (
+              <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between text-sm text-slate-400">
+                <div>
+                  Showing {filteredReports.length ? startIndex + 1 : 0} to{" "}
+                  {Math.min(
+                    startIndex + reportsPerPage,
+                    filteredReports.length,
+                  )}{" "}
+                  of {filteredReports.length} results
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
+                    disabled={currentPageNum === 1}
+                    className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  {visiblePages.map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      className={`rounded-lg px-3 py-1 text-sm ${
+                        page === currentPageNum
+                          ? "bg-emerald-600 text-white"
+                          : "bg-slate-800 text-slate-200"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
+                    disabled={currentPageNum === totalPages}
+                    className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Description modal */}
@@ -2094,10 +2146,7 @@ export default function BWMCdashboard() {
                   >
                     Cancel
                   </Button>
-                  <Button
-                    onClick={handleSubmitActionReport}
-                    className="h-auto"
-                  >
+                  <Button onClick={handleSubmitActionReport} className="h-auto">
                     Submit action
                   </Button>
                 </div>
@@ -2343,8 +2392,9 @@ export default function BWMCdashboard() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       onClick={() => setStatsVisible(!statsVisible)}
+                      className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
                     >
                       {statsVisible ? "Hide Stats" : "Show Stats"}
                     </Button>
@@ -3238,9 +3288,7 @@ function ManageAccountSection(props: ManageAccountSectionProps) {
         </div>
 
         <div className="flex justify-end pt-3">
-          <Button type="submit">
-            Update Account
-          </Button>
+          <Button type="submit">Update Account</Button>
         </div>
       </form>
     </section>
@@ -3266,10 +3314,7 @@ function InputField({
 }) {
   return (
     <div className="mb-4 space-y-2">
-      <Label
-        htmlFor={name}
-        className="text-sm font-semibold text-slate-100"
-      >
+      <Label htmlFor={name} className="text-sm font-semibold text-slate-100">
         {label}
       </Label>
       <Input
