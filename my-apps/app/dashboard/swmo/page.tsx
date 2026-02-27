@@ -199,6 +199,7 @@ export default function AdminDashboard() {
   // Sorting state for user list
 
   // ...existing code...
+  const [initials, setInitials] = useState("");
   const router = useRouter();
 
   // User initials for avatar
