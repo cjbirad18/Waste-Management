@@ -202,7 +202,7 @@ export default function AdminDashboard() {
   const router = useRouter();
 
   // User initials for avatar
-  const [initials, setInitials] = useState("");
+  // ...existing code...
   useEffect(() => {
     async function fetchInitials() {
       const { data: authData, error } = await supabase.auth.getUser();
@@ -250,7 +250,7 @@ export default function AdminDashboard() {
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [displayName, setDisplayName] = useState("User");
-  const [initials, setInitials] = useState("");
+  // ...existing code...
   const [users, setUsers] = useState<User[]>([]);
   // Sorting state for user list
   const [userSortKey, setUserSortKey] = useState<

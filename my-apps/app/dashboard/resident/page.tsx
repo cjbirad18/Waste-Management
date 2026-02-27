@@ -1203,7 +1203,7 @@ export default function ResidentDashboard() {
   const router = useRouter();
 
   // User initials for avatar
-  const [initials, setInitials] = useState("");
+  // ...existing code...
   useEffect(() => {
     async function fetchInitials() {
       const { data: authData, error } = await supabase.auth.getUser();
@@ -1241,7 +1241,7 @@ export default function ResidentDashboard() {
   const [activeTab, setActiveTab] = useState<ResidentActiveTab>("dashboard");
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [displayName, setDisplayName] = useState("User");
-  const [initials, setInitials] = useState("");
+  // ...existing code...
   const [gps, setGps] = useState<{ lat: number | null; lng: number | null }>({
     lat: null,
     lng: null,
