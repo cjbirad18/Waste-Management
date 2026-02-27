@@ -641,12 +641,12 @@ function ScheduleFormWithCalendar({
 
           <div className="flex justify-end pt-4 border-t border-green-800/30">
             <button
-                            <span className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-lg shadow-lg overflow-hidden">
-                              {initials}
-                            </span>
               type="submit"
               className="group relative inline-flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-lg font-black text-slate-100 shadow-xl shadow-emerald-500/30 hover:shadow-2xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 rounded-2xl overflow-hidden"
             >
+              <span className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-lg shadow-lg overflow-hidden">
+                {initials}
+              </span>
               <span className="relative z-10 tracking-wide uppercase">
                 Save Schedule
               </span>
