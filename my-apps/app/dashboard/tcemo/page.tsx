@@ -639,7 +639,11 @@ export default function TcemoDashboard() {
               <span className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-lg shadow-lg overflow-hidden">
                 {initials}
               </span>
+            </button>
+            <button
               aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="md:hidden inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-lg bg-slate-900/80 text-slate-100 hover:bg-slate-800 transition-colors flex-shrink-0 ring-1 ring-white/10"
             >
               {sidebarOpen ? "✖" : "☰"}
             </button>
