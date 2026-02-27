@@ -417,14 +417,6 @@ function ScheduleFormWithCalendar({
                 name="barangay_id"
                 value={schedule.barangay_id}
                 onChange={handleChange}
-                      computedInitials = authData.user.email.slice(0, 2).toUpperCase();
-                    } else {
-                      computedInitials = "U";
-                    }
-                    setInitials(computedInitials);
-                  }
-                  fetchInitials();
-                }, []);
                 required
               >
                 <option value="">Select Barangay</option>
