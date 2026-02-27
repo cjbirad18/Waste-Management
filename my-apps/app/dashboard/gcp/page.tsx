@@ -1,7 +1,4 @@
-<span className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-lg shadow-lg overflow-hidden">
-  {initials}
-</span>;
-("use client");
+"use client";
 
 import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import {
