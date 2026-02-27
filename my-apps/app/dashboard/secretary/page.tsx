@@ -417,7 +417,35 @@ function ScheduleFormWithCalendar({
                 name="barangay_id"
                 value={schedule.barangay_id}
                 onChange={handleChange}
-                className="w-full rounded-2xl bg-slate-900/80 border border-emerald-800/20 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-shadow duration-200 backdrop-blur-md shadow-sm appearance-none pr-12"
+                const [initials, setInitials] = useState("");
+  
+                useEffect(() => {
+                  async function fetchInitials() {
+                    const { data: authData, error } = await supabase.auth.getUser();
+                    if (error || !authData?.user) return;
+  
+                    const { data: profile } = await supabase
+                      .from("users")
+                      .select("first_name, last_name, username")
+                      .eq("user_id", authData.user.id)
+                      .single();
+  
+                    const fullName = `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
+                    let computedInitials = "";
+                    if (fullName) {
+                      const parts = fullName.split(" ").filter(Boolean);
+                      computedInitials = parts.map((p) => p[0]).join("").toUpperCase();
+                    } else if (profile?.username) {
+                      computedInitials = profile.username.slice(0, 2).toUpperCase();
+                    } else if (authData.user.email) {
+                      computedInitials = authData.user.email.slice(0, 2).toUpperCase();
+                    } else {
+                      computedInitials = "U";
+                    }
+                    setInitials(computedInitials);
+                  }
+                  fetchInitials();
+                }, []);
                 required
               >
                 <option value="">Select Barangay</option>
