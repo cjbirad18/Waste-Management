@@ -1204,6 +1204,7 @@ export default function ResidentDashboard() {
 
   // User initials for avatar
   // ...existing code...
+  const [initials, setInitials] = useState("");
   useEffect(() => {
     async function fetchInitials() {
       const { data: authData, error } = await supabase.auth.getUser();
