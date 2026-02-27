@@ -143,6 +143,38 @@ function SidebarItem({
 export default function BWMCdashboard() {
   const router = useRouter();
 
+  // User initials for avatar
+  const [initials, setInitials] = useState("");
+  useEffect(() => {
+    async function fetchInitials() {
+      const { data: authData, error } = await supabase.auth.getUser();
+      if (error || !authData?.user) return;
+      const { data: profile } = await supabase
+        .from("users")
+        .select("first_name, last_name, username")
+        .eq("user_id", authData.user.id)
+        .single();
+      const fullName =
+        `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
+      let computedInitials = "";
+      if (fullName) {
+        const parts = fullName.split(" ").filter(Boolean);
+        computedInitials = parts
+          .map((p) => p[0])
+          .join("")
+          .toUpperCase();
+      } else if (profile?.username) {
+        computedInitials = profile.username.slice(0, 2).toUpperCase();
+      } else if (authData.user.email) {
+        computedInitials = authData.user.email.slice(0, 2).toUpperCase();
+      } else {
+        computedInitials = "U";
+      }
+      setInitials(computedInitials);
+    }
+    fetchInitials();
+  }, []);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [statsVisible, setStatsVisible] = useState(true);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
