@@ -7,6 +7,7 @@ import React, {
   ChangeEvent,
   FormEvent,
 } from "react";
+// ...existing code...
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import dynamic from "next/dynamic";
@@ -194,7 +195,22 @@ function SelectField({
 }
 
 export default function AdminDashboard() {
+  const [userRoleFilter, setUserRoleFilter] = useState<string>("all");
+  // Sorting state for user list
+
+  // ...existing code...
   const router = useRouter();
+
+  // User Table Size and Expansion Controls
+  const USER_TABLE_SIZES = [
+    { font: "text-xs", row: "py-2" },
+    { font: "text-sm", row: "py-2.5" },
+    { font: "text-base", row: "py-3" },
+    { font: "text-lg", row: "py-4" },
+  ];
+  const [userTableSizeIdx, setUserTableSizeIdx] = useState(1); // default medium
+  const userTableSize = USER_TABLE_SIZES[userTableSizeIdx];
+  const [isUserTableExpanded, setIsUserTableExpanded] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const isDark = theme === "dark";
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -202,7 +218,42 @@ export default function AdminDashboard() {
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [displayName, setDisplayName] = useState("User");
+  const [initials, setInitials] = useState("");
   const [users, setUsers] = useState<User[]>([]);
+  // Sorting state for user list
+  const [userSortKey, setUserSortKey] = useState<
+    "name" | "email" | "role" | "barangay"
+  >("name");
+  const [userSortDir, setUserSortDir] = useState<"asc" | "desc">("asc");
+  const sortedUsers = React.useMemo(() => {
+    const sorted = [...users];
+    sorted.sort((a, b) => {
+      let aValue = "";
+      let bValue = "";
+      switch (userSortKey) {
+        case "name":
+          aValue = `${a.first_name ?? ""} ${a.last_name ?? ""}`.toLowerCase();
+          bValue = `${b.first_name ?? ""} ${b.last_name ?? ""}`.toLowerCase();
+          break;
+        case "email":
+          aValue = a.email?.toLowerCase() ?? "";
+          bValue = b.email?.toLowerCase() ?? "";
+          break;
+        case "role":
+          aValue = a.role?.toLowerCase() ?? "";
+          bValue = b.role?.toLowerCase() ?? "";
+          break;
+        case "barangay":
+          aValue = a.barangay_id?.toString().toLowerCase() ?? "";
+          bValue = b.barangay_id?.toString().toLowerCase() ?? "";
+          break;
+      }
+      if (aValue < bValue) return userSortDir === "asc" ? -1 : 1;
+      if (aValue > bValue) return userSortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [users, userSortKey, userSortDir]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [errorUsers, setErrorUsers] = useState<string | null>(null);
 
@@ -219,9 +270,25 @@ export default function AdminDashboard() {
 
       const fullName =
         `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
-      setDisplayName(
-        fullName || profile?.username || authData.user.email || "User",
-      );
+      const nameToUse =
+        fullName || profile?.username || authData.user.email || "User";
+      setDisplayName(nameToUse);
+      // Compute initials
+      let initials = "";
+      if (fullName) {
+        const parts = fullName.split(" ").filter(Boolean);
+        initials = parts
+          .map((p) => p[0])
+          .join("")
+          .toUpperCase();
+      } else if (profile?.username) {
+        initials = profile.username.slice(0, 2).toUpperCase();
+      } else if (authData.user.email) {
+        initials = authData.user.email.slice(0, 2).toUpperCase();
+      } else {
+        initials = "U";
+      }
+      setInitials(initials);
     }
 
     fetchDisplayName();
@@ -816,6 +883,7 @@ export default function AdminDashboard() {
   );
 
   const filteredUserAccounts = users.filter((user) => {
+    if (userRoleFilter !== "all" && user.role !== userRoleFilter) return false;
     const role = user.role || "";
     if (userAccountsTab === "Residents" && role !== "Resident") return false;
     if (userAccountsTab === "Staff" && !staffRoles.some((r) => r === role)) {
@@ -1850,7 +1918,9 @@ export default function AdminDashboard() {
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-100 font-medium transition-colors ring-1 ring-white/10"
             >
-              {displayName}
+              <span className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-sm shadow-lg overflow-hidden">
+                {initials}
+              </span>
               <svg
                 className={`w-4 h-4 transition-transform duration-300 ${profileDropdownOpen ? "rotate-180" : ""}`}
                 fill="none"
@@ -2023,98 +2093,290 @@ export default function AdminDashboard() {
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                  <div
-                    className={`rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40 transition-all duration-300 ${
-                      isMapExpanded ? "lg:col-span-5" : "lg:col-span-3"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3 mb-4">
-                      <h2 className="text-xl font-bold text-slate-100">
-                        Live Truck Tracking
-                      </h2>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setIsMapExpanded(false)}
-                          className={`inline-flex h-7 w-7 items-center justify-center rounded-md border text-xs font-semibold transition ${
-                            isMapExpanded
-                              ? "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
-                              : "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
-                          }`}
-                          aria-label="Minimize map"
-                          title="Minimize"
-                        >
-                          _
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setIsMapExpanded(true)}
-                          className={`inline-flex h-7 w-7 items-center justify-center rounded-md border text-[10px] font-semibold transition ${
-                            isMapExpanded
-                              ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
-                              : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
-                          }`}
-                          aria-label="Maximize map"
-                          title="Maximize"
-                        >
-                          []
-                        </button>
-                      </div>
-                    </div>
-                    <div
-                      className={`relative rounded-xl bg-slate-950/60 overflow-hidden border border-slate-800 transition-all duration-300 ${
-                        isMapExpanded ? "h-[70vh]" : "h-[420px]"
-                      }`}
-                    >
-                      <LeafletMap />
-                    </div>
-                  </div>
-
-                  {!isMapExpanded && (
-                    <div className="lg:col-span-2 rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40">
-                      <h2 className="text-xl font-bold text-slate-100 mb-4">
-                        Recent Community Reports
-                      </h2>
-                      <div className="space-y-4">
-                        {dashboardReportCards.length === 0 ? (
-                          <div className="rounded-lg border border-dashed border-slate-800 px-4 py-6 text-sm text-slate-400">
-                            No recent community reports.
-                          </div>
-                        ) : (
-                          dashboardReportCards.map((report) => (
-                            <div
-                              key={`${report.title}-${report.time}`}
-                              className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 transition-shadow hover:shadow-lg hover:shadow-black/30"
-                            >
-                              <div className="flex justify-between items-start mb-2">
-                                <span
-                                  className={`inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold ${
-                                    reportStatusClasses[report.status] ??
-                                    "bg-slate-800 text-slate-200"
-                                  }`}
+                  {isUserTableExpanded ? (
+                    <div className="lg:col-span-5">
+                      {/* User list maximized: full width, hide map and reports */}
+                      <div className="dashboard-section overflow-hidden bg-slate-950 border border-slate-800 max-h-[90vh]">
+                        <div className="relative z-10">
+                          <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-bold text-slate-100">
+                              User List (Realtime)
+                            </h3>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs bg-emerald-600/20 text-emerald-300 px-3 py-1 rounded-lg border border-emerald-600/40 font-medium">
+                                {users.length} users
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setIsUserTableExpanded(false)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-emerald-500 bg-slate-900 text-2xl font-bold text-emerald-300 hover:bg-emerald-500/10 transition ml-2 shadow-lg"
+                                aria-label="Minimize user list"
+                                title="Minimize user list"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-6 w-6"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
                                 >
-                                  {report.status}
-                                </span>
-                                <span className="text-xs text-slate-400">
-                                  {report.time}
-                                </span>
-                              </div>
-                              <h4 className="font-medium mb-1 text-slate-100">
-                                Title : {report.title}
-                              </h4>
-                              <p className="text-sm text-slate-300 mb-3">
-                                Description : {report.description}
-                              </p>
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm font-medium text-slate-300">
-                                  Barangay : {report.barangay}
-                                </span>
-                              </div>
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M20 12H4"
+                                  />
+                                </svg>
+                              </button>
                             </div>
-                          ))
-                        )}
+                          </div>
+                          {loadingUsers && <TruckLoader />}
+                          {!loadingUsers && (
+                            <div className="overflow-x-auto rounded-lg border border-slate-800 max-h-[70vh] bg-slate-950">
+                              <table
+                                className={`min-w-full ${userTableSize.font}`}
+                              >
+                                <thead className="bg-slate-800 text-slate-300 border-b border-slate-700 sticky top-0 z-10">
+                                  <tr>
+                                    <th
+                                      className="px-4 py-3 text-left font-medium text-xs cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
+                                      title="Sort by Name"
+                                      onClick={() => {
+                                        setUserSortKey("name");
+                                        setUserSortDir(
+                                          userSortKey === "name" &&
+                                            userSortDir === "asc"
+                                            ? "desc"
+                                            : "asc",
+                                        );
+                                      }}
+                                    >
+                                      <span className="inline-flex items-center gap-1">
+                                        Name
+                                        <span className="text-xs opacity-70 group-hover:opacity-100 transition">
+                                          {userSortKey === "name"
+                                            ? userSortDir === "asc"
+                                              ? "▲"
+                                              : "▼"
+                                            : "▲▼"}
+                                        </span>
+                                      </span>
+                                    </th>
+                                    <th
+                                      className="px-4 py-3 text-left font-medium text-xs hidden sm:table-cell cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
+                                      title="Sort by Email"
+                                      onClick={() => {
+                                        setUserSortKey("email");
+                                        setUserSortDir(
+                                          userSortKey === "email" &&
+                                            userSortDir === "asc"
+                                            ? "desc"
+                                            : "asc",
+                                        );
+                                      }}
+                                    >
+                                      <span className="inline-flex items-center gap-1">
+                                        Email
+                                        <span className="text-xs opacity-70 group-hover:opacity-100 transition">
+                                          {userSortKey === "email"
+                                            ? userSortDir === "asc"
+                                              ? "▲"
+                                              : "▼"
+                                            : "▲▼"}
+                                        </span>
+                                      </span>
+                                    </th>
+                                    <th
+                                      className="px-4 py-3 text-left font-medium text-xs cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
+                                      title="Sort by Role"
+                                      onClick={() => {
+                                        setUserSortKey("role");
+                                        setUserSortDir(
+                                          userSortKey === "role" &&
+                                            userSortDir === "asc"
+                                            ? "desc"
+                                            : "asc",
+                                        );
+                                      }}
+                                    >
+                                      <span className="inline-flex items-center gap-1">
+                                        Role
+                                        <span className="text-xs opacity-70 group-hover:opacity-100 transition">
+                                          {userSortKey === "role"
+                                            ? userSortDir === "asc"
+                                              ? "▲"
+                                              : "▼"
+                                            : "▲▼"}
+                                        </span>
+                                      </span>
+                                    </th>
+                                    <th
+                                      className="px-4 py-3 text-left font-medium text-xs hidden md:table-cell cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
+                                      title="Sort by Barangay"
+                                      onClick={() => {
+                                        setUserSortKey("barangay");
+                                        setUserSortDir(
+                                          userSortKey === "barangay" &&
+                                            userSortDir === "asc"
+                                            ? "desc"
+                                            : "asc",
+                                        );
+                                      }}
+                                    >
+                                      <span className="inline-flex items-center gap-1">
+                                        Barangay
+                                        <span className="text-xs opacity-70 group-hover:opacity-100 transition">
+                                          {userSortKey === "barangay"
+                                            ? userSortDir === "asc"
+                                              ? "▲"
+                                              : "▼"
+                                            : "▲▼"}
+                                        </span>
+                                      </span>
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {sortedUsers.map((user) => (
+                                    <tr
+                                      key={
+                                        user.id || user.user_id || user.email
+                                      }
+                                      className="border-t border-slate-800 hover:bg-slate-800 transition-colors"
+                                    >
+                                      <td
+                                        className={`px-4 ${userTableSize.row} font-medium text-slate-200 ${userTableSize.font}`}
+                                      >
+                                        {user.first_name} {user.last_name}
+                                        <div className="sm:hidden text-xs text-slate-400 font-normal">
+                                          {user.email}
+                                        </div>
+                                      </td>
+                                      <td
+                                        className={`px-4 ${userTableSize.row} text-slate-300 hidden sm:table-cell ${userTableSize.font}`}
+                                      >
+                                        {user.email}
+                                      </td>
+                                      <td
+                                        className={`px-4 ${userTableSize.row}`}
+                                      >
+                                        <span className="px-2 py-1 rounded-md bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 text-xs font-medium">
+                                          {user.role}
+                                        </span>
+                                      </td>
+                                      <td
+                                        className={`px-4 ${userTableSize.row} text-slate-400 hidden md:table-cell ${userTableSize.font}`}
+                                      >
+                                        {user.role === "BWMC"
+                                          ? user.barangay_id
+                                          : "-"}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  ) : (
+                    <>
+                      <div
+                        className={`rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40 transition-all duration-300 ${
+                          isMapExpanded ? "lg:col-span-5" : "lg:col-span-3"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                          <h2 className="text-xl font-bold text-slate-100">
+                            Live Truck Tracking
+                          </h2>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setIsMapExpanded(false)}
+                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border text-xs font-semibold transition ${
+                                isMapExpanded
+                                  ? "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                                  : "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
+                              }`}
+                              aria-label="Minimize map"
+                              title="Minimize"
+                            >
+                              _
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsMapExpanded(true)}
+                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border text-[10px] font-semibold transition ${
+                                isMapExpanded
+                                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
+                                  : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                              }`}
+                              aria-label="Maximize map"
+                              title="Maximize"
+                            >
+                              []
+                            </button>
+                          </div>
+                        </div>
+                        <div
+                          className={`relative rounded-xl bg-slate-950/60 overflow-hidden border border-slate-800 transition-all duration-300 ${
+                            isMapExpanded ? "h-[70vh]" : "h-[420px]"
+                          }`}
+                        >
+                          <LeafletMap />
+                        </div>
+                      </div>
+
+                      {!isMapExpanded && (
+                        <div className="lg:col-span-2 rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40">
+                          <h2 className="text-xl font-bold text-slate-100 mb-4">
+                            Recent Community Reports
+                          </h2>
+                          <div className="space-y-4">
+                            {dashboardReportCards.length === 0 ? (
+                              <div className="rounded-lg border border-dashed border-slate-800 px-4 py-6 text-sm text-slate-400">
+                                No recent community reports.
+                              </div>
+                            ) : (
+                              dashboardReportCards.map((report) => (
+                                <div
+                                  key={`${report.title}-${report.time}`}
+                                  className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 transition-shadow hover:shadow-lg hover:shadow-black/30"
+                                >
+                                  <div className="flex justify-between items-start mb-2">
+                                    <span
+                                      className={`inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold ${
+                                        reportStatusClasses[report.status] ??
+                                        "bg-slate-800 text-slate-200"
+                                      }`}
+                                    >
+                                      {report.status}
+                                    </span>
+                                    <span className="text-xs text-slate-400">
+                                      {report.time}
+                                    </span>
+                                  </div>
+                                  <h4 className="font-medium mb-1 text-slate-100">
+                                    Title : {report.title}
+                                  </h4>
+                                  <p className="text-sm text-slate-300 mb-3">
+                                    Description : {report.description}
+                                  </p>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm font-medium text-slate-300">
+                                      Barangay : {report.barangay}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </section>
@@ -2264,61 +2526,125 @@ export default function AdminDashboard() {
               </div>
 
               {/* User list */}
-              <div className="dashboard-section overflow-hidden max-h-[600px]">
-                <div className="relative z-10">
+              <div className="dashboard-section overflow-hidden max-h-[700px] relative">
+                <div className="z-10">
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-bold text-slate-100">
-                      User List (Realtime)
-                    </h3>
+                    <div className="flex items-center gap-4">
+                      <h3 className="text-lg font-bold text-slate-100">
+                        User List (Realtime)
+                      </h3>
+                      <Select
+                        value={userRoleFilter}
+                        onValueChange={(value: string) =>
+                          setUserRoleFilter(value)
+                        }
+                      >
+                        <SelectTrigger className="w-40 bg-slate-900 border-slate-700 text-slate-200">
+                          <SelectValue placeholder="Filter by Role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Roles</SelectItem>
+                          <SelectItem value="BWMC">BWMC</SelectItem>
+                          <SelectItem value="GCP">GCP</SelectItem>
+                          <SelectItem value="Resident">Resident</SelectItem>
+                          <SelectItem value="Secretary">Secretary</SelectItem>
+                          <SelectItem value="SWMO Head">SWMO Head</SelectItem>
+                          <SelectItem value="TCEMO Head">TCEMO Head</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <span className="text-xs bg-emerald-600/20 text-emerald-300 px-3 py-1 rounded-lg border border-emerald-600/40 font-medium">
                       {users.length} users
                     </span>
                   </div>
                   {loadingUsers && <TruckLoader />}
                   {!loadingUsers && (
-                    <div className="overflow-x-auto rounded-lg border border-slate-800 max-h-[480px] bg-slate-950">
+                    <div className="overflow-x-auto rounded-lg border border-slate-800 max-h-[575px] bg-slate-950">
                       <table className="min-w-full text-sm">
                         <thead className="bg-slate-800 text-slate-300 border-b border-slate-700 sticky top-0 z-10">
                           <tr>
-                            <th className="px-4 py-3 text-left font-medium text-xs">
+                            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">
+                              User ID
+                            </th>
+                            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">
                               Name
                             </th>
-                            <th className="px-4 py-3 text-left font-medium text-xs hidden sm:table-cell">
-                              Email
+                            <th
+                              className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
+                              title="Sort by Role"
+                              onClick={() => {
+                                setUserSortKey && setUserSortKey("role");
+                                setUserSortDir &&
+                                  setUserSortDir(
+                                    userSortKey === "role" &&
+                                      userSortDir === "asc"
+                                      ? "desc"
+                                      : "asc",
+                                  );
+                              }}
+                            >
+                              <span className="inline-flex items-center gap-1">
+                                Role
+                                <span className="text-xs opacity-70 group-hover:opacity-100 transition">
+                                  {userSortKey === "role"
+                                    ? userSortDir === "asc"
+                                      ? "▲"
+                                      : "▼"
+                                    : "▲▼"}
+                                </span>
+                              </span>
                             </th>
-                            <th className="px-4 py-3 text-left font-medium text-xs">
-                              Role
-                            </th>
-                            <th className="px-4 py-3 text-left font-medium text-xs hidden md:table-cell">
+                            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">
                               Barangay
                             </th>
                           </tr>
                         </thead>
                         <tbody>
-                          {users.map((user) => (
-                            <tr
-                              key={user.id || user.user_id || user.email}
-                              className="border-t border-slate-800 hover:bg-slate-800 transition-colors"
-                            >
-                              <td className="px-4 py-3 font-medium text-slate-200 text-sm">
-                                {user.first_name} {user.last_name}
-                                <div className="sm:hidden text-xs text-slate-400 font-normal">
-                                  {user.email}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-slate-300 hidden sm:table-cell text-sm">
-                                {user.email}
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className="px-2 py-1 rounded-md bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 text-xs font-medium">
-                                  {user.role}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-slate-400 hidden md:table-cell text-sm">
-                                {user.role === "BWMC" ? user.barangay_id : "-"}
-                              </td>
-                            </tr>
-                          ))}
+                          {(typeof sortedUsers !== "undefined"
+                            ? sortedUsers.filter(
+                                (user) =>
+                                  userRoleFilter === "all" ||
+                                  user.role === userRoleFilter,
+                              )
+                            : users.filter(
+                                (user) =>
+                                  userRoleFilter === "all" ||
+                                  user.role === userRoleFilter,
+                              )
+                          ).map((user) => {
+                            const initials =
+                              `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase();
+                            return (
+                              <tr
+                                key={user.id || user.user_id || user.email}
+                                className="border-t border-slate-800 hover:bg-slate-800 transition-colors"
+                              >
+                                <td className="px-4 py-3 font-mono text-slate-400 text-xs">
+                                  {user.user_id
+                                    ? `USR-${String(user.user_id).slice(0, 6).toUpperCase()}`
+                                    : "-"}
+                                </td>
+                                <td className="px-4 py-3 flex items-center gap-3 text-slate-100 text-sm">
+                                  <span className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-sm shadow-lg overflow-hidden">
+                                    {initials || "U"}
+                                  </span>
+                                  <span>
+                                    {user.first_name} {user.last_name}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="px-2 py-1 rounded-md bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 text-xs font-medium">
+                                    {user.role}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-slate-400 text-sm">
+                                  {user.role === "BWMC"
+                                    ? user.barangay_id
+                                    : "-"}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -2376,7 +2702,33 @@ export default function AdminDashboard() {
                   </div>
 
                   {showUserFilters && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-slate-400">
+                          Role
+                        </Label>
+                        <Select
+                          value={userRoleFilter}
+                          onValueChange={(value: string) =>
+                            setUserRoleFilter(value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Roles</SelectItem>
+                            <SelectItem value="BWMC">BWMC</SelectItem>
+                            <SelectItem value="GCP">GCP</SelectItem>
+                            <SelectItem value="Driver">Driver</SelectItem>
+                            <SelectItem value="Collector">Collector</SelectItem>
+                            <SelectItem value="Staff">Staff</SelectItem>
+                            <SelectItem value="Barangay Staff">
+                              Barangay Staff
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <div className="space-y-2">
                         <Label className="text-xs font-medium text-slate-400">
                           Barangay
@@ -2497,9 +2849,9 @@ export default function AdminDashboard() {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-100">
                                   <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-slate-400">
+                                    <span className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-sm shadow-lg overflow-hidden">
                                       {initials || "U"}
-                                    </div>
+                                    </span>
                                     <span>
                                       {user.first_name} {user.last_name}
                                     </span>

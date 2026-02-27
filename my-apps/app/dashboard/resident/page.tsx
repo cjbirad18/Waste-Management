@@ -926,7 +926,7 @@ function SubmitReportSection({
             <Button
               type="button"
               onClick={toggleCameraFacing}
-              variant="secondary"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
             >
               Use {cameraFacing === "user" ? "Back" : "Front"} Camera
             </Button>
@@ -1209,6 +1209,7 @@ export default function ResidentDashboard() {
   const [activeTab, setActiveTab] = useState<ResidentActiveTab>("dashboard");
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [displayName, setDisplayName] = useState("User");
+  const [initials, setInitials] = useState("");
   const [gps, setGps] = useState<{ lat: number | null; lng: number | null }>({
     lat: null,
     lng: null,
@@ -1229,9 +1230,25 @@ export default function ResidentDashboard() {
 
       const fullName =
         `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
-      setDisplayName(
-        fullName || profile?.username || authData.user.email || "User",
-      );
+      const nameToUse =
+        fullName || profile?.username || authData.user.email || "User";
+      setDisplayName(nameToUse);
+      // Compute initials
+      let initials = "";
+      if (fullName) {
+        const parts = fullName.split(" ").filter(Boolean);
+        initials = parts
+          .map((p) => p[0])
+          .join("")
+          .toUpperCase();
+      } else if (profile?.username) {
+        initials = profile.username.slice(0, 2).toUpperCase();
+      } else if (authData.user.email) {
+        initials = authData.user.email.slice(0, 2).toUpperCase();
+      } else {
+        initials = "U";
+      }
+      setInitials(initials);
     }
 
     fetchDisplayName();
@@ -1665,18 +1682,36 @@ export default function ResidentDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-emerald-950/70 text-slate-100/90 flex flex-col relative overflow-hidden antialiased">
+    <div className="min-h-screen bg-slate-950 text-slate-100/90 flex flex-col relative overflow-hidden antialiased">
+      {/* Lighter background for mobile, no heavy blur or large gradients */}
+      <style>{`
+        @media (max-width: 600px) {
+          .dashboard-bg-mobile {
+            background: #0f172a;
+          }
+          .dashboard-header-mobile {
+            box-shadow: 0 2px 8px 0 rgba(16, 185, 129, 0.08);
+            backdrop-filter: none;
+            background: #0f172a;
+          }
+        }
+      `}</style>
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 overflow-hidden"
+        className="pointer-events-none absolute inset-0 overflow-hidden dashboard-bg-mobile"
       >
-        <div className="absolute -top-48 left-1/4 h-[520px] w-[520px] rounded-full bg-emerald-500/12 blur-[130px]" />
-        <div className="absolute top-24 -right-40 h-[420px] w-[420px] rounded-full bg-sky-500/12 blur-[120px]" />
-        <div className="absolute bottom-0 left-0 h-[360px] w-[360px] rounded-full bg-amber-400/10 blur-[110px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.7),transparent_60%)]" />
+        {/* Lightweight gradient for desktop, flat color for mobile */}
+        <div
+          className="hidden md:block absolute inset-0 w-full h-full"
+          style={{
+            background: "linear-gradient(135deg, #0f172a 0%, #134e4a 100%)",
+            opacity: 0.18,
+          }}
+        />
+        <div className="md:hidden absolute inset-0 w-full h-full bg-[#0f172a]" />
       </div>
       {/* Top navigation (same as SWMO) */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-emerald-900/40 bg-slate-950/80 shadow-lg shadow-emerald-900/20 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/60">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-emerald-900/40 bg-slate-950/90 shadow-md dashboard-header-mobile">
         <div className="flex items-center justify-between px-2 sm:px-4 md:px-8 py-3 sm:py-4 min-h-16">
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
             <button
@@ -1707,7 +1742,9 @@ export default function ResidentDashboard() {
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-100 font-medium transition-colors whitespace-nowrap ring-1 ring-white/10"
             >
-              <span className="text-xs sm:text-sm">{displayName}</span>
+              <span className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-lg shadow-lg overflow-hidden">
+                {initials}
+              </span>
               <svg
                 className={`w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
                 fill="none"
@@ -2034,72 +2071,98 @@ export default function ResidentDashboard() {
 
           {/* My Reports */}
           {activeTab === "myReports" && (
-            <section className="dashboard-section max-w-3xl mx-auto">
+            <section className="dashboard-section max-w-8xl mx-auto">
               <div className="dashboard-section-glow" />
-              <h2 className="text-2xl font-bold text-emerald-300 mb-4">
+              <h2 className="text-4xl font-bold text-emerald-300 mb-4">
                 My Recent Reports
               </h2>
 
               {reportsLoading && <TruckLoader />}
-
               {reportsError && (
                 <p className="text-red-300 mb-2">{reportsError}</p>
               )}
-
               {!reportsLoading && !reportsError && userReports.length === 0 && (
                 <p className="text-slate-300">
                   You have not submitted any reports yet.
                 </p>
               )}
-
               {!reportsLoading && !reportsError && userReports.length > 0 && (
-                <ul className="divide-y divide-green-800/40">
-                  {userReports.map((report, index) => (
-                    <li
-                      key={report.report_id}
-                      className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-emerald-700/50 rounded-2xl px-4 bg-slate-900/70"
-                    >
-                      <div className="flex items-center gap-1">
-                        <span className="font-bold text-slate-200">
-                          {index + 1}.
-                        </span>
-                        <p className="font-semibold text-slate-100 line-clamp-2">
-                          {report.location && report.location.length > 40
-                            ? report.location.slice(0, 40) + "..."
-                            : report.location}
-                        </p>
-                        <button
-                          onClick={() => {
-                            setSelectedMessage(report.description);
-                            setModalOpen(true);
-                          }}
-                          className="ml-2 px-3 py- bg-emerald-600 text-white text-xs font-semibold rounded-2xl shadow hover:bg-emerald-500 transition-colors"
+                <div className="overflow-x-auto rounded-2xl border border-emerald-800/30 bg-slate-900/70 shadow-lg">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-900/80">
+                        <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                          Report ID
+                        </th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                          Location
+                        </th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                          Status
+                        </th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                          Date
+                        </th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {userReports.map((report) => (
+                        <tr
+                          key={report.report_id}
+                          className="text-md border-b border-emerald-800/20 hover:bg-slate-800/60 transition-colors"
                         >
-                          View Message
-                        </button>
-                      </div>
-                      <div className="flex flex-col sm:items-end gap-1">
-                        <p className="text-xs text-slate-300">
-                          <span className="font-semibold">Submitted:</span>{" "}
-                          {report.date_submitted
-                            ? new Date(report.date_submitted).toLocaleString()
-                            : "N/A"}
-                        </p>
-                        <span
-                          className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full ${
-                            report.current_status === "Resolved"
-                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                              : report.current_status === "In Progress"
-                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                                : "bg-slate-500/30 text-slate-200 border border-slate-500/60"
-                          }`}
-                        >
-                          {report.current_status || "Unknown"}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                          <td className="px-4 py-2 font-bold text-emerald-200">
+                            RP-{report.report_id}
+                          </td>
+                          <td className="px-4 py-2 text-slate-200 max-w-[160px] truncate">
+                            {report.location || "N/A"}
+                          </td>
+                          <td className="px-4 py-2">
+                            <span
+                              className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${
+                                report.current_status === "Resolved"
+                                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                  : report.current_status === "Ongoing" ||
+                                      report.current_status === "In Progress"
+                                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                                    : report.current_status === "Rejected"
+                                      ? "bg-red-500/20 text-red-300 border-red-500/40"
+                                      : "bg-slate-500/30 text-slate-200 border-slate-500/60"
+                              }`}
+                            >
+                              {report.current_status || "Unknown"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-slate-300 whitespace-nowrap">
+                            {report.date_submitted
+                              ? new Date(report.date_submitted).toLocaleString()
+                              : "N/A"}
+                          </td>
+                          <td className="px-4 py-2">
+                            <button
+                              onClick={() => {
+                                setSelectedMessage(report.description);
+                                setModalOpen(true);
+                              }}
+                              className="text-emerald-400 hover:underline mr-3"
+                            >
+                              View
+                            </button>
+                            <button
+                              className="text-slate-400 hover:underline"
+                              // TODO: Implement history modal if needed
+                            >
+                              History
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
 
               {modalOpen && (

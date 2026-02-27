@@ -641,6 +641,9 @@ function ScheduleFormWithCalendar({
 
           <div className="flex justify-end pt-4 border-t border-green-800/30">
             <button
+                            <span className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-lg shadow-lg overflow-hidden">
+                              {initials}
+                            </span>
               type="submit"
               className="group relative inline-flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-lg font-black text-slate-100 shadow-xl shadow-emerald-500/30 hover:shadow-2xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 rounded-2xl overflow-hidden"
             >
@@ -2804,7 +2807,6 @@ export default function SecretaryDashboard() {
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-100 font-medium transition-colors whitespace-nowrap ring-1 ring-white/10"
             >
-              <span className="text-xs sm:text-sm">{displayName}</span>
               <svg
                 className={`w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
                 fill="none"
