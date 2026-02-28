@@ -111,6 +111,7 @@ type ResidentActiveTab =
   | "schedule"
   | "submitIncidentReport"
   | "myReports"
+  | "notifications"
   | "manageAccount";
 
 type SidebarItem = {
@@ -1711,6 +1712,7 @@ export default function ResidentDashboard() {
       tab: "submitIncidentReport",
     },
     { label: "My Reports", icon: "📅", tab: "myReports" },
+    { label: "Notifications", icon: "🔔", tab: "notifications" },
     { label: "Manage Account", icon: "🚨", tab: "manageAccount" },
   ];
 
@@ -1770,12 +1772,130 @@ export default function ResidentDashboard() {
             </div>
           </div>
           {/* Profile Dropdown */}
-          <div className="relative flex-shrink-0">
+          <div className="relative flex-shrink-0 flex items-center gap-2">
+            {/* Notification Bell Icon */}
+            <div className="relative group">
+              <button
+                className="relative p-2 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-100 ring-1 ring-white/10"
+                aria-label="Notifications"
+                onClick={() => setActiveTab("notifications")}
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                  />
+                </svg>
+              </button>
+              {/* Hover dropdown for notifications */}
+              {activeTab === "notifications" && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                  <div className="bg-slate-800/80 border border-emerald-400/40 rounded-2xl shadow-emerald-900/40 shadow-2xl h-150 w-full max-w-6xl mx-auto p-10 relative">
+                    <div className="flex items-center justify-between border-b border-emerald-800/30 pb-4 mb-6">
+                      <span className="text-2xl font-bold text-emerald-300">
+                        Notifications
+                      </span>
+                      <button
+                        className="text-xs text-slate-400 hover:text-emerald-300"
+                        onClick={() => setActiveTab("dashboard")}
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto rounded-2xl border border-emerald-800/20 bg-slate-800/90 shadow-lg">
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="bg-slate-900/80">
+                            <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                              Message
+                            </th>
+                            <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                              Status
+                            </th>
+                            <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                              Date
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reportsLoading ? (
+                            <tr>
+                              <td
+                                colSpan={3}
+                                className="p-4 text-center text-slate-400"
+                              >
+                                Loading...
+                              </td>
+                            </tr>
+                          ) : userReports.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan={3}
+                                className="p-4 text-center text-slate-400"
+                              >
+                                No notifications received.
+                              </td>
+                            </tr>
+                          ) : (
+                            userReports.map((report) => (
+                              <tr
+                                key={report.report_id}
+                                className="border-b border-emerald-800/20 hover:bg-slate-800/60 transition-colors"
+                              >
+                                <td className="px-4 py-2 text-emerald-200 font-bold max-w-[220px] truncate">
+                                  {report.description}
+                                </td>
+                                <td className="px-4 py-2">
+                                  <span
+                                    className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${
+                                      report.current_status === "Resolved"
+                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                        : report.current_status === "Ongoing" ||
+                                            report.current_status ===
+                                              "In Progress"
+                                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                                          : report.current_status === "Rejected"
+                                            ? "bg-red-500/20 text-red-300 border-red-500/40"
+                                            : "bg-slate-500/30 text-slate-200 border-slate-500/60"
+                                    }`}
+                                  >
+                                    {report.current_status || "Unknown"}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2 text-slate-300 whitespace-nowrap">
+                                  {report.date_submitted
+                                    ? new Date(
+                                        report.date_submitted,
+                                      ).toLocaleString()
+                                    : "N/A"}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  {/* Modal background overlay */}
+                  <div
+                    className="fixed inset-0 bg-black/20 z-40"
+                    onClick={() => setActiveTab("dashboard")}
+                  ></div>
+                </div>
+              )}
+            </div>
             <button
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-100 font-medium transition-colors whitespace-nowrap ring-1 ring-white/10"
             >
-              <span className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-lg shadow-lg overflow-hidden">
+              <span className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-sm shadow-lg overflow-hidden">
                 {initials}
               </span>
               <svg
@@ -1787,7 +1907,7 @@ export default function ResidentDashboard() {
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={2}
+                  strokeWidth={4}
                   d="M19 9l-7 7-7-7"
                 />
               </svg>
@@ -1798,34 +1918,60 @@ export default function ResidentDashboard() {
                   className="fixed inset-0 z-40"
                   onClick={() => setProfileDropdownOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 w-56 rounded-lg bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-50">
+                <div className="absolute right-0 top-full w-56 rounded-lg bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-50">
                   <div className="p-3 border-b border-slate-800">
                     <p className="text-xs text-slate-400 font-medium">
                       {displayName}
                     </p>
                   </div>
                   <div className="py-2">
-                    <button
-                      onClick={() => {
-                        setActiveTab("manageAccount");
-                        setProfileDropdownOpen(false);
-                        setSidebarOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-200 hover:bg-slate-800 transition-colors"
-                    >
-                      <span className="text-lg">⚙️</span>
-                      <span>Manage Account</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setProfileDropdownOpen(false);
-                        handleLogout();
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-red-400 hover:bg-slate-800 transition-colors"
-                    >
-                      <span className="text-lg">🚪</span>
-                      <span>Logout</span>
-                    </button>
+                    <div>
+                      <button
+                        onClick={() => {
+                          setActiveTab("manageAccount");
+                          setProfileDropdownOpen(false);
+                          setSidebarOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-200 hover:bg-slate-800 transition-colors"
+                      >
+                        <svg
+                          className="w-5 h-5 text-slate-300"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M12 4.354V4a2 2 0 10-4 0v.354A7.002 7.002 0 005 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h16l-.405-1.405A2.032 2.032 0 0118 14.159V11a7.002 7.002 0 00-3-6.646z"
+                          />
+                        </svg>
+                        <span>Manage Account</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setProfileDropdownOpen(false);
+                          handleLogout();
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-red-400 hover:bg-slate-800 transition-colors"
+                      >
+                        <svg
+                          className="w-5 h-5 text-red-400"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                          />
+                        </svg>
+                        <span>Logout</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </>

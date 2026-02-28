@@ -3797,11 +3797,7 @@ export default function AdminDashboard() {
                     <span>💾</span>
                     Save Changes
                   </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={handleCancelEdit}
-                    className="flex-1"
-                  >
+                  <Button onClick={handleCancelEdit} className="flex-1">
                     <span>✖️</span>
                     Cancel
                   </Button>
