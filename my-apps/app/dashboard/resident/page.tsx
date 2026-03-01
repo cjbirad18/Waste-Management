@@ -1701,19 +1701,109 @@ export default function ResidentDashboard() {
 
   const sidebarItems: {
     label: string;
-    icon: string;
+    icon: React.ReactNode;
     tab: ResidentActiveTab;
   }[] = [
-    { label: "Dashboard", icon: "📊", tab: "dashboard" },
-    { label: "Schedules", icon: "📝", tab: "schedule" },
+    {
+      label: "Dashboard",
+      icon: (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="w-5 h-5"
+        >
+          <rect x="3" y="10" width="3" height="7" />
+          <rect x="8.5" y="7" width="3" height="10" />
+          <rect x="14" y="4" width="3" height="13" />
+        </svg>
+      ),
+      tab: "dashboard",
+    },
+    {
+      label: "Schedules",
+      icon: (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="w-5 h-5"
+        >
+          <rect x="4" y="4" width="12" height="12" rx="2" />
+          <line x1="6" y1="8" x2="14" y2="8" />
+          <line x1="6" y1="12" x2="14" y2="12" />
+        </svg>
+      ),
+      tab: "schedule",
+    },
     {
       label: "Submit Incident Report",
-      icon: "🚚",
+      icon: (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="w-5 h-5"
+        >
+          <rect x="2" y="10" width="12" height="6" rx="2" />
+          <circle cx="6" cy="16" r="2" />
+          <circle cx="14" cy="16" r="2" />
+        </svg>
+      ),
       tab: "submitIncidentReport",
     },
-    { label: "My Reports", icon: "📅", tab: "myReports" },
-    { label: "Notifications", icon: "🔔", tab: "notifications" },
-    { label: "Manage Account", icon: "🚨", tab: "manageAccount" },
+    {
+      label: "My Reports",
+      icon: (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="w-5 h-5"
+        >
+          <rect x="3" y="5" width="14" height="12" rx="2" />
+          <line x1="7" y1="9" x2="13" y2="9" />
+          <line x1="7" y1="13" x2="13" y2="13" />
+        </svg>
+      ),
+      tab: "myReports",
+    },
+    {
+      label: "Notifications",
+      icon: (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="w-5 h-5"
+        >
+          <path d="M10 2a6 6 0 016 6v4a6 6 0 01-12 0V8a6 6 0 016-6z" />
+          <circle cx="10" cy="16" r="2" />
+        </svg>
+      ),
+      tab: "notifications",
+    },
+    {
+      label: "Manage Account",
+      icon: (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="w-5 h-5"
+        >
+          <circle cx="10" cy="8" r="4" />
+          <rect x="4" y="14" width="12" height="4" rx="2" />
+        </svg>
+      ),
+      tab: "manageAccount",
+    },
   ];
 
   return (

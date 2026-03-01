@@ -12,7 +12,6 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import dynamic from "next/dynamic";
 import TruckLoader from "../../loading/TruckLoader";
-import { sendSMS } from "@/lib/sms";
 import {
   getDelayedCollectionsForBarangay,
   DelayedCollection,
@@ -28,46 +27,12 @@ import {
   addWeeks,
   format,
 } from "date-fns";
-import Image from "next/image";
 
 import BarangayConcernsAnalytics from "../../generatereport/barangayconcern";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 const LeafletMap = dynamic(() => import("../../leafletmap"), { ssr: false });
 
@@ -96,7 +61,176 @@ type UserWithBarangay = User & {
   barangay?: { barangay_id: number; barangay_name: string } | null;
 };
 
-// Erase after testing SMS functionality
+interface ProcessedAccountsTableProps {
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  accounts: Array<{
+    user_id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    contact_number: string;
+  }>;
+  bgColor: "emerald" | "red";
+}
+
+function ProcessedAccountsTable({
+  title,
+  subtitle,
+  icon,
+  accounts,
+  bgColor,
+}: ProcessedAccountsTableProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  const totalPages = Math.ceil(accounts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedAccounts = accounts.slice(startIndex, endIndex);
+
+  const bgClasses = {
+    emerald: {
+      header: "bg-emerald-500/10",
+      iconBg: "bg-emerald-500/20",
+      badge: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+      text: "text-emerald-400",
+    },
+    red: {
+      header: "bg-red-500/10",
+      iconBg: "bg-red-500/20",
+      badge: "bg-red-500/20 text-red-400 border-red-500/30",
+      text: "text-red-400",
+    },
+  };
+
+  const handlePrevious = () => {
+    setCurrentPage((prev) => Math.max(1, prev - 1));
+  };
+
+  const handleNext = () => {
+    setCurrentPage((prev) => Math.min(totalPages, prev + 1));
+  };
+
+  return (
+    <div className="bg-slate-950/60 rounded-2xl shadow-lg border border-gray-700 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div
+        className={`flex items-center justify-between px-6 py-4 border-b border-gray-700 ${bgClasses[bgColor].header}`}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-9 h-9 rounded-lg ${bgClasses[bgColor].iconBg} flex items-center justify-center`}
+          >
+            {icon}
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-100 text-lg">{title}</h3>
+            <p className="text-xs text-slate-400">{subtitle}</p>
+          </div>
+        </div>
+        <span
+          className={`px-3 py-1 rounded-full text-sm font-bold border ${bgClasses[bgColor].badge}`}
+        >
+          {accounts.length}
+        </span>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto flex-1 border border-gray-700 bg-slate-900/70">
+        <table className="w-full text-sm border-separate border-spacing-0">
+          <thead className="bg-slate-950/40 sticky top-0">
+            <tr>
+              <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Name
+              </th>
+              <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Email
+              </th>
+              <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Contact
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/30">
+            {accounts.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={3}
+                  className="px-6 py-10 text-center text-slate-500"
+                >
+                  No {title.toLowerCase()} yet
+                </td>
+              </tr>
+            ) : (
+              paginatedAccounts.map((user) => (
+                <tr
+                  key={user.user_id}
+                  className="hover:bg-slate-900/40 transition"
+                >
+                  <td className="px-6 py-4 font-medium text-slate-200">
+                    {user.first_name} {user.last_name}
+                  </td>
+                  <td className="px-6 py-4 text-slate-400">{user.email}</td>
+                  <td className="px-6 py-4 text-slate-400 font-mono text-xs">
+                    {user.contact_number}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      {accounts.length > itemsPerPage && (
+        <div className="px-6 py-4 border-t border-gray-700 bg-slate-950/30 flex items-center justify-between">
+          <p className="text-xs text-slate-500">
+            Showing <span className="text-slate-300">{startIndex + 1}</span> to{" "}
+            <span className="text-slate-300">
+              {Math.min(endIndex, accounts.length)}
+            </span>{" "}
+            of <span className="text-slate-300">{accounts.length}</span> entries
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrevious}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Previous
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                      currentPage === page
+                        ? `bg-${bgColor}-500/20 ${bgClasses[bgColor].text} border border-${bgColor}-500/30`
+                        : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ),
+              )}
+            </div>
+            <button
+              onClick={handleNext}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SidebarItem({
   label,
@@ -2244,36 +2378,27 @@ export default function BWMCdashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-emerald-950/70 text-slate-100/90 flex flex-col relative overflow-hidden antialiased">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 overflow-hidden"
-      >
-        <div className="absolute -top-48 left-1/4 h-[520px] w-[520px] rounded-full bg-emerald-500/12 blur-[130px]" />
-        <div className="absolute top-24 -right-40 h-[420px] w-[420px] rounded-full bg-sky-500/12 blur-[120px]" />
-        <div className="absolute bottom-0 left-0 h-[360px] w-[360px] rounded-full bg-amber-400/10 blur-[110px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.7),transparent_60%)]" />
-      </div>
-      {/* Top navigation (same as SWMO, BWMC text) */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-emerald-900/40 bg-slate-950/80 shadow-lg shadow-emerald-900/20 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/60">
-        <div className="flex items-center justify-between px-2 sm:px-4 md:px-8 py-3 sm:py-4 min-h-16">
-          <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-emerald-950/70 text-slate-100 flex flex-col relative overflow-hidden antialiased">
+      {/* Top navigation */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-emerald-900/40 bg-slate-950/80 shadow-lg shadow-emerald-900/20 backdrop-blur-xl">
+        <div className="flex items-center justify-between px-6 py-4 min-h-16">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 rounded-lg bg-slate-900/80 text-slate-100 hover:bg-slate-800 transition-colors flex-shrink-0 ring-1 ring-white/10"
+              className="md:hidden inline-flex items-center justify-center h-10 w-10 rounded-lg bg-slate-900/80 text-slate-100 hover:bg-slate-800 transition-colors flex-shrink-0 ring-1 ring-white/10"
               aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
               {sidebarOpen ? "✖" : "☰"}
             </button>
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-lg flex-shrink-0 shadow-lg shadow-emerald-900/40">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-lg flex-shrink-0 shadow-lg shadow-emerald-900/40">
                 🗑️
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-slate-400 font-semibold truncate">
+                <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold truncate">
                   Track-the-Truck
                 </p>
-                <h1 className="text-sm sm:text-base md:text-lg font-bold text-slate-100 truncate">
+                <h1 className="text-lg font-bold text-slate-100 truncate">
                   BWMC Dashboard
                 </h1>
               </div>
@@ -2283,10 +2408,17 @@ export default function BWMCdashboard() {
           <div className="relative flex-shrink-0">
             <button
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-100 font-medium transition-colors whitespace-nowrap ring-1 ring-white/10"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-100 font-medium transition-colors whitespace-nowrap ring-1 ring-white/10"
             >
+              {/* Initials circle */}
+              <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-slate-800 text-slate-200 font-bold text-lg mr-2">
+                {displayName
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")}
+              </span>
               <svg
-                className={`w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
+                className={`w-4 h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -2441,7 +2573,7 @@ export default function BWMCdashboard() {
                     {summaryCards.map((card) => (
                       <div
                         key={card.label}
-                        className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40"
+                        className="rounded-2xl border-2 border-gray-700 bg-slate-900/80 p-6 shadow-xl shadow-black/40"
                         role="region"
                         aria-label={card.label}
                       >
@@ -2852,247 +2984,211 @@ export default function BWMCdashboard() {
           {activeTab === "viewReports" && <ViewReportsSection />}
 
           {activeTab === "processedAccounts" && (
-            <section className="my-6 space-y-4 px-2 md:px-10">
-              {/* Header Section */}
-              <div className="group relative rounded-2xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-emerald-800/50 p-4 sm:p-5 shadow-xl shadow-emerald-900/30 backdrop-blur-2xl overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl pointer-events-none" />
-
-                <div className="relative z-10">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                      <h2 className="text-2xl font-bold bg-gradient-to-r from-emerald-300 to-teal-300 bg-clip-text text-transparent">
-                        Processed Resident Accounts
-                      </h2>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Review residents whose registrations have already been
-                        approved or rejected.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+            <section className="space-y-6">
+              {/* Header */}
+              <div className="glass-panel rounded-2xl p-6 card-glow">
+                <h2 className="text-2xl font-bold gradient-text mb-2">
+                  Processed Resident Accounts
+                </h2>
+                <p className="text-slate-400 text-sm">
+                  Review residents whose registrations have already been
+                  approved or rejected.
+                </p>
               </div>
 
               {loadingProcessed ? (
-                <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/80 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl p-8">
+                <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-12 flex items-center justify-center">
                   <TruckLoader />
                 </div>
               ) : (
                 <>
-                  {/* Summary Stats Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div className="group relative rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4 backdrop-blur-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 overflow-hidden">
-                      <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-50 transition-opacity blur-xl pointer-events-none" />
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-xs font-semibold text-slate-300">
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Approved */}
+                    <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-5">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
                             Total Approved
+                          </p>
+                          <h3 className="text-3xl font-bold text-emerald-400">
+                            {approvedAccounts.length}
                           </h3>
-                          <span className="text-lg">✅</span>
+                          <p className="text-slate-500 text-xs mt-1">
+                            Active residents
+                          </p>
                         </div>
-                        <p className="text-emerald-400 text-2xl font-bold">
-                          {approvedAccounts.length}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Active residents
-                        </p>
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                          <svg
+                            className="w-5 h-5 text-emerald-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M5 13l4 4L19 7"
+                            ></path>
+                          </svg>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="group relative rounded-xl bg-red-500/10 border border-red-500/30 p-4 backdrop-blur-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 overflow-hidden">
-                      <div className="absolute inset-0 bg-red-500/10 opacity-0 group-hover:opacity-50 transition-opacity blur-xl pointer-events-none" />
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-xs font-semibold text-slate-300">
+                    {/* Rejected */}
+                    <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-5">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
                             Total Rejected
+                          </p>
+                          <h3 className="text-3xl font-bold text-red-400">
+                            {rejectedAccounts.length}
                           </h3>
-                          <span className="text-lg">❌</span>
+                          <p className="text-slate-500 text-xs mt-1">
+                            Declined
+                          </p>
                         </div>
-                        <p className="text-red-400 text-2xl font-bold">
-                          {rejectedAccounts.length}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">Declined</p>
+                        <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                          <svg
+                            className="w-5 h-5 text-red-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M6 18L18 6M6 6l12 12"
+                            ></path>
+                          </svg>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="group relative rounded-xl bg-blue-500/10 border border-blue-500/30 p-4 backdrop-blur-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 overflow-hidden">
-                      <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-50 transition-opacity blur-xl pointer-events-none" />
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-xs font-semibold text-slate-300">
+                    {/* Processed */}
+                    <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-5">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
                             Total Processed
+                          </p>
+                          <h3 className="text-3xl font-bold text-blue-400">
+                            {approvedAccounts.length + rejectedAccounts.length}
                           </h3>
-                          <span className="text-lg">📊</span>
+                          <p className="text-slate-500 text-xs mt-1">
+                            Applications
+                          </p>
                         </div>
-                        <p className="text-blue-400 text-2xl font-bold">
-                          {approvedAccounts.length + rejectedAccounts.length}
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Applications
-                        </p>
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                          <svg
+                            className="w-5 h-5 text-blue-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                            ></path>
+                          </svg>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="group relative rounded-xl bg-cyan-500/10 border border-cyan-500/30 p-4 backdrop-blur-xl shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 overflow-hidden">
-                      <div className="absolute inset-0 bg-cyan-500/10 opacity-0 group-hover:opacity-50 transition-opacity blur-xl pointer-events-none" />
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-xs font-semibold text-slate-300">
+                    {/* Approval Rate */}
+                    <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-5">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
                             Approval Rate
+                          </p>
+                          <h3 className="text-3xl font-bold text-purple-400">
+                            {approvedAccounts.length + rejectedAccounts.length >
+                            0
+                              ? Math.round(
+                                  (approvedAccounts.length /
+                                    (approvedAccounts.length +
+                                      rejectedAccounts.length)) *
+                                    100,
+                                )
+                              : 0}
+                            %
                           </h3>
-                          <span className="text-lg">📈</span>
+                          <p className="text-slate-500 text-xs mt-1">
+                            Success rate
+                          </p>
                         </div>
-                        <p className="text-cyan-400 text-2xl font-bold">
-                          {approvedAccounts.length + rejectedAccounts.length > 0
-                            ? Math.round(
-                                (approvedAccounts.length /
-                                  (approvedAccounts.length +
-                                    rejectedAccounts.length)) *
-                                  100,
-                              )
-                            : 0}
-                          %
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Success rate
-                        </p>
+                        <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                          <svg
+                            className="w-5 h-5 text-purple-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                            ></path>
+                          </svg>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Tables Grid with Pagination */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 ">
                     {/* Approved Accounts */}
-                    <div className="group relative rounded-2xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-emerald-800/50 overflow-hidden shadow-xl shadow-emerald-900/30 backdrop-blur-2xl flex flex-col">
-                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl pointer-events-none" />
-
-                      <div className="relative z-10 flex flex-col h-full">
-                        <div className="flex items-center justify-between px-5 py-2 bg-gradient-to-r from-emerald-900/40 to-teal-900/40 border-b border-emerald-800/50 flex-shrink-0">
-                          <div>
-                            <h3 className="text-base font-bold text-emerald-300">
-                              ✅ Approved Accounts
-                            </h3>
-                            <p className="text-xs text-emerald-200/70">
-                              Active registrations
-                            </p>
-                          </div>
-                          <span className="px-3 py-1 rounded-lg bg-emerald-600/30 border border-emerald-500/50 text-emerald-200 font-bold text-xs">
-                            {approvedAccounts.length}
-                          </span>
-                        </div>
-
-                        {approvedAccounts.length === 0 ? (
-                          <div className="px-5 py-8 text-center flex-1 flex items-center justify-center">
-                            <p className="text-sm text-slate-400">
-                              📭 No approved accounts yet.
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="overflow-y-auto flex-1 max-h-96">
-                            <table className="min-w-full text-xs md:text-sm">
-                              <thead className="sticky top-0 z-10">
-                                <tr className="bg-emerald-900/30 text-emerald-200 border-b border-emerald-800/40">
-                                  <th className="px-4 py-2 text-left font-bold text-xs uppercase tracking-wide">
-                                    Name
-                                  </th>
-                                  <th className="px-4 py-2 text-left font-bold text-xs uppercase tracking-wide">
-                                    Email
-                                  </th>
-                                  <th className="px-4 py-2 text-left font-bold text-xs uppercase tracking-wide">
-                                    Contact
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-emerald-800/30">
-                                {approvedAccounts.map((user) => (
-                                  <tr
-                                    key={user.user_id}
-                                    className="bg-slate-900/40 hover:bg-emerald-500/15 transition-colors duration-200 border-b border-emerald-800/20"
-                                  >
-                                    <td className="px-4 py-2 align-middle">
-                                      <span className="font-semibold text-emerald-100">
-                                        {user.first_name} {user.last_name}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-300 align-middle">
-                                      {user.email}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-300 align-middle">
-                                      {user.contact_number}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <ProcessedAccountsTable
+                      title="Approved Accounts"
+                      subtitle="Active registrations"
+                      icon={
+                        <svg
+                          className="w-5 h-5 text-emerald-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M5 13l4 4L19 7"
+                          ></path>
+                        </svg>
+                      }
+                      accounts={approvedAccounts}
+                      bgColor="emerald"
+                    />
 
                     {/* Rejected Accounts */}
-                    <div className="group relative rounded-2xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-red-800/50 overflow-hidden shadow-xl shadow-red-900/30 backdrop-blur-2xl flex flex-col">
-                      <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-transparent to-rose-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl pointer-events-none" />
-
-                      <div className="relative z-10 flex flex-col h-full">
-                        <div className="flex items-center justify-between px-5 py-2 bg-gradient-to-r from-red-900/40 to-rose-900/40 border-b border-red-800/50 flex-shrink-0">
-                          <div>
-                            <h3 className="text-base font-bold text-red-300">
-                              ❌ Rejected Accounts
-                            </h3>
-                            <p className="text-xs text-red-200/70">
-                              Declined registrations
-                            </p>
-                          </div>
-                          <span className="px-3 py-1 rounded-lg bg-red-600/30 border border-red-500/50 text-red-200 font-bold text-xs">
-                            {rejectedAccounts.length}
-                          </span>
-                        </div>
-
-                        {rejectedAccounts.length === 0 ? (
-                          <div className="px-5 py-8 text-center flex-1 flex items-center justify-center">
-                            <p className="text-sm text-slate-400">
-                              📭 No rejected accounts yet.
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="overflow-y-auto flex-1 max-h-96">
-                            <table className="min-w-full text-xs md:text-sm">
-                              <thead className="sticky top-0 z-10">
-                                <tr className="bg-red-900/30 text-red-200 border-b border-red-800/40">
-                                  <th className="px-4 py-2 text-left font-bold text-xs uppercase tracking-wide">
-                                    Name
-                                  </th>
-                                  <th className="px-4 py-2 text-left font-bold text-xs uppercase tracking-wide">
-                                    Email
-                                  </th>
-                                  <th className="px-4 py-2 text-left font-bold text-xs uppercase tracking-wide">
-                                    Contact
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-red-800/30">
-                                {rejectedAccounts.map((user) => (
-                                  <tr
-                                    key={user.user_id}
-                                    className="bg-slate-900/40 hover:bg-red-500/15 transition-colors duration-200 border-b border-red-800/20"
-                                  >
-                                    <td className="px-4 py-2 align-middle">
-                                      <span className="font-semibold text-red-100">
-                                        {user.first_name} {user.last_name}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-300 align-middle">
-                                      {user.email}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-300 align-middle">
-                                      {user.contact_number}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <ProcessedAccountsTable
+                      title="Rejected Accounts"
+                      subtitle="Declined registrations"
+                      icon={
+                        <svg
+                          className="w-5 h-5 text-red-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          ></path>
+                        </svg>
+                      }
+                      accounts={rejectedAccounts}
+                      bgColor="red"
+                    />
                   </div>
                 </>
               )}

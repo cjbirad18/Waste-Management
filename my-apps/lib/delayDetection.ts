@@ -148,7 +148,20 @@ export async function getDelayedCollectionsForBarangay(
 
     return delayed;
   } catch (error) {
-    console.error("Error fetching delayed collections:", error);
+    if (error instanceof Error) {
+      console.error(
+        "Error fetching delayed collections:",
+        error.message,
+        error.stack,
+      );
+    } else if (typeof error === "object" && error !== null) {
+      console.error(
+        "Error fetching delayed collections:",
+        JSON.stringify(error),
+      );
+    } else {
+      console.error("Error fetching delayed collections:", error);
+    }
     return [];
   }
 }

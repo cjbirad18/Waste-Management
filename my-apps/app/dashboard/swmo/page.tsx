@@ -1900,11 +1900,90 @@ export default function AdminDashboard() {
   }
 
   const sidebarItems = [
-    { label: "Dashboard", icon: "📊", tab: "dashboard" },
-    { label: "Manage Users", icon: "👥", tab: "userAdmin" },
-    { label: "User Accounts", icon: "📋", tab: "manageUsers" },
-    { label: "Generate Report", icon: "📈", tab: "reports" },
-    { label: "Account", icon: "⚙️", tab: "manageAccount" },
+    {
+      label: "Dashboard",
+      tab: "dashboard",
+      icon: (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="w-5 h-5"
+        >
+          <rect x="3" y="10" width="3" height="7" />
+          <rect x="8.5" y="7" width="3" height="10" />
+          <rect x="14" y="4" width="3" height="13" />
+        </svg>
+      ),
+    },
+    {
+      label: "Manage Users",
+      tab: "userAdmin",
+      icon: (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="w-5 h-5"
+        >
+          <circle cx="7" cy="7" r="3" />
+          <circle cx="13" cy="7" r="3" />
+          <rect x="2" y="14" width="16" height="3" rx="1.5" />
+        </svg>
+      ),
+    },
+    {
+      label: "User Accounts",
+      tab: "manageUsers",
+      icon: (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="w-5 h-5"
+        >
+          <rect x="4" y="6" width="12" height="10" rx="2" />
+          <rect x="7" y="9" width="6" height="2" rx="1" />
+        </svg>
+      ),
+    },
+    {
+      label: "Incident Reports",
+      tab: "incidentReports",
+      icon: (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="w-5 h-5"
+        >
+          <circle cx="10" cy="10" r="8" />
+          <text x="10" y="15" textAnchor="middle" fontSize="10" fill="#fff">
+            !
+          </text>
+        </svg>
+      ),
+    },
+    {
+      label: "Generate Report",
+      tab: "reports",
+      icon: (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="w-5 h-5"
+        >
+          <polyline points="3,17 8,12 13,15 17,7" />
+          <circle cx="17" cy="7" r="1.5" />
+        </svg>
+      ),
+    },
   ] as const;
 
   return (
