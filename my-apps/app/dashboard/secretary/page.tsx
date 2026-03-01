@@ -106,7 +106,7 @@ type SecretaryActiveTab =
 
 type SidebarItem = {
   label: string;
-  icon: string;
+  icon: React.ReactNode;
   tab: SecretaryActiveTab;
 };
 
@@ -2781,11 +2781,7 @@ export default function SecretaryDashboard() {
     }
   };
 
-  const sidebarItems: {
-    label: string;
-    icon: string;
-    tab: SecretaryActiveTab;
-  }[] = [
+  const sidebarItems: SidebarItem[] = [
     {
       label: "Dashboard",
       icon: (
