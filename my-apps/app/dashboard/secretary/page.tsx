@@ -821,7 +821,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
       const res = await supabase
         .from("collection_schedules")
         .select(
-          `schedule_id, days, start_time, date_created, barangay:barangay_id ( barangay_id, barangay_name ), gcp_user:gcp_user_id ( user_id, first_name, last_name )`,
+          `schedule_id, days, start_time, date_created, barangay:barangay_id ( barang_id, barangay_name ), gcp_user:gcp_user_id ( user_id, first_name, last_name )`,
         )
         .eq("status", "Archived")
         .order("date_created", { ascending: false });
@@ -1985,7 +1985,7 @@ function SecretaryGcpResponsesSection() {
                   className="group absolute -top-4 -right-4 w-12 h-12 bg-slate-900/90 border-2 border-slate-600/50 rounded-2xl shadow-xl hover:bg-red-600/90 hover:border-red-500/70 hover:shadow-2xl hover:shadow-red-500/40 hover:scale-110 transition-all duration-300 backdrop-blur-xl flex items-center justify-center text-slate-300 hover:text-white font-bold text-2xl"
                 >
                   <span className="relative z-10">✕</span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm pointer-events-none" />
+                  <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm pointer-events-none" />
                 </button>
 
                 <h3 className="font-black text-2xl mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
