@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, GeoJSON, Marker, Popup } from "react-leaflet";
 import type { GeoJSON as GeoJSONType, Feature, Point } from "geojson";
 import L from "leaflet";
@@ -8,86 +8,96 @@ import "leaflet/dist/leaflet.css";
 import { supabase } from "@/lib/supabaseClient";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { point, polygon } from "@turf/helpers";
+import TruckLoader from "@/app/loading/TruckLoader";
 import { useMap } from "react-leaflet";
+import {
+  MapPin,
+  Navigation,
+  Truck,
+  Clock,
+  AlertCircle,
+  Sun,
+  Moon,
+  Crosshair,
+  Map as MapIcon,
+  Activity,
+} from "lucide-react";
 
 const mapCenter: [number, number] = [9.6556, 123.8521];
 
-const barangayHallIcon = L.icon({
-  iconUrl: "/town-hall.png",
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-  popupAnchor: [0, -12],
-});
+// Option 2: Debug version - check console for path issues
+const TOWN_HALL_SRC = "../public/town-hall.png";
 
-const truckIcon = L.icon({
-  iconUrl: "/trucklogo.png",
-  iconSize: [85, 95],
-  iconAnchor: [27, 32],
-  popupAnchor: [0, -18],
-  shadowUrl: undefined,
-});
+const createBarangayIcon = () =>
+  L.divIcon({
+    className: "custom-barangay-icon",
+    html: `<img src="${TOWN_HALL_SRC}" width="36" height="36" style="display: block;" />`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 36],
+    popupAnchor: [0, -36],
+  });
 
-const truckShadowIcon = L.divIcon({
-  className: "",
-  html: '<div class="truck-shadow-dot"></div>',
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
-});
-
-const residentIcon = L.divIcon({
-  className: "",
-  html: `
-    <div class="resident-pulse-wrapper">
-      <div class="resident-pulse-ring pulse-1"></div>
-      <div class="resident-pulse-ring pulse-2"></div>
-      <div class="resident-pulse-dot">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" fill="white"/>
-          <path d="M6 20c0-3.31 2.69-6 6-6s6 2.69 6 6" fill="white" opacity="0.95"/>
+const createTruckIcon = (isActive: boolean) =>
+  L.divIcon({
+    className: "custom-truck-icon",
+    html: `
+    <div class="relative">
+      <div class="absolute inset-0 bg-emerald-500/30 rounded-full animate-ping ${isActive ? "block" : "hidden"}"></div>
+      <div class="relative bg-gradient-to-br from-emerald-500 to-teal-600 p-3 rounded-full shadow-xl border-2 border-white">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 17h4V5H2v12h3"/>
+          <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1"/>
+          <circle cx="7.5" cy="17.5" r="2.5"/>
+          <circle cx="17.5" cy="17.5" r="2.5"/>
         </svg>
       </div>
     </div>
   `,
-  iconSize: [36, 36],
-  iconAnchor: [18, 18],
-  popupAnchor: [0, -16],
-});
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
+    popupAnchor: [0, -24],
+  });
 
-const getBarangayColor = (name?: string) => {
-  switch (name) {
-    case "Bool":
-      return "#ef4444";
-    case "Booy":
-      return "#10b981";
-    case "Cabawan":
-      return "#eab308";
-    case "Cogon":
-      return "#3b82f6";
-    case "Dampas":
-      return "#ec4899";
-    case "Dao":
-      return "#f97316";
-    case "Manga":
-      return "#8b5cf6";
-    case "Mansasa":
-      return "#06b6d4";
-    case "Poblacion I":
-      return "#14b8a6";
-    case "Poblacion II":
-      return "#f59e0b";
-    case "Poblacion III":
-      return "#f43f5e";
-    case "San Isidro":
-      return "#06b6d4";
-    case "Taloto":
-      return "#84cc16";
-    case "Tiptip":
-      return "#fbbf24";
-    case "Ubujan":
-      return "#a78bfa";
-    default:
-      return "#9ca3af";
-  }
+const createResidentIcon = () =>
+  L.divIcon({
+    className: "custom-resident-icon",
+    html: `
+    <div class="relative">
+      <div class="absolute -inset-4 bg-blue-500/20 rounded-full animate-pulse"></div>
+      <div class="absolute -inset-2 bg-blue-500/30 rounded-full animate-ping"></div>
+      <div class="relative bg-gradient-to-br from-blue-500 to-indigo-600 p-2.5 rounded-full shadow-xl border-2 border-white">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="none">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 20c0-4 4-6 8-6s8 2 8 6"/>
+        </svg>
+      </div>
+    </div>
+  `,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    popupAnchor: [0, -20],
+  });
+
+// Modern color palette with better contrast
+const getBarangayColor = (name?: string): string => {
+  const colors: Record<string, string> = {
+    Bool: "#f87171", // Red-400
+    Booy: "#34d399", // Emerald-400
+    Cabawan: "#fbbf24", // Amber-400
+    Cogon: "#60a5fa", // Blue-400
+    Dampas: "#f472b6", // Pink-400
+    Dao: "#fb923c", // Orange-400
+    Manga: "#a78bfa", // Violet-400
+    Mansasa: "#22d3ee", // Cyan-400
+    "Poblacion I": "#2dd4bf", // Teal-400
+    "Poblacion II": "#fbbf24", // Amber-400
+    "Poblacion III": "#fb7185", // Rose-400
+    "San Isidro": "#22d3ee", // Cyan-400
+    Taloto: "#a3e635", // Lime-400
+    Tiptip: "#facc15", // Yellow-400
+    Ubujan: "#c084fc", // Purple-400
+  };
+  return colors[name || ""] || "#9ca3af";
 };
 
 type TruckRow = {
@@ -110,10 +120,7 @@ type TruckState = {
   leaveTimeout?: number | null;
 };
 
-const assignedByTruck: Record<number, number> = {
-  1: 4,
-};
-
+const assignedByTruck: Record<number, number> = { 1: 4 };
 const truckStates: Record<number, TruckState> = {};
 const lastSeenAt: Record<number, number> = {};
 
@@ -126,56 +133,100 @@ type AppRole =
   | "Secretary"
   | null;
 
-function haversineKm(
+// Utility functions
+const haversineKm = (
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number,
-): number {
+): number => {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLat / 2) ** 2 +
     Math.cos((lat1 * Math.PI) / 180) *
       Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
 
-type ResidentGps = { lat: number | null; lng: number | null };
-
-interface LeafletMapProps {
-  residentGps?: ResidentGps;
-  showAllTrucks?: boolean;
-  assignedTruckId?: number | null;
-}
-
-function computeEtaMinutes(distanceKm: number, speedKmh: number): number {
+const computeEtaMinutes = (distanceKm: number, speedKmh: number): number => {
   if (speedKmh <= 0) return Infinity;
-  const hours = distanceKm / speedKmh;
-  return Math.round(hours * 60);
-}
+  return Math.round((distanceKm / speedKmh) * 60);
+};
 
+// Components
 function RecenterOnGps({
   gps,
   autoCenter,
 }: {
-  gps: ResidentGps;
+  gps: { lat: number; lng: number };
   autoCenter: boolean;
 }) {
   const map = useMap();
 
   useEffect(() => {
-    if (autoCenter && gps.lat != null && gps.lng != null) {
-      map.setView([gps.lat, gps.lng], map.getZoom());
+    if (
+      autoCenter &&
+      gps &&
+      typeof gps.lat === "number" &&
+      typeof gps.lng === "number"
+    ) {
+      map.flyTo([gps.lat, gps.lng], map.getZoom(), {
+        duration: 1.5,
+        easeLinearity: 0.25,
+      });
     }
-  }, [gps.lat, gps.lng, map, autoCenter]);
+  }, [gps, autoCenter, map]);
 
   return null;
 }
+
+interface LeafletMapProps {
+  residentGps?: { lat: number | null; lng: number | null };
+  showAllTrucks?: boolean;
+  assignedTruckId?: number | null;
+}
+
+// Modern Badge Component
+const StatusBadge = ({
+  children,
+  variant = "default",
+}: {
+  children: React.ReactNode;
+  variant?: "default" | "warning" | "success" | "info";
+}) => {
+  const variants = {
+    default: "bg-slate-100 text-slate-700 border-slate-200",
+    warning: "bg-amber-50 text-amber-700 border-amber-200",
+    success: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    info: "bg-blue-50 text-blue-700 border-blue-200",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${variants[variant]}`}
+    >
+      {children}
+    </span>
+  );
+};
+
+// Modern Card Component
+const InfoCard = ({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <div
+    className={`bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-white/20 shadow-xl shadow-slate-900/5 ${className}`}
+  >
+    {children}
+  </div>
+);
 
 function LeafletMap({
   residentGps,
@@ -203,44 +254,46 @@ function LeafletMap({
   const [gcpLocationWarning, setGcpLocationWarning] = useState<string | null>(
     null,
   );
-
   const [residentLocation, setResidentLocation] = useState<{
     lat: number;
     lng: number;
-    address?: string | null;
   } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const dayTileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-  const nightTileUrl =
-    "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png";
+  const tileUrls = {
+    day: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    night: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  };
 
-  // Load barangay polygons
+  // Data loading
   useEffect(() => {
-    const load = async () => {
-      const res = await fetch("/data/barangays.geojson", { cache: "no-store" });
-      const data = (await res.json()) as GeoJSONType;
-      setGeojson(data);
+    const loadData = async () => {
+      try {
+        const [geoRes, barangayRes] = await Promise.all([
+          fetch("/data/barangays.geojson", { cache: "no-store" }),
+          supabase.from("barangay").select("barangay_id, barangay_name"),
+        ]);
+
+        const geoData = await geoRes.json();
+        setGeojson(geoData);
+
+        if (!barangayRes.error && barangayRes.data) {
+          const map: Record<string, number> = {};
+          barangayRes.data.forEach(
+            (b: any) => (map[b.barangay_name] = b.barangay_id),
+          );
+          setNameToId(map);
+        }
+      } catch (error) {
+        console.error("Failed to load map data:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
-    load();
+    loadData();
   }, []);
 
-  // Load barangay name->id map
-  useEffect(() => {
-    const loadBarangays = async () => {
-      const { data, error } = await supabase
-        .from("barangay")
-        .select("barangay_id, barangay_name");
-      if (error || !data) return;
-      const map: Record<string, number> = {};
-      data.forEach((b: any) => {
-        map[b.barangay_name] = b.barangay_id;
-      });
-      setNameToId(map);
-    };
-    loadBarangays();
-  }, []);
-
-  // Load logged-in user role + initial resident location from DB
+  // User authentication
   useEffect(() => {
     const loadUser = async () => {
       const {
@@ -248,19 +301,16 @@ function LeafletMap({
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: profile, error: profileErr } = await supabase
+      const { data: profile } = await supabase
         .from("users")
         .select("role")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (profileErr || !profile) return;
+      if (!profile) return;
 
-      // Normalize role value from DB (case-insensitive) into our AppRole union.
-      // Accept variants like "SWMO Head", "TCEMO Head", and other labels that
-      // contain the canonical role name.
-      const rawRole = (profile.role || "").toString().toLowerCase().trim();
-      let normalizedRole: AppRole | null = null;
+      const rawRole = (profile.role || "").toLowerCase();
+      let normalizedRole: AppRole = null;
 
       if (rawRole.includes("gcp")) normalizedRole = "GCP";
       else if (rawRole.includes("resident")) normalizedRole = "Resident";
@@ -270,96 +320,75 @@ function LeafletMap({
       else if (rawRole.includes("secretary")) normalizedRole = "Secretary";
 
       setRole(normalizedRole);
-      if (profile.role !== "Resident") return;
 
-      const { data: live, error: liveErr } = await supabase
-        .from("resident_live_location")
-        .select("latitude, longitude, updated_at")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      if (normalizedRole === "Resident") {
+        const { data: live } = await supabase
+          .from("resident_live_location")
+          .select("latitude, longitude")
+          .eq("user_id", user.id)
+          .maybeSingle();
 
-      if (liveErr || !live) return;
-
-      setResidentLocation({
-        lat: live.latitude,
-        lng: live.longitude,
-      });
+        if (live)
+          setResidentLocation({ lat: live.latitude, lng: live.longitude });
+      }
     };
-
     loadUser();
   }, []);
 
-  // Load GCP assigned truck + barangay for location checks
+  // GCP assignment loading
   useEffect(() => {
     if (role !== "GCP") return;
 
-    let isActive = true;
-
-    const loadGcpAssignment = async () => {
+    const loadAssignment = async () => {
       const {
         data: { user },
-        error: authError,
       } = await supabase.auth.getUser();
-      if (authError || !user) return;
+      if (!user) return;
 
-      const { data: truck, error: truckError } = await supabase
-        .from("garbage_trucks")
-        .select("truck_id")
-        .eq("gcp_user_id", user.id)
-        .maybeSingle();
+      const [{ data: truck }, { data: schedule }] = await Promise.all([
+        supabase
+          .from("garbage_trucks")
+          .select("truck_id")
+          .eq("gcp_user_id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("collection_schedules")
+          .select("barangay_id, barangay:barangay_id (barangay_name)")
+          .eq("gcp_user_id", user.id)
+          .in("status", ["pending", "ongoing", "Active"])
+          .order("date_created", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
-      if (!truckError && isActive) {
-        setGcpTruckId(truck?.truck_id ?? null);
-      }
-
-      const { data: schedule, error: scheduleError } = await supabase
-        .from("collection_schedules")
-        .select(
-          "barangay_id, status, date_created, barangay:barangay_id (barangay_name)",
-        )
-        .eq("gcp_user_id", user.id)
-        .in("status", ["pending", "ongoing", "Active"])
-        .order("date_created", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!scheduleError && isActive) {
-        setGcpAssignedBarangayId(
-          schedule?.barangay_id != null ? Number(schedule.barangay_id) : null,
-        );
-        const barangayName = (schedule as any)?.barangay?.barangay_name ?? null;
-        setGcpAssignedBarangayName(barangayName);
+      if (truck) setGcpTruckId(truck.truck_id);
+      if (schedule) {
+        setGcpAssignedBarangayId(Number(schedule.barangay_id));
+        setGcpAssignedBarangayName((schedule as any)?.barangay?.barangay_name);
       }
     };
-
-    loadGcpAssignment();
-    return () => {
-      isActive = false;
-    };
+    loadAssignment();
   }, [role]);
 
-  // Sync residentLocation with live GPS prop (so it moves without refresh)
+  // Sync resident GPS
   useEffect(() => {
     if (
-      residentGps &&
-      residentGps.lat != null &&
-      residentGps.lng != null &&
+      residentGps?.lat != null &&
+      residentGps?.lng != null &&
       role === "Resident"
     ) {
-      setResidentLocation({
-        lat: residentGps.lat,
-        lng: residentGps.lng,
-      });
+      setResidentLocation({ lat: residentGps.lat, lng: residentGps.lng });
     }
-  }, [residentGps?.lat, residentGps?.lng, role]);
+  }, [residentGps, role]);
 
+  // Filter visible trucks
   const visibleTrucks = showAllTrucks
     ? trucks
-    : assignedTruckId != null && !Number.isNaN(assignedTruckId)
+    : assignedTruckId != null
       ? trucks.filter((t) => t.truck_id === assignedTruckId)
       : [];
 
-  // ETA calculation for residents
+  // ETA calculation
   useEffect(() => {
     if (
       role !== "Resident" ||
@@ -370,228 +399,166 @@ function LeafletMap({
       return;
     }
 
-    const speedKmh = 17.5;
     let bestDist: number | null = null;
-
     visibleTrucks.forEach((t) => {
       if (t.latitude == null || t.longitude == null) return;
-
       const d = haversineKm(
         residentLocation.lat,
         residentLocation.lng,
         t.latitude,
         t.longitude,
       );
-
-      if (bestDist === null || d < bestDist) {
-        bestDist = d;
-      }
+      if (bestDist === null || d < bestDist) bestDist = d;
     });
 
-    if (bestDist === null) {
-      setEtaMinutes(null);
-      return;
-    }
+    setEtaMinutes(bestDist !== null ? computeEtaMinutes(bestDist, 17.5) : null);
+  }, [role, residentLocation, visibleTrucks]);
 
-    const eta = computeEtaMinutes(bestDist, speedKmh);
-    setEtaMinutes(eta);
-  }, [role, residentLocation, showAllTrucks, assignedTruckId, trucks]);
+  // Location logic handlers
+  const getBarangayFromPoint = useCallback(
+    ([lat, lng]: [number, number], gj: GeoJSONType | null): string | null => {
+      if (!gj) return null;
+      const features = (gj as any).features as Feature[] | undefined;
+      if (!features) return null;
 
-  const getBarangayFromPoint = (
-    [lat, lng]: [number, number],
-    gj: GeoJSONType | null,
-  ): string | null => {
-    if (!gj) return null;
+      for (const f of features) {
+        if (f.geometry?.type !== "Polygon") continue;
+        const props: any = f.properties ?? {};
+        const name = props.NAME_3 ?? props.name;
+        if (!name) continue;
 
-    const features = (gj as any).features as Feature[] | undefined;
-    if (!features || !Array.isArray(features)) return null;
+        try {
+          const poly = polygon((f.geometry as any).coordinates);
+          if (booleanPointInPolygon(point([lng, lat]), poly)) return name;
+        } catch (e) {
+          continue;
+        }
+      }
+      return null;
+    },
+    [],
+  );
 
-    for (const f of features) {
-      if (!f.geometry || f.geometry.type !== "Polygon") continue;
+  const handleTruckLocationLogic = useCallback(
+    async (row: TruckRow) => {
+      if (!geojson || row.latitude == null || row.longitude == null) return;
 
-      const props: any = f.properties ?? {};
-      const name: string | undefined = props.NAME_3 ?? props.name;
-      if (!name) continue;
+      const assignedBarangayId = assignedByTruck[row.truck_id];
+      const effectiveId =
+        role === "GCP" && gcpTruckId === row.truck_id
+          ? (gcpAssignedBarangayId ?? assignedBarangayId)
+          : assignedBarangayId;
 
-      const poly = polygon((f.geometry as any).coordinates);
-      const p = point([lng, lat]);
+      if (!effectiveId) return;
 
-      if (booleanPointInPolygon(p, poly)) return name;
-    }
-
-    return null;
-  };
-
-  const startCollectionIfNeeded = async (barangay_id: number) => {
-    const { data, error } = await supabase
-      .from("collection_schedules")
-      .select("schedule_id, start_time, status")
-      .eq("barangay_id", barangay_id)
-      .eq("status", "pending")
-      .order("date_created", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error || !data) return;
-    if (data.start_time) return;
-
-    await supabase
-      .from("collection_schedules")
-      .update({
-        start_time: new Date().toISOString(),
-        status: "ongoing",
-      })
-      .eq("schedule_id", data.schedule_id);
-
-    // Send SMS notification to residents
-    try {
-      await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/notifications/collection-status`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            scheduleId: data.schedule_id,
-            status: "ongoing",
-            barangayId: barangay_id,
-          }),
-        },
+      const barangayName = getBarangayFromPoint(
+        [row.latitude, row.longitude],
+        geojson,
       );
-    } catch (err) {
-      console.error("Failed to send collection status notification:", err);
-    }
-  };
+      if (!barangayName) return;
 
-  const endCollectionIfNeeded = async (barangay_id: number) => {
-    const { data, error } = await supabase
-      .from("collection_schedules")
-      .select("schedule_id, end_time, status")
-      .eq("barangay_id", barangay_id)
-      .eq("status", "ongoing")
-      .order("date_created", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      const currentBarangayId = nameToId[barangayName];
+      if (!currentBarangayId) return;
 
-    if (error || !data) return;
-    if (data.end_time) return;
+      const isInside = currentBarangayId === effectiveId;
+      const state = (truckStates[row.truck_id] ??= { inside: false });
 
-    await supabase
-      .from("collection_schedules")
-      .update({
-        end_time: new Date().toISOString(),
-        status: "completed",
-      })
-      .eq("schedule_id", data.schedule_id);
-
-    // Send SMS notification to residents
-    try {
-      await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/notifications/collection-status`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            scheduleId: data.schedule_id,
-            status: "completed",
-            barangayId: barangay_id,
-          }),
-        },
-      );
-    } catch (err) {
-      console.error("Failed to send collection completed notification:", err);
-    }
-  };
-
-  const handleTruckLocationLogic = async (row: TruckRow) => {
-    if (!geojson) return;
-    if (row.latitude == null || row.longitude == null) return;
-
-    const assignedBarangayId = assignedByTruck[row.truck_id];
-    const effectiveAssignedBarangayId =
-      role === "GCP" && gcpTruckId === row.truck_id
-        ? (gcpAssignedBarangayId ?? assignedBarangayId)
-        : assignedBarangayId;
-    if (!effectiveAssignedBarangayId) return;
-
-    const barangayName = getBarangayFromPoint(
-      [row.latitude, row.longitude],
-      geojson,
-    );
-    if (!barangayName) return;
-
-    const currentBarangayId = nameToId[barangayName];
-    if (!currentBarangayId) return;
-
-    const isInsideAssigned = currentBarangayId === effectiveAssignedBarangayId;
-    const state = (truckStates[row.truck_id] ??= { inside: false });
-
-    if (role === "GCP" && gcpTruckId === row.truck_id) {
-      if (!isInsideAssigned) {
-        const assignedName =
-          gcpAssignedBarangayName || "your assigned barangay";
+      if (role === "GCP" && gcpTruckId === row.truck_id) {
         setGcpLocationWarning(
-          `You are outside ${assignedName}. Move into the assigned barangay to start collection.`,
+          isInside
+            ? null
+            : `You are outside ${gcpAssignedBarangayName || "your assigned barangay"}`,
         );
-      } else {
-        setGcpLocationWarning(null);
       }
-    }
 
-    if (isInsideAssigned && !state.inside) {
-      state.inside = true;
-      if (state.leaveTimeout) {
-        clearTimeout(state.leaveTimeout);
-        state.leaveTimeout = null;
-      }
-      await startCollectionIfNeeded(effectiveAssignedBarangayId);
-      return;
-    }
-
-    if (!isInsideAssigned && state.inside && !state.leaveTimeout) {
-      state.leaveTimeout = window.setTimeout(
-        async () => {
-          state.inside = false;
+      if (isInside && !state.inside) {
+        state.inside = true;
+        if (state.leaveTimeout) {
+          clearTimeout(state.leaveTimeout);
           state.leaveTimeout = null;
-          await endCollectionIfNeeded(effectiveAssignedBarangayId);
-        },
-        20 * 60 * 1000,
-      );
-    }
-  };
+        }
+        // Trigger collection start
+        const { data } = await supabase
+          .from("collection_schedules")
+          .select("schedule_id, start_time")
+          .eq("barangay_id", effectiveId)
+          .eq("status", "pending")
+          .order("date_created", { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-  // Load trucks and subscribe to live updates
+        if (data && !data.start_time) {
+          await supabase
+            .from("collection_schedules")
+            .update({ start_time: new Date().toISOString(), status: "ongoing" })
+            .eq("schedule_id", data.schedule_id);
+        }
+      } else if (!isInside && state.inside && !state.leaveTimeout) {
+        state.leaveTimeout = window.setTimeout(
+          async () => {
+            state.inside = false;
+            state.leaveTimeout = null;
+            const { data } = await supabase
+              .from("collection_schedules")
+              .select("schedule_id, end_time")
+              .eq("barangay_id", effectiveId)
+              .eq("status", "ongoing")
+              .order("date_created", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (data && !data.end_time) {
+              await supabase
+                .from("collection_schedules")
+                .update({
+                  end_time: new Date().toISOString(),
+                  status: "completed",
+                })
+                .eq("schedule_id", data.schedule_id);
+            }
+          },
+          20 * 60 * 1000,
+        );
+      }
+    },
+    [
+      geojson,
+      nameToId,
+      role,
+      gcpTruckId,
+      gcpAssignedBarangayId,
+      gcpAssignedBarangayName,
+      getBarangayFromPoint,
+    ],
+  );
+
+  // Truck subscription
   useEffect(() => {
-    async function loadTrucks() {
-      const { data, error } = await supabase
-        .from("truck_live_location")
-        .select("id, truck_id, latitude, longitude, updated_at");
-
-      if (!error && data) {
-        setTrucks(data as TruckRow[]);
-        (data as TruckRow[]).forEach((row) => {
-          if (row.truck_id != null) {
-            lastSeenAt[row.truck_id] = Date.now();
-          }
+    const loadTrucks = async () => {
+      const { data } = await supabase.from("truck_live_location").select("*");
+      if (data) {
+        setTrucks(data);
+        data.forEach((row: TruckRow) => {
+          if (row.truck_id) lastSeenAt[row.truck_id] = Date.now();
         });
       }
-    }
-
+    };
     loadTrucks();
 
     const channel = supabase
-      .channel("truck_live_location_changes")
+      .channel("truck_updates")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "truck_live_location" },
         async (payload) => {
           if (payload.eventType === "DELETE") {
-            const oldRow = payload.old as TruckRow | undefined;
-            if (oldRow?.truck_id != null) {
+            const old = payload.old as TruckRow;
+            if (old?.truck_id) {
               setTrucks((prev) =>
-                prev.filter((t) => t.truck_id !== oldRow.truck_id),
+                prev.filter((t) => t.truck_id !== old.truck_id),
               );
-              delete animStatesRef.current[oldRow.truck_id];
-              delete lastSeenAt[oldRow.truck_id];
+              delete animStatesRef.current[old.truck_id];
+              delete lastSeenAt[old.truck_id];
             }
             return;
           }
@@ -602,13 +569,10 @@ function LeafletMap({
           lastSeenAt[row.truck_id] = Date.now();
 
           setTrucks((prev) => {
+            const idx = prev.findIndex((t) => t.truck_id === row.truck_id);
+            if (idx === -1) return [...prev, row];
             const next = [...prev];
-            const idx = next.findIndex((t) => t.truck_id === row.truck_id);
-            if (idx === -1) {
-              next.push(row);
-            } else {
-              next[idx] = { ...next[idx], ...row };
-            }
+            next[idx] = { ...next[idx], ...row };
             return next;
           });
 
@@ -617,15 +581,13 @@ function LeafletMap({
             ? s.to
             : [row.latitude, row.longitude];
           const to: [number, number] = [row.latitude, row.longitude];
-
           const dist = Math.abs(from[0] - to[0]) + Math.abs(from[1] - to[1]);
-          const duration = dist > 0.01 ? 0 : 1500;
 
           animStatesRef.current[row.truck_id] = {
             from,
             to,
             startTime: performance.now(),
-            duration: duration || 1500,
+            duration: dist > 0.01 ? 0 : 1500,
           };
 
           await handleTruckLocationLogic(row);
@@ -636,347 +598,417 @@ function LeafletMap({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [geojson, nameToId]);
+  }, [handleTruckLocationLogic]);
 
-  // Truck animation loop
+  // Animation loop
+  // Animation loop
   useEffect(() => {
     const animate = () => {
       const now = performance.now();
-      const animStates = animStatesRef.current;
       const cutoff = Date.now() - 5 * 60 * 1000;
+      let hasChanges = false;
 
-      setTrucks((prev) =>
-        prev
+      // Only run animation if there are active animations
+      const activeAnimations = Object.keys(animStatesRef.current).length;
+      if (activeAnimations === 0 && trucks.length === 0) {
+        frameRef.current = requestAnimationFrame(animate);
+        return;
+      }
+
+      setTrucks((prev) => {
+        const next = prev
           .filter((t) => {
             const last = lastSeenAt[t.truck_id];
             return last == null || last >= cutoff;
           })
           .map((t) => {
-            const s = animStates[t.truck_id];
+            const s = animStatesRef.current[t.truck_id];
             if (!s || t.latitude == null || t.longitude == null) return t;
 
             const { from, to, startTime, duration } = s;
-            if (duration <= 0) {
+
+            // Animation complete - clean up and set final position
+            if (duration <= 0 || now >= startTime + duration) {
+              delete animStatesRef.current[t.truck_id];
+              if (t.latitude === to[0] && t.longitude === to[1]) return t;
+              hasChanges = true;
               return { ...t, latitude: to[0], longitude: to[1] };
             }
 
             const p = Math.min((now - startTime) / duration, 1);
-            const lat = from[0] + (to[0] - from[0]) * p;
-            const lng = from[1] + (to[1] - from[1]) * p;
+            const easeP = 1 - Math.pow(1 - p, 3);
 
-            return { ...t, latitude: lat, longitude: lng };
-          }),
-      );
+            const newLat = from[0] + (to[0] - from[0]) * easeP;
+            const newLng = from[1] + (to[1] - from[1]) * easeP;
+
+            // Skip tiny changes to prevent excessive re-renders
+            const latDiff = Math.abs(t.latitude - newLat);
+            const lngDiff = Math.abs(t.longitude - newLng);
+            if (latDiff < 0.00001 && lngDiff < 0.00001) return t;
+
+            hasChanges = true;
+            return {
+              ...t,
+              latitude: newLat,
+              longitude: newLng,
+            };
+          });
+
+        // Return prev reference if no changes (React will skip re-render)
+        if (!hasChanges) return prev;
+        return next;
+      });
 
       frameRef.current = requestAnimationFrame(animate);
     };
 
     frameRef.current = requestAnimationFrame(animate);
     return () => {
-      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
-  }, []);
+  }, []); // Keep empty dependency array
 
-  // Day/night theme switcher
+  // Theme toggle based on time
   useEffect(() => {
-    const updateThemeFromTime = () => {
+    const updateTheme = () => {
       const hour = new Date().getHours();
-      if (hour >= 6 && hour < 18) {
-        setTheme("day");
-      } else {
-        setTheme("night");
-      }
+      setTheme(hour >= 6 && hour < 18 ? "day" : "night");
     };
-
-    updateThemeFromTime();
-    const id = setInterval(updateThemeFromTime, 60 * 1000);
+    updateTheme();
+    const id = setInterval(updateTheme, 60 * 1000);
     return () => clearInterval(id);
   }, []);
 
-  // Map center: follow resident if we have live GPS, else default
   const currentCenter: [number, number] =
-    residentGps && residentGps.lat != null && residentGps.lng != null
+    residentGps?.lat != null && residentGps?.lng != null
       ? [residentGps.lat, residentGps.lng]
       : mapCenter;
 
-  return (
-    <div className="w-full flex flex-col gap-3">
-      {/* Enhanced Header with Theme Toggle */}
+  if (isLoading) {
+    return (
+      <div className="w-full h-[50vh] flex items-center justify-center bg-slate-50 rounded-3xl">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+          <span className="text-sm text-slate-500 font-medium">
+            Loading map...
+          </span>
+        </div>
+      </div>
+    );
+  }
 
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 md:p-1">
-        <div className="flex items-center gap-3">
+  return (
+    <div className="w-full flex flex-col gap-4 p-4">
+      {/* Modern Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 flex-wrap">
           {role === "GCP" && gcpLocationWarning && (
-            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-200">
-              {gcpLocationWarning}
+            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-full text-amber-700 text-sm font-medium shadow-sm">
+              <AlertCircle size={16} />
+              <span>{gcpLocationWarning}</span>
             </div>
           )}
-          {/* Location Control for Residents */}
+
           {role === "Resident" && (
-            <div className="inline-flex items-center rounded-2xl border border-slate-700/60 bg-slate-900/60 p-1 shadow-md">
+            <div className="flex bg-slate-100 p-1 rounded-xl">
               <button
                 onClick={() => setAutoCenter(true)}
-                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 ${
-                  autoCenter
-                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/50"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-                title="Center map on your current location"
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 
+  ${
+    autoCenter
+      ? theme === "night"
+        ? "bg-slate-800 text-emerald-400 shadow-sm"
+        : "bg-white text-emerald-600 shadow-sm"
+      : theme === "night"
+        ? "text-slate-400 hover:text-emerald-400"
+        : "text-slate-500 hover:text-slate-700"
+  }
+`}
               >
-                <span className="text-base">📍</span>
-                <span className="hidden sm:inline">Follow Location</span>
+                <Crosshair size={16} />
+                <span className="hidden sm:inline">Follow Me</span>
               </button>
               <button
                 onClick={() => setAutoCenter(false)}
-                className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 ${
-                  !autoCenter
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/50"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-                title="Free browse the map"
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
+  ${
+    !autoCenter
+      ? theme === "night"
+        ? "bg-slate-800 text-emerald-400 shadow-sm"
+        : "bg-white text-blue-600 shadow-sm"
+      : theme === "night"
+        ? "text-slate-400 hover:text-emerald-400"
+        : "text-slate-500 hover:text-slate-700"
+  }
+`}
               >
-                <span className="text-base">🗺️</span>
-                <span className="hidden sm:inline">Free Browse</span>
+                <MapIcon size={16} />
+                <span className="hidden sm:inline">Browse</span>
               </button>
             </div>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Live Indicator */}
-          <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-600/50 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300 shadow-md shadow-emerald-500/20">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-            <span>Live Tracking Active</span>
-          </div>
+        <div className="flex items-center gap-3">
+          <StatusBadge variant="success">
+            <Activity size={14} className="animate-pulse" />
+            <span>Live Tracking</span>
+          </StatusBadge>
 
-          {/* Theme Toggle */}
           <button
-            onClick={() => setTheme(theme === "day" ? "night" : "day")}
-            className="group/theme inline-flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-slate-600 hover:bg-slate-800/80 transition-all duration-300 shadow-md hover:shadow-lg"
+            onClick={() => setTheme((t) => (t === "day" ? "night" : "day"))}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-medium text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-all shadow-sm"
           >
-            <span className="text-base group-hover/theme:scale-110 transition-transform">
-              {theme === "day" ? "🌙" : "☀️"}
-            </span>
-            <span className="hidden sm:inline capitalize">{theme} Mode</span>
+            {theme === "day" ? <Moon size={16} /> : <Sun size={16} />}
+            <span className="capitalize">{theme}</span>
           </button>
         </div>
       </div>
-      <div className="px-2 md:px-6 z-[1000] relative">
-        <div className="group relative rounded-2xl md:rounded-3xl bg-gradient-to-r from-slate-800/95 via-slate-800/90 to-gray-800/95 border border-emerald-700/50 overflow-hidden shadow-lg shadow-emerald-900/20 backdrop-blur-2xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-        </div>
-      </div>
 
-      {/* MOBILE ETA */}
-      {role === "Resident" && (
-        <div className="px-2 md:hidden">
-          <div className="relative rounded-xl border border-emerald-600/50 bg-gradient-to-br from-slate-900/95 to-slate-900/90 px-3 py-2.5 text-emerald-50 shadow-xl shadow-emerald-900/60 backdrop-blur-xl overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-teal-500/5 pointer-events-none" />
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
-
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/30 to-teal-600/30 border border-emerald-400/40">
-                  <span className="text-xs">⏱️</span>
+      {/* Map Container */}
+      <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-slate-900/20 border border-slate-200">
+        {/* ETA Card - Desktop */}
+        {role === "Resident" && (
+          <div className="absolute top-4 left-4 z-[500] hidden md:block ">
+            <InfoCard className="bg-slate-900/40 p-4 min-w-[300px]">
+              <div className="flex items-center gap-3 mb-3">
+                <div
+                  className={
+                    `p-2 rounded-xl ` +
+                    (theme === "night" ? "bg-emerald-900/30" : "bg-emerald-100")
+                  }
+                >
+                  <Clock
+                    size={20}
+                    className={
+                      theme === "night"
+                        ? "text-emerald-300"
+                        : "text-emerald-600"
+                    }
+                  />
                 </div>
                 <div>
-                  <p className="text-xs font-bold tracking-wide text-emerald-300 uppercase">
+                  <h3
+                    className={
+                      `text-lg font-semibold ` +
+                      (theme === "night" ? "text-white" : "text-slate-900")
+                    }
+                  >
                     Arrival Time
-                  </p>
-                  <p className="text-[10px] text-emerald-200/60">
-                    Next collection vehicle
+                  </h3>
+                  <p
+                    className={
+                      `text-md ` +
+                      (theme === "night" ? "text-white" : "text-black")
+                    }
+                  >
+                    Next collection
                   </p>
                 </div>
               </div>
 
-              <div className="rounded-lg bg-slate-800/50 border border-emerald-600/30 p-2 mb-2">
+              <div
+                className={
+                  `rounded-xl p-3 mb-4 ` +
+                  (theme === "night" ? "bg-slate-800" : "bg-slate-50")
+                }
+              >
                 {etaMinutes == null ? (
-                  <p className="text-[10px] text-emerald-100/70">
-                    📡 Locating nearest truck...
-                  </p>
+                  <div
+                    className={
+                      `flex items-center gap-2 text-sm ` +
+                      (theme === "night" ? "text-slate-300" : "text-slate-500")
+                    }
+                  >
+                    <div
+                      className={
+                        `w-4 h-4 border-2 rounded-full animate-spin ` +
+                        (theme === "night"
+                          ? "border-slate-600 border-t-emerald-400"
+                          : "border-slate-300 border-t-emerald-500")
+                      }
+                    />
+                    <span className="text-[17px]">Locating trucks...</span>
+                  </div>
                 ) : (
                   <div>
-                    <p className="text-2xl leading-none font-black text-emerald-300 mb-0.5">
-                      {etaMinutes}
-                      <span className="text-[10px] font-semibold text-emerald-200/70 ml-1.5">
-                        min{etaMinutes === 1 ? "" : "s"}
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold text-emerald-600">
+                        {etaMinutes}
                       </span>
-                    </p>
-                    <p className="text-[10px] text-emerald-100/60">
-                      Estimated arrival time
+                      <span className="text-sm font-medium text-slate-600">
+                        min{etaMinutes !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Estimated arrival
                     </p>
                   </div>
                 )}
               </div>
 
-              <p className="text-[9px] text-emerald-300/50 border-t border-emerald-700/30 pt-1.5">
-                ℹ️ Based on live GPS data and 15–20 km/h average speed
+              <p className="text-[13px] text-white/200 leading-relaxed">
+                Based on live GPS data • 15-20 km/h avg speed
               </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Map card */}
-      <div className="mx-1 rounded-2xl md:rounded-3xl border border-emerald-800/50 shadow-xl shadow-emerald-900/40 overflow-hidden bg-slate-900/95 backdrop-blur relative">
-        {/* DESKTOP/TABLET ETA */}
-        {role === "Resident" && (
-          <div
-            className="
-            pointer-events-none absolute top-4 z-[500]
-            hidden md:block
-            left-4
-          "
-          >
-            <div className="pointer-events-auto relative max-w-[240px] rounded-xl border border-emerald-600/50 bg-gradient-to-br from-slate-900/95 to-slate-900/90 px-3.5 py-3 text-emerald-50 shadow-xl shadow-emerald-900/60 backdrop-blur-xl overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-teal-500/5 pointer-events-none" />
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
-
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2.5">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/30 to-teal-600/30 border border-emerald-400/40">
-                    <span className="text-sm">⏱️</span>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold tracking-wide text-emerald-300 uppercase">
-                      Arrival Time
-                    </p>
-                    <p className="text-[10px] text-emerald-200/60">
-                      Next collection vehicle
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-lg bg-slate-800/50 border border-emerald-600/30 p-2.5 mb-2.5">
-                  {etaMinutes == null ? (
-                    <p className="text-xs text-emerald-100/70">
-                      📡 Locating nearest truck...
-                    </p>
-                  ) : (
-                    <div>
-                      <p className="text-3xl leading-none font-black text-emerald-300 mb-1">
-                        {etaMinutes}
-                        <span className="text-[10px] font-semibold text-emerald-200/70 ml-1.5">
-                          min{etaMinutes === 1 ? "" : "s"}
-                        </span>
-                      </p>
-                      <p className="text-[10px] text-emerald-100/60">
-                        Estimated arrival time
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <p className="text-[9px] text-emerald-300/50 border-t border-emerald-700/30 pt-2">
-                  ℹ️ Based on live GPS data and 15–20 km/h average speed
-                </p>
-              </div>
-            </div>
+            </InfoCard>
           </div>
         )}
 
-        {/* Map fills the whole container */}
-        <div className="w-full h-[50vh] min-h-[280px] sm:h-[56vh] md:h-[62vh] lg:h-[68vh] xl:h-[72vh] max-h-[740px] relative">
+        {/* Mobile ETA */}
+        {role === "Resident" && (
+          <div className="md:hidden absolute top-4 left-4 right-4 z-[500]">
+            <InfoCard className="p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <Clock size={18} className="text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      Arrival
+                    </h3>
+                    {etaMinutes != null && (
+                      <p className="text-lg font-bold text-emerald-600">
+                        {etaMinutes} min
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {etaMinutes == null && (
+                  <div className="w-5 h-5 border-2 border-slate-200 border-t-emerald-500 rounded-full animate-spin" />
+                )}
+              </div>
+            </InfoCard>
+          </div>
+        )}
+
+        {/* Map */}
+        <div className="w-full h-[60vh] min-h-[400px] relative bg-slate-100">
           <MapContainer
             center={currentCenter}
-            zoom={13}
-            className="w-full h-full rounded-2xl"
+            zoom={14}
+            className="w-full h-full"
+            zoomControl={false}
           >
             <TileLayer
-              attribution={
-                theme === "day"
-                  ? "© OpenStreetMap contributors"
-                  : "© OpenStreetMap contributors, © CARTO"
-              }
-              url={theme === "day" ? dayTileUrl : nightTileUrl}
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              url={tileUrls[theme]}
+              subdomains="abcd"
+              maxZoom={20}
             />
 
-            {/* Recenter map when live GPS changes */}
-            {residentGps && (
-              <RecenterOnGps gps={residentGps} autoCenter={autoCenter} />
-            )}
+            <RecenterOnGps gps={residentGps as any} autoCenter={autoCenter} />
 
+            {/* Barangay Polygons */}
             {geojson && (
               <GeoJSON
                 data={geojson}
                 style={(feature?: Feature) => {
-                  if (!feature) return {};
-                  const name3 = (feature.properties as any)?.NAME_3;
-                  const fillColor = getBarangayColor(name3);
-
-                  if (feature.geometry.type === "Polygon") {
-                    return {
-                      color: "#555",
-                      weight: 1.2,
-                      fillColor,
-                      fillOpacity: theme === "day" ? 0.5 : 0.4,
-                    };
-                  }
-                  return {};
+                  if (!feature || feature.geometry.type !== "Polygon")
+                    return {};
+                  const name = (feature.properties as any)?.NAME_3;
+                  return {
+                    color: theme === "day" ? "#475569" : "#64748b",
+                    weight: 2,
+                    opacity: 0.8,
+                    fillColor: getBarangayColor(name),
+                    fillOpacity: theme === "day" ? 0.35 : 0.25,
+                  };
                 }}
-                pointToLayer={(feature: Feature<Point>, latlng) =>
-                  L.marker(latlng, { icon: barangayHallIcon })
-                }
                 onEachFeature={(feature, layer) => {
                   const props: any = feature.properties || {};
-                  const name3 = props.NAME_3;
-                  const name = name3 || props.name;
+                  const name = props.NAME_3;
 
-                  if (feature.geometry.type === "Polygon" && name3) {
-                    const center = (layer as any).getBounds().getCenter();
-                    layer.bindTooltip(name3, {
+                  if (feature.geometry.type === "Polygon" && name) {
+                    layer.bindTooltip(name, {
                       permanent: true,
                       direction: "center",
-                      className: "barangay-label",
+                      className: "custom-tooltip",
+                      opacity: 0.9,
                     });
-                    (layer as any).openTooltip(center);
                   }
 
-                  if (name && feature.geometry.type === "Polygon") {
-                    layer.bindPopup(String(name));
-                  }
+                  layer.on({
+                    mouseover: (e) => {
+                      if (typeof e.target.setStyle === "function") {
+                        e.target.setStyle({
+                          weight: 3,
+                          fillOpacity: theme === "day" ? 0.5 : 0.4,
+                        });
+                      }
+                    },
+                    mouseout: (e) => {
+                      if (typeof e.target.setStyle === "function") {
+                        e.target.setStyle({
+                          weight: 2,
+                          fillOpacity: theme === "day" ? 0.35 : 0.25,
+                        });
+                      }
+                    },
+                  });
                 }}
               />
             )}
 
-            {/* Trucks — filtered for residents */}
+            {/* Trucks */}
             {visibleTrucks.map((t) => {
               if (t.latitude == null || t.longitude == null) return null;
               const pos: [number, number] = [t.latitude, t.longitude];
-              const key = t.id ?? `truck-${t.truck_id}`;
+              const isRecent = Boolean(
+                t.updated_at &&
+                Date.now() - new Date(t.updated_at).getTime() < 60000,
+              );
 
               return (
-                <React.Fragment key={key}>
-                  <Marker
-                    position={pos}
-                    icon={truckShadowIcon}
-                    interactive={false}
-                  />
-                  <Marker position={pos} icon={truckIcon}>
-                    <Popup>
-                      <div className="text-sm">
-                        <div className="font-semibold">{`Truck ${t.truck_id}`}</div>
-                        {t.updated_at && (
-                          <div className="text-xs text-gray-600">
-                            Last update:{" "}
-                            {new Date(t.updated_at).toLocaleTimeString()}
-                          </div>
-                        )}
+                <Marker
+                  key={t.id ?? `truck-${t.truck_id}`}
+                  position={pos}
+                  icon={createTruckIcon(isRecent)}
+                >
+                  <Popup className="custom-popup">
+                    <div className="p-2 min-w-[150px]">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 bg-emerald-100 rounded-lg">
+                          <Truck size={16} className="text-emerald-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-slate-900">
+                            Truck {t.truck_id}
+                          </h4>
+                          <StatusBadge
+                            variant={isRecent ? "success" : "warning"}
+                          >
+                            {isRecent ? "Active" : "Idle"}
+                          </StatusBadge>
+                        </div>
                       </div>
-                    </Popup>
-                  </Marker>
-                </React.Fragment>
+                      {t.updated_at && (
+                        <p className="text-xs text-slate-500">
+                          Updated{" "}
+                          {new Date(t.updated_at).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      )}
+                    </div>
+                  </Popup>
+                </Marker>
               );
             })}
 
-            {/* Resident sees only their own location */}
+            {/* Resident Location */}
             {role === "Resident" && residentLocation && (
               <Marker
                 position={[residentLocation.lat, residentLocation.lng]}
-                icon={residentIcon}
+                icon={createResidentIcon()}
               >
-                <Popup>
-                  <div className="text-sm">
-                    <div className="font-semibold">Your location</div>
+                <Popup className="custom-popup">
+                  <div className="flex items-center gap-2 p-1">
+                    <MapPin size={16} className="text-blue-500" />
+                    <span className="font-medium text-slate-900">
+                      Your Location
+                    </span>
                   </div>
                 </Popup>
               </Marker>
@@ -984,6 +1016,48 @@ function LeafletMap({
           </MapContainer>
         </div>
       </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 px-2">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-emerald-500" />
+          <span>Active Truck</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-blue-500" />
+          <span>Your Location</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-slate-400/50" />
+          <span>Barangay Area</span>
+        </div>
+      </div>
+
+      <style jsx global>{`
+        .custom-tooltip {
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(8px);
+          border: none;
+          border-radius: 8px;
+          padding: 4px 12px;
+          font-size: 12px;
+          font-weight: 600;
+          color: #1e293b;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .custom-popup .leaflet-popup-content-wrapper {
+          background: rgba(255, 255, 255, 0.98);
+          backdrop-filter: blur(12px);
+          border-radius: 12px;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .custom-popup .leaflet-popup-tip {
+          background: rgba(255, 255, 255, 0.98);
+        }
+        .leaflet-container {
+          font-family: inherit;
+        }
+      `}</style>
     </div>
   );
 }

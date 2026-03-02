@@ -414,149 +414,506 @@ function ResidentSchedulesFeature({
     (detailsPage - 1) * detailsPageSize,
     detailsPage * detailsPageSize,
   );
+  const startIndex = (detailsPage - 1) * detailsPageSize;
+  const endIndex = startIndex + detailsPageSize;
 
   return (
-    <section className="dashboard-section w-full max-w-4xl mx-auto">
-      <div className="dashboard-section-glow" />
-      <h2 className="text-2xl md:text-3xl font-bold mb-4 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
-        Schedules Overview
-      </h2>
+    <section className="max-w-6xl mx-auto space-y-8">
+      {/* Modern Header */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+              <svg
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <h2 className="text-3xl font-bold text-white tracking-tight">
+              Collection Schedules
+            </h2>
+          </div>
+          <p className="text-slate-400 text-sm ml-13">
+            Manage pickup schedules and truck assignments
+          </p>
+        </div>
 
-      {/* Barangay selector */}
-      <div className="mb-4 md:mb-6">
-        <Label
-          htmlFor="barangay-select"
-          className="block text-xs md:text-sm font-semibold mb-2 text-slate-100"
-        >
-          See other barangay schedules
-        </Label>
-        <Select
-          value={selectedBarangayId}
-          onValueChange={(value: string) => setSelectedBarangayId(value)}
-        >
-          <SelectTrigger id="barangay-select">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {barangays.map((b) => (
-              <SelectItem key={b.barangay_id} value={b.barangay_id}>
-                {b.barangay_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Modern Selector */}
+        <div className="w-full lg:w-80">
+          <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+            Select Barangay
+          </label>
+          <div className="relative">
+            <Select
+              value={selectedBarangayId}
+              onValueChange={(value: string) => setSelectedBarangayId(value)}
+            >
+              <SelectTrigger className="w-full bg-slate-900/80 border-slate-700/50 rounded-xl h-12 text-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all">
+                <SelectValue placeholder="Choose a barangay..." />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-700 rounded-xl">
+                {barangays.map((b) => (
+                  <SelectItem
+                    key={b.barangay_id}
+                    value={b.barangay_id}
+                    className="focus:bg-emerald-500/10 focus:text-emerald-400"
+                  >
+                    {b.barangay_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-6">
+        <div className="bg-slate-900/50 rounded-3xl border border-slate-800/50 p-16 flex items-center justify-center">
           <TruckLoader />
         </div>
       ) : error ? (
-        <p className="text-red-300 text-sm md:text-base">Error: {error}</p>
+        <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/20 text-red-400 flex items-center gap-3">
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          {error}
+        </div>
       ) : schedule ? (
-        <div className="space-y-4 md:space-y-5">
-          {/* Header info */}
-          <div>
-            <h3 className="font-semibold text-lg md:text-xl text-slate-100">
-              Barangay: {schedule.barangay?.barangay_name || "N/A"}
-            </h3>
-            <div className="text-xs md:text-sm text-slate-200 mt-1">
-              <span className="font-semibold text-emerald-300">
-                Assigned GCP:
-              </span>{" "}
-              {schedule.gcp_user
-                ? `${schedule.gcp_user.first_name} ${schedule.gcp_user.last_name}`
-                : "None"}
+        <div className="space-y-6">
+          {/* Info Cards - Modern Style */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Barangay Card */}
+            <div className="group relative bg-slate-900/40 rounded-2xl p-6 border border-slate-800/50 hover:border-emerald-500/30 transition-all duration-300 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                  <svg
+                    className="w-7 h-7 text-emerald-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
+                    Barangay
+                  </p>
+                  <h3 className="text-xl font-semibold text-white">
+                    {schedule.barangay?.barangay_name || "N/A"}
+                  </h3>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Calendar wrapper */}
-          <div className="rounded-2xl border border-green-800/40 bg-slate-900/70 p-2 md:p-3">
-            {/* Make the calendar scrollable horizontally on very narrow screens */}
-            <div className="w-full overflow-x-auto">
-              <div className="min-w-[280px]">
-                <ScheduleCalendar schedule={schedule} />
+            {/* GCP Card */}
+            <div className="group relative bg-slate-900/40 rounded-2xl p-6 border border-slate-800/50 hover:border-blue-500/30 transition-all duration-300 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-400/20 to-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                  <svg
+                    className="w-7 h-7 text-blue-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
+                    Assigned Driver
+                  </p>
+                  <h3 className="text-xl font-semibold text-white">
+                    {schedule.gcp_user
+                      ? `${schedule.gcp_user.first_name} ${schedule.gcp_user.last_name}`
+                      : "Not assigned"}
+                  </h3>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Collection details list with pagination */}
-          {collectionDetails.length > 0 ? (
-            <>
-              <ul className="space-y-3 text-slate-200">
-                {paginatedDetails.map((detail) => (
-                  <li
-                    key={detail.collectiondetails_id}
-                    className="border border-green-800/40 rounded-2xl p-3 bg-slate-900/80 text-xs md:text-sm"
+          {/* Calendar Section - Redesigned */}
+          <div className="bg-slate-900/40 rounded-3xl border border-slate-800/50 overflow-hidden">
+            {/* Calendar Header */}
+            <div className="px-6 py-5 border-b border-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center">
+                  <svg
+                    className="w-5 h-5 text-emerald-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    <div className="flex flex-col gap-1">
-                      <div>
-                        <span className="font-semibold text-emerald-300">
-                          Truck:
-                        </span>{" "}
-                        {detail.truck?.plate_number || "N/A"}
-                      </div>
-                      <div>
-                        <span className="font-semibold text-emerald-300">
-                          Collection Date:
-                        </span>{" "}
-                        {detail.collection_date
-                          ? new Date(
-                              detail.collection_date,
-                            ).toLocaleDateString()
-                          : "N/A"}
-                      </div>
-                      <div>
-                        <span className="font-semibold text-emerald-300">
-                          Status:
-                        </span>{" "}
-                        {detail.status}
-                      </div>
-                      <div>
-                        <span className="font-semibold text-emerald-300">
-                          Assigned User:
-                        </span>{" "}
-                        {detail.gcp_assignment?.user
-                          ? `${detail.gcp_assignment.user.first_name} ${detail.gcp_assignment.user.last_name}`
-                          : "Unassigned"}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              {/* Pagination controls */}
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">
+                    Collection Calendar
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Pickup schedule for this month
+                  </p>
+                </div>
+              </div>
+              <span className="self-start sm:self-auto px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-400 text-sm font-medium border border-emerald-500/20">
+                {schedule.days} Pattern
+              </span>
+            </div>
+
+            {/* Calendar Content */}
+            <div className="p-6">
+              <div className="w-full overflow-x-auto">
+                <div className="min-w-[320px]">
+                  <ScheduleCalendar schedule={schedule} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Collection Details - Modern Table */}
+          {collectionDetails.length > 0 && (
+            <div className="bg-slate-900/40 rounded-3xl border border-slate-800/50 overflow-hidden">
+              {/* Table Header */}
+              <div className="px-6 py-5 border-b border-slate-800/50 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center">
+                    <svg
+                      className="w-5 h-5 text-blue-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">
+                      Collection History
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Recent pickup records
+                    </p>
+                  </div>
+                </div>
+                <span className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 text-xs font-medium">
+                  {collectionDetails.length} records
+                </span>
+              </div>
+
+              {/* Modern Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-slate-950/30">
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Truck Details
+                      </th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Collection Date
+                      </th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Driver
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/30">
+                    {paginatedDetails.map((detail) => (
+                      <tr
+                        key={detail.collectiondetails_id}
+                        className="group hover:bg-slate-800/20 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center border border-slate-600/50 group-hover:border-emerald-500/30 transition-colors">
+                              <svg
+                                className="w-5 h-5 text-slate-400 group-hover:text-emerald-400 transition-colors"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"
+                                />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium text-white">
+                                {detail.truck?.plate_number || "N/A"}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {detail.truck?.truck_code || "No code"}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2 text-slate-300">
+                            <svg
+                              className="w-4 h-4 text-slate-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                              />
+                            </svg>
+                            {detail.collection_date
+                              ? new Date(
+                                  detail.collection_date,
+                                ).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })
+                              : "N/A"}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`
+                          inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border
+                          ${
+                            detail.status === "Completed"
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                              : detail.status === "Pending"
+                                ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                : detail.status === "In Progress"
+                                  ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                  : "bg-slate-500/10 text-slate-400 border-slate-500/20"
+                          }
+                        `}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${detail.status === "Completed" ? "bg-emerald-400" : detail.status === "Pending" ? "bg-amber-400" : "bg-slate-400"}`}
+                            />
+                            {detail.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs font-medium text-slate-300">
+                              {detail.gcp_assignment?.user
+                                ? detail.gcp_assignment.user.first_name[0]
+                                : "?"}
+                            </div>
+                            <span className="text-slate-300 text-sm">
+                              {detail.gcp_assignment?.user
+                                ? `${detail.gcp_assignment.user.first_name} ${detail.gcp_assignment.user.last_name}`
+                                : "Unassigned"}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Modern Pagination */}
               {detailsTotalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-4">
-                  <Button
-                    disabled={detailsPage === 1}
-                    onClick={() => setDetailsPage(detailsPage - 1)}
-                    variant="outline"
-                  >
-                    Prev
-                  </Button>
-                  <span className="text-xs text-slate-300">
-                    Page {detailsPage} of {detailsTotalPages}
-                  </span>
-                  <Button
-                    disabled={detailsPage === detailsTotalPages}
-                    onClick={() => setDetailsPage(detailsPage + 1)}
-                    variant="outline"
-                  >
-                    Next
-                  </Button>
+                <div className="px-6 py-4 border-t border-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <p className="text-sm text-slate-500">
+                    Showing{" "}
+                    <span className="text-slate-300 font-medium">
+                      {startIndex + 1}
+                    </span>{" "}
+                    to{" "}
+                    <span className="text-slate-300 font-medium">
+                      {Math.min(endIndex, collectionDetails.length)}
+                    </span>{" "}
+                    of{" "}
+                    <span className="text-slate-300 font-medium">
+                      {collectionDetails.length}
+                    </span>
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setDetailsPage(detailsPage - 1)}
+                      disabled={detailsPage === 1}
+                      className="p-2.5 rounded-xl bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-800 disabled:hover:text-slate-400 transition-all"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M15 19l-7-7 7-7"
+                        />
+                      </svg>
+                    </button>
+                    <div className="flex items-center gap-1">
+                      {Array.from(
+                        { length: Math.min(5, detailsTotalPages) },
+                        (_, i) => {
+                          let pageNum;
+                          if (detailsTotalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (detailsPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (detailsPage >= detailsTotalPages - 2) {
+                            pageNum = detailsTotalPages - 4 + i;
+                          } else {
+                            pageNum = detailsPage - 2 + i;
+                          }
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setDetailsPage(pageNum)}
+                              className={`
+                            w-10 h-10 rounded-xl text-sm font-medium transition-all
+                            ${
+                              detailsPage === pageNum
+                                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25"
+                                : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white"
+                            }
+                          `}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        },
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setDetailsPage(detailsPage + 1)}
+                      disabled={detailsPage === detailsTotalPages}
+                      className="p-2.5 rounded-xl bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-800 disabled:hover:text-slate-400 transition-all"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               )}
-            </>
-          ) : (
-            <p className="text-slate-400 text-xs md:text-sm">
-              No collection details for this schedule.
-            </p>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {collectionDetails.length === 0 && (
+            <div className="bg-slate-900/40 rounded-3xl border border-slate-800/50 p-12 text-center">
+              <div className="w-20 h-20 rounded-3xl bg-slate-800/50 flex items-center justify-center mx-auto mb-6">
+                <svg
+                  className="w-10 h-10 text-slate-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-300 mb-2">
+                No collection records
+              </h3>
+              <p className="text-slate-500 text-sm">
+                There are no scheduled collections for this barangay yet.
+              </p>
+            </div>
           )}
         </div>
       ) : (
-        <p className="text-slate-400 text-xs md:text-sm">
-          No schedule found for this barangay.
-        </p>
+        <div className="bg-slate-900/40 rounded-3xl border border-slate-800/50 p-12 text-center">
+          <div className="w-20 h-20 rounded-3xl bg-slate-800/50 flex items-center justify-center mx-auto mb-6">
+            <svg
+              className="w-10 h-10 text-slate-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-slate-300 mb-2">
+            No schedule found
+          </h3>
+          <p className="text-slate-500 text-sm">
+            Select a different barangay to view their collection schedule.
+          </p>
+        </div>
       )}
     </section>
   );
@@ -821,180 +1178,368 @@ function SubmitReportSection({
   };
 
   return (
-    <section className="max-w-3xl mx-auto mt-4 rounded-3xl bg-gradient-to-br from-slate-900/95 to-gray-900/95 border border-emerald-800/30 p-8 md:p-10 shadow-2xl shadow-emerald-900/30 backdrop-blur-2xl transition-all">
-      <div className="mb-4 flex items-center gap-3">
-        <span className="bg-emerald-700/10 text-emerald-300 rounded-2xl p-3 text-2xl border border-emerald-700/20 shadow-sm">
-          📷
-        </span>
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
-          Submit Incident Report
-        </h2>
-      </div>
-
-      <p className="mb-5 text-sm text-slate-400 max-w-2xl">
-        All required fields must be completed. A photo is required before
-        submitting — use the live camera to capture evidence.
-      </p>
-
-      {fieldError && (
-        <div className="mb-3 px-4 py-2 rounded-2xl bg-red-500/15 text-red-200 font-semibold border border-red-500/50 animate-pulse text-sm">
-          {fieldError}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Location */}
-        <div>
-          <label className="block text-xs font-semibold mb-1 text-slate-100">
-            Location
-          </label>
-          <input
-            name="location"
-            value={form.location}
-            onChange={handleChange}
-            required
-            className="w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
-            placeholder="Exact location/address"
-            type="text"
-          />
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-xs font-semibold mb-1 text-slate-100">
-            Description
-          </label>
-          <textarea
-            name="description"
-            value={form.description}
-            onChange={handleChange}
-            required
-            rows={3}
-            className="w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
-            placeholder="Describe the incident"
-          />
-        </div>
-
-        {/* Barangay */}
-        <div className="space-y-2">
-          <Label className="text-xs font-semibold text-slate-100">
-            Barangay
-          </Label>
-          <Select
-            name="barangay_id"
-            value={form.barangay_id}
-            onValueChange={(value: string) =>
-              handleChange({
-                target: { name: "barangay_id", value },
-              } as ChangeEvent<HTMLSelectElement>)
-            }
-            required
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select Barangay" />
-            </SelectTrigger>
-            <SelectContent>
-              {barangays.map((brgy) => (
-                <SelectItem key={brgy.barangay_id} value={brgy.barangay_id}>
-                  {brgy.barangay_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Landmark */}
-        <div className="space-y-2">
-          <Label className="text-xs font-semibold text-slate-100">
-            Landmark
-          </Label>
-          <Input
-            name="landmark"
-            value={form.landmark}
-            onChange={handleChange}
-            required
-            placeholder="Nearby landmark"
-            type="text"
-          />
-        </div>
-
-        {/* Camera controls */}
-        {!cameraActive && (
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" onClick={startCamera} variant="outline">
-              Start Camera
-            </Button>
-            <Button
-              type="button"
-              onClick={toggleCameraFacing}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+    <section className="max-w-3xl mx-auto">
+      <div className="glass-panel rounded-2xl p-8 card-glow">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+            <svg
+              className="w-6 h-6 text-emerald-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              Use {cameraFacing === "user" ? "Back" : "Front"} Camera
-            </Button>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-100">
+              Submit Incident Report
+            </h2>
+            <p className="text-slate-400 text-sm">
+              All fields are required. Photo evidence mandatory.
+            </p>
+          </div>
+        </div>
+
+        {fieldError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            {fieldError}
           </div>
         )}
 
-        {cameraActive && (
-          <div className="flex flex-col gap-2 mt-2">
-            <video
-              ref={videoRef}
-              width={360}
-              height={270}
-              autoPlay
-              className="rounded-2xl border border-slate-700 shadow-lg shadow-slate-900/60 bg-black/60 w-full max-w-md"
-            />
-            <div className="flex gap-3 flex-wrap mt-2">
-              <Button type="button" onClick={capturePhoto}>
-                Capture Photo
-              </Button>
-              <Button
-                type="button"
-                onClick={toggleCameraFacing}
-                variant="secondary"
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Card 1: Location Details */}
+          <div className="bg-slate-950/50 rounded-xl p-5 border border-slate-800/50">
+            <div className="flex items-center gap-2 mb-4 text-emerald-400">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                Switch Camera
-              </Button>
-              <Button type="button" onClick={stopCamera} variant="secondary">
-                Cancel
-              </Button>
-            </div>
-            <canvas
-              ref={canvasRef}
-              width={320}
-              height={240}
-              style={{ display: "none" }}
-            />
-          </div>
-        )}
-
-        {photoUrl && (
-          <div className="mt-4 mb-2 flex flex-col items-center gap-3">
-            <div className="w-44 rounded-2xl overflow-hidden border border-slate-700 shadow-lg">
-              <img src={photoUrl} alt="Live Capture" className="w-full block" />
-            </div>
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                onClick={handleRetakePhoto}
-                variant="secondary"
-              >
-                Retake Photo
-              </Button>
-              <span className="text-xs text-slate-400 self-center">
-                Preview of captured image
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+              <span className="text-xs font-semibold uppercase tracking-wider">
+                Location Details
               </span>
             </div>
-          </div>
-        )}
 
-        <Button
-          type="submit"
-          disabled={loading || !form.photoFile}
-          className="w-full py-3 text-sm font-bold"
-        >
-          {loading ? "Submitting..." : "Submit Report"}
-        </Button>
-      </form>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Location <span className="text-red-400">*</span>
+                </label>
+                <input
+                  name="location"
+                  value={form.location}
+                  onChange={handleChange}
+                  required
+                  placeholder="Exact location/address"
+                  type="text"
+                  className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Barangay <span className="text-red-400">*</span>
+                </label>
+                <Select
+                  name="barangay_id"
+                  value={form.barangay_id}
+                  onValueChange={(value: string) =>
+                    handleChange({
+                      target: { name: "barangay_id", value },
+                    } as ChangeEvent<HTMLSelectElement>)
+                  }
+                  required
+                >
+                  <SelectTrigger className="w-full bg-slate-900/50 border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 focus:ring-emerald-500/50 focus:border-emerald-500/50">
+                    <SelectValue placeholder="Select Barangay" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {barangays.map((brgy) => (
+                      <SelectItem
+                        key={brgy.barangay_id}
+                        value={brgy.barangay_id}
+                      >
+                        {brgy.barangay_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Landmark <span className="text-red-400">*</span>
+              </label>
+              <input
+                name="landmark"
+                value={form.landmark}
+                onChange={handleChange}
+                required
+                placeholder="Nearby landmark"
+                type="text"
+                className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Card 2: Incident Description */}
+          <div className="bg-slate-950/50 rounded-xl p-5 border border-slate-800/50">
+            <div className="flex items-center gap-2 mb-4 text-emerald-400">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+              <span className="text-xs font-semibold uppercase tracking-wider">
+                Incident Description
+              </span>
+            </div>
+
+            <textarea
+              name="description"
+              value={form.description}
+              onChange={handleChange}
+              required
+              rows={4}
+              placeholder="Describe what happened in detail..."
+              className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all resize-none"
+            />
+          </div>
+
+          {/* Card 3: Photo Evidence */}
+          <div className="bg-slate-950/50 rounded-xl p-5 border border-slate-800/50">
+            <div className="flex items-center gap-2 mb-4 text-emerald-400">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+              <span className="text-xs font-semibold uppercase tracking-wider">
+                Photo Evidence
+              </span>
+              <span className="text-xs text-red-400 ml-auto">*Required</span>
+            </div>
+
+            {!cameraActive && !photoUrl && (
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  type="button"
+                  onClick={startCamera}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                  Start Camera
+                </Button>
+                <Button
+                  type="button"
+                  onClick={toggleCameraFacing}
+                  variant="outline"
+                  className="border-slate-600 text-slate-300 hover:bg-slate-800"
+                >
+                  Use {cameraFacing === "user" ? "Back" : "Front"} Camera
+                </Button>
+              </div>
+            )}
+
+            {cameraActive && (
+              <div className="space-y-3">
+                <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-black/60">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    className="w-full aspect-video object-cover"
+                  />
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={capturePhoto}
+                      className="bg-white text-slate-900 hover:bg-slate-100 rounded-full px-6"
+                    >
+                      Capture
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-center">
+                  <Button
+                    type="button"
+                    onClick={toggleCameraFacing}
+                    variant="outline"
+                    size="sm"
+                    className="border-slate-600 text-slate-300"
+                  >
+                    Switch Camera
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={stopCamera}
+                    variant="outline"
+                    size="sm"
+                    className="border-slate-600 text-slate-300"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                <canvas
+                  ref={canvasRef}
+                  width={320}
+                  height={240}
+                  style={{ display: "none" }}
+                />
+              </div>
+            )}
+
+            {photoUrl && (
+              <div className="space-y-3">
+                <div className="relative rounded-xl overflow-hidden border border-slate-700 w-fit">
+                  <img
+                    src={photoUrl}
+                    alt="Captured evidence"
+                    className="w-full max-w-xs object-cover"
+                  />
+                  <div className="absolute top-2 right-2">
+                    <span className="px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-medium border border-emerald-500/30">
+                      Captured
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleRetakePhoto}
+                  variant="outline"
+                  size="sm"
+                  className="border-slate-600 text-slate-300"
+                >
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  Retake Photo
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Submit Button */}
+          <Button
+            type="submit"
+            disabled={loading || !form.photoFile}
+            className="w-full py-4 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Submitting...
+              </span>
+            ) : (
+              "Submit Incident Report"
+            )}
+          </Button>
+        </form>
+      </div>
     </section>
   );
 }
@@ -1204,7 +1749,6 @@ export default function ResidentDashboard() {
   const router = useRouter();
 
   // User initials for avatar
-  // ...existing code...
   const [initials, setInitials] = useState("");
   useEffect(() => {
     async function fetchInitials() {
@@ -1243,7 +1787,6 @@ export default function ResidentDashboard() {
   const [activeTab, setActiveTab] = useState<ResidentActiveTab>("dashboard");
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [displayName, setDisplayName] = useState("User");
-  // ...existing code...
   const [gps, setGps] = useState<{ lat: number | null; lng: number | null }>({
     lat: null,
     lng: null,

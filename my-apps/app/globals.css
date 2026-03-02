@@ -775,3 +775,8 @@ iframe {
     page-break-inside: avoid;
   }
 }
+
+.custom-barangay-icon {
+  background: transparent !important;
+  border: none !important;
+}
