@@ -4,6 +4,15 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, GeoJSON, Marker, Popup } from "react-leaflet";
 import type { GeoJSON as GeoJSONType, Feature, Point } from "geojson";
 import L from "leaflet";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+// Fix Leaflet's default icon path for marker and shadow
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/lib/supabaseClient";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
@@ -26,7 +35,7 @@ import {
 const mapCenter: [number, number] = [9.6556, 123.8521];
 
 // Option 2: Debug version - check console for path issues
-const TOWN_HALL_SRC = "../public/town-hall.png";
+const TOWN_HALL_SRC = "/town-hall.png";
 
 const createBarangayIcon = () =>
   L.divIcon({
@@ -345,26 +354,38 @@ function LeafletMap({
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [{ data: truck }, { data: schedule }] = await Promise.all([
-        supabase
-          .from("garbage_trucks")
-          .select("truck_id")
-          .eq("gcp_user_id", user.id)
-          .maybeSingle(),
-        supabase
-          .from("collection_schedules")
-          .select("barangay_id, barangay:barangay_id (barangay_name)")
-          .eq("gcp_user_id", user.id)
-          .in("status", ["pending", "ongoing", "Active"])
-          .order("date_created", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
+      // Query for truck assigned to GCP user
+      // Get truck assigned to GCP user
+      // Correct Supabase query for truck assigned to GCP user
+      // Query for truck assigned to GCP user (no typos)
+      const { data: truck, error: truckErr } = await supabase
+        .from("garbage_trucks")
+        .select("truck_id,gcp_user_id,plate_number,capacity,status,truck_code")
+        .eq("gcp_user_id", user.id)
+        .single();
 
-      if (truck) setGcpTruckId(truck.truck_id);
-      if (schedule) {
+      // Query for latest collection schedule assigned to GCP user (no typos)
+      const { data: schedule, error: schedErr } = await supabase
+        .from("collection_schedules")
+        .select(
+          "schedule_id,barangay_id,date_created,start_time,end_time,days,status,created_by,gcp_user_id",
+        )
+        .eq("gcp_user_id", user.id)
+        .in("status", ["pending", "ongoing", "active"])
+        .order("date_created", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (truck && truck.truck_id) setGcpTruckId(truck.truck_id);
+      if (schedule && schedule.barangay_id) {
         setGcpAssignedBarangayId(Number(schedule.barangay_id));
-        setGcpAssignedBarangayName((schedule as any)?.barangay?.barangay_name);
+        // Lookup barangay name from barangay_id
+        const { data: barangay } = await supabase
+          .from("barangay")
+          .select("barangay_name")
+          .eq("barangay_id", schedule.barangay_id)
+          .maybeSingle();
+        setGcpAssignedBarangayName(barangay?.barangay_name ?? null);
       }
     };
     loadAssignment();
@@ -951,13 +972,23 @@ function LeafletMap({
             )}
 
             {/* Trucks */}
-            {visibleTrucks.map((t) => {
-              if (t.latitude == null || t.longitude == null) return null;
+            {visibleTrucks.map((t, idx) => {
+              if (t.latitude == null || t.longitude == null) {
+                console.warn(`Truck ${t.truck_id} missing location:`, t);
+                return null;
+              }
               const pos: [number, number] = [t.latitude, t.longitude];
               const isRecent = Boolean(
                 t.updated_at &&
                 Date.now() - new Date(t.updated_at).getTime() < 60000,
               );
+              console.log(`Rendering truck marker`, {
+                idx,
+                truck_id: t.truck_id,
+                pos,
+                isRecent,
+                updated_at: t.updated_at,
+              });
 
               return (
                 <Marker
