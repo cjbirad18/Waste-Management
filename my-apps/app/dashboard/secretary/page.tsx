@@ -2743,6 +2743,12 @@ export default function SecretaryDashboard() {
         .single();
       if (detailError || !detail) throw detailError;
 
+      // 2.1 Update the assigned truck to set its gcp_user_id
+      await supabase
+        .from("garbage_trucks")
+        .update({ gcp_user_id: scheduleData.gcp_user_id })
+        .eq("truck_id", scheduleData.truck_code);
+
       // 3. Assign the GCP in gcp_assignment
       const { error: assignError } = await supabase
         .from("gcp_assignment")
@@ -2753,6 +2759,25 @@ export default function SecretaryDashboard() {
           },
         ]);
       if (assignError) throw assignError;
+
+      // 4. Send SMS notification to assigned GCP
+      // Fetch GCP user info for phone number
+      const { data: gcpUser } = await supabase
+        .from("users")
+        .select("contact_number,first_name")
+        .eq("user_id", scheduleData.gcp_user_id)
+        .single();
+      if (gcpUser && gcpUser.contact_number) {
+        const message = `Hi ${gcpUser.first_name}, you have been assigned as GCP and have a new schedule. Please check your dashboard for details.`;
+        await supabase.from("sms_notifications").insert({
+          user_id: scheduleData.gcp_user_id,
+          notification_type: "assignment",
+          message,
+          phone_number: gcpUser.contact_number,
+          status: "pending",
+          sent_at: new Date().toISOString(),
+        });
+      }
 
       setScheduleSuccess("Schedule successfully created");
       setSchedule({
