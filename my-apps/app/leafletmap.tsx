@@ -513,6 +513,21 @@ function LeafletMap({
             .from("collection_schedules")
             .update({ start_time: new Date().toISOString(), status: "ongoing" })
             .eq("schedule_id", data.schedule_id);
+
+          // Call backend API to notify residents in this barangay
+          try {
+            await fetch("/api/notifications/truck-arrival", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ barangayId: effectiveId }),
+            });
+            console.log(
+              "Triggered resident notification for barangay:",
+              effectiveId,
+            );
+          } catch (err) {
+            console.error("Failed to trigger resident notification API:", err);
+          }
         }
       } else if (!isInside && state.inside && !state.leaveTimeout) {
         state.leaveTimeout = window.setTimeout(

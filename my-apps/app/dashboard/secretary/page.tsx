@@ -2246,6 +2246,30 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
                 required
               />
             </div>
+
+            {/* GCP Selection */}
+            <div>
+              <label
+                htmlFor="gcp_user_id"
+                className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+              >
+                Assign GCP
+              </label>
+              <select
+                id="gcp_user_id"
+                name="gcp_user_id"
+                value={form.gcp_user_id}
+                onChange={handleChange}
+                className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-md"
+              >
+                <option value="">Select GCP</option>
+                {gcps.map((gcp) => (
+                  <option key={gcp.user_id} value={gcp.user_id}>
+                    {gcp.first_name} {gcp.last_name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Compact error/success */}
@@ -2747,7 +2771,7 @@ export default function SecretaryDashboard() {
       await supabase
         .from("garbage_trucks")
         .update({ gcp_user_id: scheduleData.gcp_user_id })
-        .eq("truck_id", scheduleData.truck_code);
+        .eq("truck_code", scheduleData.truck_code);
 
       // 3. Assign the GCP in gcp_assignment
       const { error: assignError } = await supabase
@@ -2762,21 +2786,42 @@ export default function SecretaryDashboard() {
 
       // 4. Send SMS notification to assigned GCP
       // Fetch GCP user info for phone number
-      const { data: gcpUser } = await supabase
+      const { data: gcpUser, error: gcpUserError } = await supabase
         .from("users")
         .select("contact_number,first_name")
         .eq("user_id", scheduleData.gcp_user_id)
         .single();
+      if (gcpUserError) {
+        console.error(
+          "Failed to fetch GCP user for SMS notification:",
+          gcpUserError,
+        );
+      }
       if (gcpUser && gcpUser.contact_number) {
         const message = `Hi ${gcpUser.first_name}, you have been assigned as GCP and have a new schedule. Please check your dashboard for details.`;
-        await supabase.from("sms_notifications").insert({
-          user_id: scheduleData.gcp_user_id,
-          notification_type: "assignment",
-          message,
-          phone_number: gcpUser.contact_number,
-          status: "pending",
-          sent_at: new Date().toISOString(),
-        });
+        const { error: smsError } = await supabase
+          .from("sms_notifications")
+          .insert({
+            user_id: scheduleData.gcp_user_id,
+            notification_type: "assignment",
+            message,
+            phone_number: gcpUser.contact_number,
+            status: "pending",
+            sent_at: new Date().toISOString(),
+          });
+        if (smsError) {
+          console.error("Failed to insert SMS notification:", smsError);
+        } else {
+          console.log(
+            "SMS notification inserted for GCP:",
+            gcpUser.contact_number,
+          );
+        }
+      } else {
+        console.warn(
+          "No contact number found for GCP user:",
+          scheduleData.gcp_user_id,
+        );
       }
 
       setScheduleSuccess("Schedule successfully created");
