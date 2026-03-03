@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
+import { createPortal } from "react-dom";
 import {
   format,
   startOfMonth,
@@ -278,6 +279,21 @@ function ScheduleFormWithCalendar({
       }
     }
     fetchSchedules();
+
+    const channel = supabase
+      .channel("secretary-schedule-form-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_schedules" },
+        () => {
+          fetchSchedules();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Filter out barangays already scheduled
@@ -396,6 +412,30 @@ function ScheduleFormWithCalendar({
         return;
       }
 
+      // Call GCP SMS notification API
+      try {
+        const notifRes = await fetch("/api/notifications/gcp-schedule", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            gcp_user_id: schedule.gcp_user_id,
+            barangay_id: schedule.barangay_id,
+            schedule_pattern: schedule.schedule_pattern,
+            start_time: schedule.start_time,
+            truck_code: schedule.truck_code,
+            created_by: user_id,
+          }),
+        });
+        const notifData = await notifRes.json();
+        if (!notifRes.ok) {
+          console.error("GCP notification failed:", notifData.error);
+        } else {
+          console.log("GCP notification sent:", notifData);
+        }
+      } catch (apiErr) {
+        console.error("Failed to notify GCP via SMS API", apiErr);
+      }
+
       setSuccess("Schedule successfully created");
       setSchedule({
         barangay_id: "",
@@ -420,162 +460,197 @@ function ScheduleFormWithCalendar({
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-8 items-stretch min-h-[600px]">
-      {/* Schedule Input Form */}
+    <div className="flex flex-col lg:flex-row gap-6 items-stretch min-h-[700px] p-4 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/30">
+      {/* Schedule Input Form - Glassmorphism Card */}
       <form
         onSubmit={handleSubmit}
-        className="group relative flex-1 rounded-3xl bg-gradient-to-br from-slate-900/95 to-slate-900/95 border border-emerald-800/20 p-8 backdrop-blur-md transition-all duration-400 overflow-hidden shadow-inner"
-        style={{ maxWidth: 450 }}
+        className="group relative flex-1 rounded-[2rem] bg-slate-900/40 border border-emerald-500/10 p-8 backdrop-blur-2xl transition-all duration-500 overflow-hidden shadow-2xl shadow-black/40 hover:shadow-emerald-900/20 hover:border-emerald-500/20"
+        style={{ maxWidth: 420 }}
       >
-        {/* Glow effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl pointer-events-none" />
+        {/* Animated background gradient */}
+        <div className="absolute -inset-[100%] bg-[radial-gradient(circle_at_50%_50%,rgba(16,185,129,0.08),transparent_50%)] animate-pulse-slow pointer-events-none" />
 
-        <div className="relative z-10 space-y-6">
-          <h2 className="text-3xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
-            Create Schedules
-          </h2>
+        {/* Top accent line */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-60" />
 
-          {/* Barangay */}
-          <div>
+        <div className="relative z-10 space-y-7">
+          {/* Header with icon */}
+          <div className="flex items-center gap-4 pb-6 border-b border-emerald-500/10">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-600/20 border border-emerald-500/20 flex items-center justify-center shadow-lg shadow-emerald-500/10">
+              <svg
+                className="w-6 h-6 text-emerald-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-100 tracking-tight">
+                Schedule Builder
+              </h2>
+              <p className="text-xs text-emerald-400/60 font-medium uppercase tracking-widest mt-0.5">
+                Waste Collection System
+              </p>
+            </div>
+          </div>
+
+          {/* Barangay - Floating Label Style */}
+          <div className="space-y-2">
             <label
               htmlFor="barangay_id"
-              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3"
+              className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider ml-1"
             >
-              Barangay
+              Barangay Zone
             </label>
-            <div className="relative">
+            <div className="relative group/input">
               <select
                 id="barangay_id"
                 name="barangay_id"
                 value={schedule.barangay_id}
                 onChange={handleChange}
+                className="w-full rounded-xl bg-slate-800/50 border border-slate-700/50 px-4 py-3.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all duration-300 appearance-none cursor-pointer hover:bg-slate-800/70"
                 required
               >
-                <option value="">Select Barangay</option>
+                <option value="" className="bg-slate-900 text-slate-400">
+                  Select Barangay
+                </option>
                 {availableBarangays.map((b) => (
-                  <option key={b.barangay_id} value={b.barangay_id}>
+                  <option
+                    key={b.barangay_id}
+                    value={b.barangay_id}
+                    className="bg-slate-900"
+                  >
                     {b.barangay_name}
                   </option>
                 ))}
               </select>
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
                 <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 20 20"
+                  className="w-4 h-4 text-emerald-500/70"
                   fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="opacity-70"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
                   <path
-                    d="M6 8l4 4 4-4"
-                    stroke="#86efac"
-                    strokeWidth="1.6"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
                   />
                 </svg>
               </div>
+              <div className="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/5 pointer-events-none" />
             </div>
           </div>
 
-          {/* Truck */}
-          <div>
-            <label
-              htmlFor="truck_code"
-              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3"
-            >
-              Truck
-            </label>
-            <div className="relative">
-              <select
-                id="truck_code"
-                name="truck_code"
-                value={schedule.truck_code}
-                onChange={handleChange}
-                className="w-full rounded-2xl bg-slate-900/80 border border-emerald-800/20 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-shadow duration-200 backdrop-blur-md shadow-sm appearance-none pr-12"
-                required
+          {/* Truck & GCP - Side by Side Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label
+                htmlFor="truck_code"
+                className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider ml-1"
               >
-                <option value="">Select Truck</option>
-                {trucks.map((t) => (
-                  <option key={t.truck_id} value={t.truck_code}>
-                    {t.truck_code}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="opacity-70"
+                Truck Unit
+              </label>
+              <div className="relative group/input">
+                <select
+                  id="truck_code"
+                  name="truck_code"
+                  value={schedule.truck_code}
+                  onChange={handleChange}
+                  className="w-full rounded-xl bg-slate-800/50 border border-slate-700/50 px-3 py-3.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all duration-300 appearance-none cursor-pointer hover:bg-slate-800/70"
+                  required
                 >
-                  <path
-                    d="M6 8l4 4 4-4"
-                    stroke="#86efac"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                  <option value="" className="bg-slate-900">
+                    Select
+                  </option>
+                  {trucks.map((t) => (
+                    <option
+                      key={t.truck_id}
+                      value={t.truck_code}
+                      className="bg-slate-900"
+                    >
+                      {t.truck_code}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <svg
+                    className="w-4 h-4 text-emerald-500/70"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* GCP */}
-          <div>
-            <label
-              htmlFor="gcp_user_id"
-              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3"
-            >
-              GCP
-            </label>
-            <div className="relative">
-              <select
-                id="gcp_user_id"
-                name="gcp_user_id"
-                value={schedule.gcp_user_id}
-                onChange={handleChange}
-                className="w-full rounded-2xl bg-slate-900/80 border border-emerald-800/20 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-shadow duration-200 backdrop-blur-md shadow-sm appearance-none pr-12"
-                required
+            <div className="space-y-2">
+              <label
+                htmlFor="gcp_user_id"
+                className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider ml-1"
               >
-                <option value="">Select GCP</option>
-                {gcps.map((g) => (
-                  <option key={g.user_id} value={g.user_id}>
-                    {g.first_name} {g.last_name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="opacity-70"
+                GCP Officer
+              </label>
+              <div className="relative group/input">
+                <select
+                  id="gcp_user_id"
+                  name="gcp_user_id"
+                  value={schedule.gcp_user_id}
+                  onChange={handleChange}
+                  className="w-full rounded-xl bg-slate-800/50 border border-slate-700/50 px-3 py-3.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all duration-300 appearance-none cursor-pointer hover:bg-slate-800/70"
+                  required
                 >
-                  <path
-                    d="M6 8l4 4 4-4"
-                    stroke="#86efac"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                  <option value="" className="bg-slate-900">
+                    Select
+                  </option>
+                  {gcps.map((g) => (
+                    <option
+                      key={g.user_id}
+                      value={g.user_id}
+                      className="bg-slate-900"
+                    >
+                      {g.first_name} {g.last_name}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <svg
+                    className="w-4 h-4 text-emerald-500/70"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Schedule Pattern */}
-          <div>
-            <label
-              htmlFor="schedule_pattern"
-              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3"
-            >
-              Schedule Pattern
+          {/* Schedule Pattern - Segmented Control Alternative */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider ml-1">
+              Collection Pattern
             </label>
             <div className="relative">
               <select
@@ -583,149 +658,227 @@ function ScheduleFormWithCalendar({
                 name="schedule_pattern"
                 value={schedule.schedule_pattern}
                 onChange={handleChange}
-                className="w-full rounded-2xl bg-slate-900/80 border border-emerald-800/20 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-shadow duration-200 backdrop-blur-md shadow-sm appearance-none pr-12"
+                className="w-full rounded-xl bg-slate-800/50 border border-slate-700/50 px-4 py-3.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all duration-300 appearance-none cursor-pointer hover:bg-slate-800/70"
                 required
               >
-                <option value="">Select Pattern</option>
-                <option value="MWF">Monday-Wednesday-Friday (MWF)</option>
-                <option value="TTH">Tuesday-Thursday (TTH)</option>
+                <option value="" className="bg-slate-900">
+                  Select Pattern
+                </option>
+                <option value="MWF" className="bg-slate-900">
+                  Mon-Wed-Fri (MWF)
+                </option>
+                <option value="TTH" className="bg-slate-900">
+                  Tue-Thu (TTH)
+                </option>
               </select>
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
                 <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 20 20"
+                  className="w-4 h-4 text-emerald-500/70"
                   fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="opacity-70"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
                   <path
-                    d="M6 8l4 4 4-4"
-                    stroke="#86efac"
-                    strokeWidth="1.6"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
                   />
                 </svg>
               </div>
             </div>
           </div>
 
-          {/* Time */}
-          <div>
+          {/* Time - Modern Time Input */}
+          <div className="space-y-2">
             <label
               htmlFor="start_time"
-              className="block text-slate-100 font-bold uppercase tracking-widest text-xs mb-3 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+              className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider ml-1"
             >
-              Time (for display/preview only)
+              Departure Time
             </label>
-            <div className="relative">
+            <div className="relative group/input">
               <input
                 id="start_time"
                 type="time"
                 name="start_time"
                 value={schedule.start_time}
                 onChange={handleChange}
-                className="w-full rounded-2xl bg-slate-900/80 border border-emerald-800/20 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-shadow duration-200 backdrop-blur-md shadow-sm pr-12"
+                className="w-full rounded-xl bg-slate-800/50 border border-slate-700/50 px-4 py-3.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all duration-300 hover:bg-slate-800/70 [color-scheme:dark]"
                 required
               />
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
                 <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
+                  className="w-4 h-4 text-emerald-500/70"
                   fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="opacity-70"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
                   <path
-                    d="M12 7v5l3 3"
-                    stroke="#86efac"
-                    strokeWidth="1.6"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                  />
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="9"
-                    stroke="#86efac"
-                    strokeWidth="1.2"
-                    opacity="0.3"
+                    strokeWidth={1.5}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
               </div>
             </div>
           </div>
 
-          {error && (
-            <div className="rounded-2xl bg-gradient-to-r from-orange-500/15 to-red-500/15 border border-orange-500/40 p-4 text-orange-200 backdrop-blur-xl shadow-lg">
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="rounded-2xl bg-gradient-to-r from-emerald-500/15 to-teal-500/15 border border-emerald-500/40 p-4 text-emerald-200 backdrop-blur-xl shadow-lg flex items-center gap-3">
-              <div className="w-5 h-5 bg-emerald-500 rounded-full animate-ping" />
-              {success}
-            </div>
-          )}
+          {/* Alerts - Redesigned Toast Style */}
+          <div className="space-y-3">
+            {error && (
+              <div className="flex items-start gap-3 rounded-xl bg-red-500/10 border border-red-500/20 p-4 backdrop-blur-sm">
+                <svg
+                  className="w-5 h-5 text-red-400 mt-0.5 shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span className="text-sm text-red-200/90 leading-relaxed">
+                  {error}
+                </span>
+              </div>
+            )}
+            {success && (
+              <div className="flex items-start gap-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4 backdrop-blur-sm">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                </div>
+                <span className="text-sm text-emerald-200/90 leading-relaxed">
+                  {success}
+                </span>
+              </div>
+            )}
+          </div>
 
-          <div className="flex justify-end pt-4 border-t border-green-800/30">
+          {/* Submit Button - Gradient Glow */}
+          <div className="pt-4">
             <button
               type="submit"
-              className="group relative inline-flex items-center gap-3 px-10 py-4 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-lg font-black text-slate-100 shadow-xl shadow-emerald-500/30 hover:shadow-2xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 rounded-2xl overflow-hidden"
+              className="group/btn relative w-full inline-flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-sm font-bold text-white rounded-xl shadow-lg shadow-emerald-900/50 hover:shadow-emerald-500/25 hover:shadow-xl transition-all duration-300 overflow-hidden"
             >
-              <span className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-lg shadow-lg overflow-hidden">
-                {initials}
-              </span>
-              <span className="relative z-10 tracking-wide uppercase">
+              <span className="relative z-10 flex items-center gap-2">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
                 Save Schedule
               </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/0 via-white/20 to-emerald-400/0 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-700" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
             </button>
           </div>
         </div>
       </form>
 
-      {/* Calendar View */}
-      <div className="group relative flex-1 rounded-3xl bg-slate-900/95 border border-slate-800/30 shadow-md p-8 backdrop-blur-sm transition-all duration-300 overflow-hidden min-w-[350px]">
-        {/* Subtle glow effect (reduced) */}
-        <div className="absolute inset-0 bg-gradient-to-r from-green-500/3 via-transparent to-emerald-500/3 opacity-0 group-hover:opacity-30 transition-opacity pointer-events-none" />
+      {/* Calendar View - Immersive Display */}
+      <div className="group relative flex-1 rounded-[2rem] bg-slate-900/40 border border-slate-700/20 shadow-2xl shadow-black/40 p-8 backdrop-blur-2xl transition-all duration-500 overflow-hidden min-w-[350px] max-h-[700px] hover:border-emerald-500/10">
+        {/* Subtle grid background */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
 
-        <div className="relative z-10">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-3xl font-black bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl">
-              Scheduled Days
-            </h3>
-            <div className="flex gap-3">
+        {/* Corner accents */}
+        <div className="absolute top-0 left-0 w-20 h-20 border-l-2 border-t-2 border-emerald-500/20 rounded-tl-[2rem] pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-20 h-20 border-r-2 border-b-2 border-emerald-500/20 rounded-br-[2rem] pointer-events-none" />
+
+        <div className="relative z-10 h-full flex flex-col">
+          {/* Calendar Header */}
+          <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-700/30">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-600/10 border border-emerald-500/20 flex items-center justify-center">
+                <svg
+                  className="w-5 h-5 text-emerald-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-100">
+                  Collection Calendar
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  View scheduled collection days
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
               <button
-                className="group relative p-3 rounded-2xl bg-slate-700/50 border border-green-800/50 text-slate-200 hover:bg-green-500/20 hover:border-green-600/70 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-105"
+                className="group/btn p-2.5 rounded-lg bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-emerald-500/10 transition-all duration-300"
                 onClick={handleMonthPrev}
-                title="Show previous 2 months"
+                title="Previous months"
               >
-                <span className="text-xl">&lt;</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm pointer-events-none" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
               </button>
               <button
-                className="group relative p-3 rounded-2xl bg-slate-700/50 border border-green-800/50 text-slate-200 hover:bg-green-500/20 hover:border-green-600/70 hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 backdrop-blur-xl shadow-md hover:scale-105"
+                className="group/btn p-2.5 rounded-lg bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-emerald-500/10 transition-all duration-300"
                 onClick={handleMonthNext}
-                title="Show next 2 months"
+                title="Next months"
               >
-                <span className="text-xl">&gt;</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm pointer-events-none" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
               </button>
             </div>
           </div>
 
-          <div className="overflow-auto max-h-[500px]">
+          {/* Calendar Content */}
+          <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-emerald-500/20 scrollbar-track-transparent">
             {monthsToShow.map(({ year, month }) => (
-              <SharedCalendar
-                key={`${year}-${month}`}
-                year={year}
-                month={month}
-                pattern={schedule.schedule_pattern}
-                startTime={schedule.start_time}
-              />
+              <div key={`${year}-${month}`} className="relative">
+                <SharedCalendar
+                  year={year}
+                  month={month}
+                  pattern={schedule.schedule_pattern}
+                  startTime={schedule.start_time}
+                />
+              </div>
             ))}
           </div>
         </div>
@@ -813,6 +966,28 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
     }
 
     fetchSchedules();
+
+    const channel = supabase
+      .channel("secretary-schedules-sidebar-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_schedules" },
+        () => {
+          fetchSchedules();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_details" },
+        () => {
+          fetchSchedules();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [selectedBarangay]);
 
   const fetchArchivedSchedules = async () => {
@@ -1459,6 +1634,11 @@ function SecretaryReportsSection() {
   const [taskDetails, setTaskDetails] = useState("");
   const [assignError, setAssignError] = useState("");
 
+  // Search & Pagination
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -1504,6 +1684,28 @@ function SecretaryReportsSection() {
     };
 
     fetchData();
+
+    const channel = supabase
+      .channel("secretary-reports-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_reports" },
+        () => {
+          fetchData();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "gcp_assignment" },
+        () => {
+          fetchData();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleOpenAssign = (report: any) => {
@@ -1598,218 +1800,423 @@ function SecretaryReportsSection() {
     setAssignError("");
   };
 
+  // Filtered reports
+  const filteredReports = reports.filter((r) => {
+    const search = searchTerm.toLowerCase();
+    return (
+      !search ||
+      (r.location && r.location.toLowerCase().includes(search)) ||
+      (r.landmark && r.landmark.toLowerCase().includes(search)) ||
+      (r.report_id && String(r.report_id).toLowerCase().includes(search))
+    );
+  });
+
+  // Pagination
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredReports.length / itemsPerPage),
+  );
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedReports = filteredReports.slice(
+    (safePage - 1) * itemsPerPage,
+    safePage * itemsPerPage,
+  );
+  const showingFrom =
+    filteredReports.length === 0 ? 0 : (safePage - 1) * itemsPerPage + 1;
+  const showingTo = Math.min(safePage * itemsPerPage, filteredReports.length);
+
   if (loading) return <TruckLoader />;
   if (error) return <div className="text-red-700">{error}</div>;
 
   return (
     <>
       {/* Main card with passed incidents */}
-      <section className="dashboard-section h-190 max-w-4xl mx-auto overflow-hidden">
-        {/* Glow effect */}
+      <section className="dashboard-section max-w-6xl mx-auto rounded-3xl bg-slate-900/95 border border-slate-800 px-10 py-8 shadow-2xl">
         <div className="dashboard-section-glow" />
 
-        <div className="relative z-500">
+        <div className="relative z-5000">
           <h2 className="text-2xl font-black mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
             Passed Incident Reports
           </h2>
 
+          {/* Search bar */}
+          <div className="flex items-center justify-end mb-4 gap-3">
+            <div className="relative w-full max-w-xs">
+              <input
+                type="text"
+                placeholder="Search reports..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 pl-9 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500"
+              />
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </div>
+
           {/* Empty state */}
-          {reports.length === 0 ? (
+          {filteredReports.length === 0 ? (
             <div className="text-center py-12 rounded-2xl bg-slate-900/50 border border-green-800/50 backdrop-blur-xl text-slate-400">
               <div className="text-5xl mb-4 opacity-50">🚨</div>
               <p className="text-lg font-semibold">
-                No passed incident reports
+                {searchTerm
+                  ? "No matching reports"
+                  : "No passed incident reports"}
               </p>
-              <p className="text-sm mt-1">at the moment.</p>
+              <p className="text-sm mt-1">
+                {searchTerm ? "Try a different search." : "at the moment."}
+              </p>
             </div>
           ) : (
-            /* Scrollable Table */
-            <div className="max-h-70 overflow-y-auto rounded-2xl border border-green-800/50 bg-slate-900/50 backdrop-blur-xl shadow-inner pr-2 scrollbar-thin scrollbar-thumb-emerald-500/50 scrollbar-track-slate-900/50">
-              <table className="w-full text-md">
-                <thead className="bg-gradient-to-r from-slate-900/95 to-gray-900/95 sticky top-0 z-10 border-b border-green-800/50">
+            <div className="rounded-xl border border-green-800/50 bg-slate-900/50 backdrop-blur-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gradient-to-r from-slate-900/95 to-gray-900/95 border-b border-green-800/50">
                   <tr>
-                    <th className="p-4 text-left font-bold text-slate-200">
+                    <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Report ID
+                    </th>
+                    <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
                       Location
                     </th>
-                    <th className="p-4 text-left font-bold text-slate-200">
+                    <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
                       Landmark
                     </th>
-                    <th className="p-4 text-left font-bold text-slate-200">
+                    <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Status
+                    </th>
+                    <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
                       Date Submitted
                     </th>
-                    <th className="p-4 text-left font-bold text-slate-200">
+                    <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-green-800/30">
-                  {reports.map((report) => (
+                <tbody className="divide-y divide-green-800/20">
+                  {paginatedReports.map((report) => (
                     <tr
                       key={report.report_id}
-                      className="hover:bg-slate-800/60 transition-all duration-200 group/item"
+                      className="hover:bg-slate-800/50 transition-colors duration-150"
                     >
-                      <td className="p-4 text-slate-300 font-medium">
+                      <td className="px-5 py-4 text-emerald-400 font-bold whitespace-nowrap">
+                        RP-{report.report_id}
+                      </td>
+                      <td className="px-5 py-4 text-slate-300">
                         {report.location}
                       </td>
-                      <td className="p-4 text-slate-400">{report.landmark}</td>
-                      <td className="p-4 text-slate-400">
+                      <td className="px-5 py-4 text-slate-400">
+                        {report.landmark || "—"}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                          Needs Action
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-slate-400 whitespace-nowrap">
                         {new Date(report.date_submitted).toLocaleString(
                           "en-US",
                           {
-                            month: "short",
+                            month: "numeric",
                             day: "numeric",
                             year: "numeric",
                             hour: "2-digit",
                             minute: "2-digit",
+                            second: "2-digit",
                           },
                         )}
                       </td>
-                      <td className="p-4">
+                      <td className="px-5 py-4">
                         <button
                           type="button"
                           onClick={() => handleOpenAssign(report)}
-                          className="group relative inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-sm font-bold text-slate-100 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 rounded-xl overflow-hidden whitespace-nowrap"
+                          className="text-emerald-400 hover:text-emerald-300 font-semibold text-sm transition-colors"
                         >
-                          <span className="relative z-10 uppercase tracking-wide">
-                            Assign GCP &amp; Task
-                          </span>
-                          <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                          Assign
                         </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+
+              {/* Pagination */}
+              <div className="flex items-center justify-between px-5 py-3.5 border-t border-green-800/30 bg-slate-900/60">
+                <span className="text-xs text-slate-500">
+                  Showing {showingFrom} to {showingTo} of{" "}
+                  {filteredReports.length} results
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage === 1}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Previous
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
+                          page === safePage
+                            ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/30"
+                            : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ),
+                  )}
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    disabled={safePage === totalPages}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
       </section>
 
-      {/* Full-screen modal (fixed design) */}
-      {assignModalOpen && selectedReport && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-          onClick={() => setAssignModalOpen(false)} // close on backdrop
-        >
+      {/* Full-screen modal (fixed design) — rendered via portal */}
+      {assignModalOpen &&
+        selectedReport &&
+        createPortal(
           <div
-            className="group relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-emerald-700/60 bg-gradient-to-br from-slate-900/98 to-slate-800/98 p-6 md:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl"
-            onClick={(e) => e.stopPropagation()} // keep clicks inside
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setAssignModalOpen(false)}
           >
-            {/* Soft glow */}
-            <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-r from-emerald-500/8 via-transparent to-teal-500/8 opacity-0 blur-xl transition-opacity group-hover:opacity-100" />
+            <div
+              className="relative w-full max-w-2xl bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-emerald-600/20 to-teal-600/20 border-b border-slate-700/50 p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                      <svg
+                        className="w-5 h-5 text-emerald-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-100">
+                        Assign GCP Task
+                      </h3>
+                      <p className="text-xs text-emerald-400/70 font-medium uppercase tracking-wider mt-0.5">
+                        Incident Assignment
+                      </p>
+                    </div>
+                  </div>
 
-            <div className="relative z-10">
-              {/* Top row: title + close */}
-              <div className="mb-4 flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-semibold tracking-wide text-emerald-300/80 uppercase">
-                    Incident Task Assignment
-                  </p>
-                  <h3 className="mt-1 text-xl md:text-2xl font-black tracking-tight bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-xl">
-                    Assign GCP &amp; Task
-                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setAssignModalOpen(false)}
+                    className="w-8 h-8 rounded-lg bg-slate-800/50 border border-slate-600/50 text-slate-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/50 transition-all duration-200 flex items-center justify-center"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setAssignModalOpen(false)}
-                  className="group/close relative flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-600/60 bg-slate-900/90 text-sm font-bold text-slate-200 shadow-lg backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:border-red-500/70 hover:bg-red-600/90 hover:text-white hover:shadow-red-500/40"
-                >
-                  <span className="relative z-10">✕</span>
-                  <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-white/25 to-transparent opacity-0 blur-sm transition-opacity group-hover/close:opacity-100" />
-                </button>
               </div>
 
-              {/* Context pill */}
-              <div className="mb-4 rounded-2xl border border-emerald-700/50 bg-slate-900/80 px-4 py-3 text-xs text-slate-200 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-400/70 text-[13px]">
-                    📍
-                  </span>
-                  <div>
-                    <p className="font-semibold text-emerald-200 text-[11px] uppercase tracking-wide">
-                      Location
-                    </p>
-                    <p className="text-[13px] text-slate-100">
+              {/* Content */}
+              <div className="p-6 space-y-6">
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg
+                        className="w-4 h-4 text-emerald-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                      </svg>
+                      <span className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider">
+                        Location
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium text-slate-200">
                       {selectedReport.location}
                     </p>
                   </div>
-                </div>
-                <div className="mt-3 h-px w-full bg-slate-700/70 md:mt-0 md:h-8 md:w-px" />
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-400/70 text-[13px]">
-                    🏷️
-                  </span>
-                  <div>
-                    <p className="font-semibold text-emerald-200 text-[11px] uppercase tracking-wide">
-                      Landmark
-                    </p>
-                    <p className="text-[13px] text-slate-100">
+
+                  <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg
+                        className="w-4 h-4 text-blue-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                        />
+                      </svg>
+                      <span className="text-xs font-semibold text-blue-400/80 uppercase tracking-wider">
+                        Landmark
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium text-slate-200">
                       {selectedReport.landmark}
                     </p>
                   </div>
                 </div>
-              </div>
 
-              {/* GCP Select */}
-              <div className="mb-4 space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">
-                  Select GCP
-                </Label>
-                <Select
-                  value={selectedGcpId}
-                  onValueChange={(value: string) => setSelectedGcpId(value)}
-                >
-                  <SelectTrigger className="w-full rounded-xl bg-slate-950/80 border-emerald-700/60 backdrop-blur-xl shadow-md hover:shadow-emerald-500/25">
-                    <SelectValue placeholder="-- Choose GCP --" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {gcpUsers.map((u) => (
-                      <SelectItem key={u.user_id} value={u.user_id}>
-                        {u.first_name} {u.last_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Task details */}
-              <div className="mb-6 space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">
-                  Task Details
-                </Label>
-                <Textarea
-                  rows={3}
-                  value={taskDetails}
-                  onChange={(e) => setTaskDetails(e.target.value)}
-                  placeholder="Describe what the GCP should do..."
-                  className="rounded-xl bg-slate-950/80 border-emerald-700/60 backdrop-blur-xl shadow-md hover:shadow-emerald-500/25"
-                />
-              </div>
-
-              {assignError && (
-                <div className="mb-4 rounded-xl border border-orange-500/60 bg-gradient-to-r from-orange-500/20 to-red-500/25 p-3 text-xs text-orange-100 backdrop-blur-xl shadow-md">
-                  {assignError}
+                {/* GCP Select */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider">
+                    Select GCP Officer
+                  </Label>
+                  <Select
+                    value={selectedGcpId}
+                    onValueChange={(value: string) => setSelectedGcpId(value)}
+                  >
+                    <SelectTrigger className="w-full rounded-lg bg-slate-800/50 border-slate-700/50 text-slate-200 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 h-11">
+                      <SelectValue placeholder="Choose GCP officer..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-slate-700/50">
+                      {gcpUsers.map((u) => (
+                        <SelectItem
+                          key={u.user_id}
+                          value={u.user_id}
+                          className="text-slate-200 focus:bg-emerald-500/20 focus:text-emerald-200"
+                        >
+                          {u.first_name} {u.last_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
 
-              {/* Bottom actions */}
-              <div className="flex flex-col gap-3 border-t border-emerald-800/40 pt-4 sm:flex-row sm:justify-end">
-                <Button
+                {/* Task Details */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider">
+                    Task Instructions
+                  </Label>
+                  <Textarea
+                    rows={4}
+                    value={taskDetails}
+                    onChange={(e) => setTaskDetails(e.target.value)}
+                    placeholder="Describe the task requirements and any specific instructions for the GCP officer..."
+                    className="rounded-lg bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 resize-none min-h-[100px]"
+                  />
+                </div>
+
+                {/* Error Message */}
+                {assignError && (
+                  <div className="flex items-center gap-3 rounded-xl bg-red-500/10 border border-red-500/20 p-4">
+                    <svg
+                      className="w-5 h-5 text-red-400 shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <span className="text-sm text-red-200/90">
+                      {assignError}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="bg-slate-800/30 border-t border-slate-700/50 px-6 py-4 flex justify-end gap-3">
+                <button
                   type="button"
-                  variant="secondary"
                   onClick={() => setAssignModalOpen(false)}
+                  className="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-sm font-medium text-slate-200 rounded-lg transition-colors"
                 >
                   Cancel
-                </Button>
-                <Button type="button" onClick={handleSubmitAssign}>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitAssign}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold text-white rounded-lg shadow-lg shadow-emerald-900/30 transition-all duration-200 hover:shadow-emerald-500/25 flex items-center gap-2"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
                   Assign Task
-                </Button>
+                </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
@@ -1820,6 +2227,11 @@ function SecretaryGcpResponsesSection() {
   const [error, setError] = useState<string | null>(null);
   const [selectedRow, setSelectedRow] = useState<any | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Search & Pagination
+  const [gcpSearchTerm, setGcpSearchTerm] = useState("");
+  const [gcpCurrentPage, setGcpCurrentPage] = useState(1);
+  const gcpItemsPerPage = 5;
 
   const handleOpenModal = (row: any) => {
     setSelectedRow(row);
@@ -1883,192 +2295,462 @@ function SecretaryGcpResponsesSection() {
     };
 
     fetchData();
+
+    const channel = supabase
+      .channel("secretary-gcp-responses-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "gcp_assignment" },
+        () => {
+          fetchData();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_reports" },
+        () => {
+          fetchData();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
+
+  // Filtered rows
+  const filteredRows = rows.filter((r) => {
+    const search = gcpSearchTerm.toLowerCase();
+    if (!search) return true;
+    const gcpName = r.user ? `${r.user.first_name} ${r.user.last_name}` : "";
+    const location = r.report
+      ? `${r.report.location} ${r.report.landmark}`
+      : (r.collectiondetails?.schedule?.barangay?.barangay_name ?? "");
+    const response = r.gcp_response || "";
+    const task = r.task_details || "";
+    return (
+      gcpName.toLowerCase().includes(search) ||
+      location.toLowerCase().includes(search) ||
+      response.toLowerCase().includes(search) ||
+      task.toLowerCase().includes(search)
+    );
+  });
+
+  // Pagination
+  const gcpTotalPages = Math.max(
+    1,
+    Math.ceil(filteredRows.length / gcpItemsPerPage),
+  );
+  const gcpSafePage = Math.min(gcpCurrentPage, gcpTotalPages);
+  const paginatedRows = filteredRows.slice(
+    (gcpSafePage - 1) * gcpItemsPerPage,
+    gcpSafePage * gcpItemsPerPage,
+  );
+  const gcpShowingFrom =
+    filteredRows.length === 0 ? 0 : (gcpSafePage - 1) * gcpItemsPerPage + 1;
+  const gcpShowingTo = Math.min(
+    gcpSafePage * gcpItemsPerPage,
+    filteredRows.length,
+  );
 
   if (loading) return <TruckLoader />;
   if (error) return <div className="text-red-700">{error}</div>;
 
   return (
-    <section className="dashboard-section h-150 max-w-9xl mx-auto overflow-hidden">
-      {/* Glow effect */}
+    <section className="dashboard-section max-w-6xl mx-auto overflow-hidden">
       <div className="dashboard-section-glow" />
 
       <div className="relative z-10">
-        <h2 className="text-3xl font-black mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+        <h2 className="text-2xl font-black mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
           GCP Responses
         </h2>
 
+        {/* Search bar */}
+        <div className="flex items-center justify-end mb-4 gap-3">
+          <div className="relative w-full max-w-xs">
+            <input
+              type="text"
+              placeholder="Search responses..."
+              value={gcpSearchTerm}
+              onChange={(e) => {
+                setGcpSearchTerm(e.target.value);
+                setGcpCurrentPage(1);
+              }}
+              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 pl-9 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500"
+            />
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+        </div>
+
         {/* Empty state */}
-        {rows.length === 0 ? (
+        {filteredRows.length === 0 ? (
           <div className="text-center py-12 rounded-2xl bg-slate-900/50 border border-green-800/50 backdrop-blur-xl text-slate-400">
-            <div className="text-5xl mb-6 opacity-50">💬</div>
-            <p className="text-xl font-semibold">No responses yet</p>
+            <div className="text-5xl mb-4 opacity-50">💬</div>
+            <p className="text-lg font-semibold">
+              {gcpSearchTerm ? "No matching responses" : "No responses yet"}
+            </p>
+            {gcpSearchTerm && (
+              <p className="text-sm mt-1">Try a different search.</p>
+            )}
           </div>
         ) : (
-          /* Scrollable Table */
-          <div className="max-h-96 overflow-y-auto rounded-2xl border border-green-800/50 bg-slate-900/50 backdrop-blur-xl shadow-inner pr-3 scrollbar-thin scrollbar-thumb-emerald-500/50 scrollbar-track-slate-900/50 scrollbar-thumb-rounded">
+          <div className="rounded-xl border border-green-800/50 bg-slate-900/50 backdrop-blur-xl overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-gradient-to-r from-slate-900/95 to-gray-900/95 sticky top-0 z-10 border-b border-green-800/50">
+              <thead className="bg-gradient-to-r from-slate-900/95 to-gray-900/95 border-b border-green-800/50">
                 <tr>
-                  <th className="p-4 text-left font-black text-slate-200 tracking-wide">
+                  <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
                     Date
                   </th>
-                  <th className="p-4 text-left font-black text-slate-200 tracking-wide">
+                  <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
                     GCP
                   </th>
-                  <th className="p-4 text-left font-black text-slate-200 tracking-wide">
+                  <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
                     Location / Barangay
                   </th>
-                  <th className="p-4 text-left font-black text-slate-200 tracking-wide">
+                  <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
                     Response
+                  </th>
+                  <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-green-800/30">
-                {rows.map((row) => (
+              <tbody className="divide-y divide-green-800/20">
+                {paginatedRows.map((row) => (
                   <tr
                     key={row.gcp_assignment_id}
-                    className="hover:bg-slate-800/60 transition-all duration-200 group/item cursor-pointer"
+                    className="hover:bg-slate-800/50 transition-colors duration-150"
                   >
-                    <td className="p-4 text-slate-300 font-medium">
+                    <td className="px-5 py-4 text-slate-400 whitespace-nowrap">
                       {new Date(row.created_at).toLocaleString("en-US", {
-                        month: "short",
+                        month: "numeric",
                         day: "numeric",
                         year: "numeric",
                         hour: "2-digit",
                         minute: "2-digit",
+                        second: "2-digit",
                       })}
                     </td>
-                    <td className="p-4 text-slate-200 font-semibold max-w-[150px] truncate">
+                    <td className="px-5 py-4 text-slate-200 font-semibold">
                       {row.user
                         ? `${row.user.first_name} ${row.user.last_name}`
                         : "Unknown"}
                     </td>
-                    <td className="p-4 text-slate-300 max-w-[200px] truncate">
+                    <td className="px-5 py-4 text-slate-300 max-w-[200px] truncate">
                       {row.report
                         ? `${row.report.location} (${row.report.landmark})`
                         : (row.collectiondetails?.schedule?.barangay
                             ?.barangayname ?? "N/A")}
                     </td>
-                    <td className="p-4">
+                    <td className="px-5 py-4">
+                      {row.gcp_response ? (
+                        <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                          Responded
+                        </span>
+                      ) : (
+                        <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-500/15 text-slate-400 border border-slate-500/30">
+                          Pending
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4">
                       <button
                         onClick={() => handleOpenModal(row)}
-                        className="group relative inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-xs font-bold text-slate-100 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 rounded-xl overflow-hidden whitespace-nowrap"
+                        className="text-emerald-400 hover:text-emerald-300 font-semibold text-sm transition-colors"
                       >
-                        <span className="relative z-10 uppercase tracking-wide">
-                          View Response
-                        </span>
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                        View
                       </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
 
-        {/* Dark Modal */}
-        {modalOpen && selectedRow && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-            <div
-              className="group relative bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-green-800/50 rounded-2xl shadow-2xl shadow-green-900/30 backdrop-blur-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-8"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl rounded-2xl pointer-events-none" />
-
-              <div className="relative z-10">
-                {/* Close button */}
+            {/* Pagination */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-t border-green-800/30 bg-slate-900/60">
+              <span className="text-xs text-slate-500">
+                Showing {gcpShowingFrom} to {gcpShowingTo} of{" "}
+                {filteredRows.length} results
+              </span>
+              <div className="flex items-center gap-1.5">
                 <button
-                  onClick={handleCloseModal}
-                  className="group absolute -top-4 -right-4 w-12 h-12 bg-slate-900/90 border-2 border-slate-600/50 rounded-2xl shadow-xl hover:bg-red-600/90 hover:border-red-500/70 hover:shadow-2xl hover:shadow-red-500/40 hover:scale-110 transition-all duration-300 backdrop-blur-xl flex items-center justify-center text-slate-300 hover:text-white font-bold text-2xl"
+                  onClick={() => setGcpCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={gcpSafePage === 1}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  <span className="relative z-10">✕</span>
-                  <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl blur-sm pointer-events-none" />
+                  Previous
                 </button>
-
-                <h3 className="font-black text-2xl mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
-                  GCP Response
-                </h3>
-
-                {/* Response Details */}
-                <div className="space-y-5 mb-6">
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping"></span>
-                      <span className="text-sm font-bold text-emerald-300 uppercase tracking-wider">
-                        GCP
-                      </span>
-                    </div>
-                    <div className="text-lg font-semibold text-slate-200">
-                      {selectedRow.user
-                        ? `${selectedRow.user.first_name} ${selectedRow.user.last_name}`
-                        : "Unknown"}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="w-2 h-2 bg-blue-400 rounded-full animate-ping"></span>
-                      <span className="text-sm font-bold text-blue-300 uppercase tracking-wider">
-                        Location
-                      </span>
-                    </div>
-                    <div className="text-lg font-semibold text-slate-200">
-                      {selectedRow.report
-                        ? `${selectedRow.report.location} (${selectedRow.report.landmark})`
-                        : (selectedRow.collectiondetails?.schedule?.barangay
-                            ?.barangay_name ?? "N/A")}
-                    </div>
-                  </div>
-
-                  <div className="text-sm text-slate-400">
-                    <span className="font-bold text-slate-300">Date: </span>
-                    {selectedRow.created_at
-                      ? new Date(selectedRow.created_at).toLocaleString(
-                          "en-US",
-                          {
-                            month: "long",
-                            day: "numeric",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          },
-                        )
-                      : ""}
-                  </div>
-                </div>
-
-                {/* Task Details */}
-                <div className="mb-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="w-2 h-2 bg-orange-400 rounded-full animate-ping"></span>
-                    <span className="text-sm font-bold text-orange-300 uppercase tracking-wider">
-                      Task Details
-                    </span>
-                  </div>
-                  <div className="rounded-2xl bg-gradient-to-br from-slate-900/80 to-gray-900/80 border border-orange-500/30 p-5 backdrop-blur-xl shadow-lg text-slate-300 whitespace-pre-wrap leading-relaxed">
-                    {selectedRow.task_details || "—"}
-                  </div>
-                </div>
-
-                {/* GCP Response */}
-                <div>
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping"></span>
-                    <span className="text-sm font-bold text-emerald-300 uppercase tracking-wider">
-                      GCP Response
-                    </span>
-                  </div>
-                  <div className="rounded-2xl bg-gradient-to-br from-emerald-900/50 to-teal-900/50 border border-emerald-500/40 p-5 backdrop-blur-xl shadow-xl shadow-emerald-500/20 text-slate-200 whitespace-pre-wrap leading-relaxed">
-                    {selectedRow.gcp_response || "No response yet"}
-                  </div>
-                </div>
+                {Array.from({ length: gcpTotalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      onClick={() => setGcpCurrentPage(page)}
+                      className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
+                        page === gcpSafePage
+                          ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/30"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ),
+                )}
+                <button
+                  onClick={() =>
+                    setGcpCurrentPage((p) => Math.min(gcpTotalPages, p + 1))
+                  }
+                  disabled={gcpSafePage === gcpTotalPages}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
               </div>
             </div>
           </div>
         )}
+
+        {/* Dark Modal — rendered via portal */}
+        {modalOpen &&
+          selectedRow &&
+          createPortal(
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+              <div
+                className="relative w-full max-w-2xl bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header with gradient */}
+                <div className="relative bg-gradient-to-r from-emerald-600/20 to-teal-600/20 border-b border-slate-700/50 p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                        <svg
+                          className="w-5 h-5 text-emerald-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-slate-100">
+                          GCP Response
+                        </h3>
+                        <p className="text-xs text-emerald-400/70 font-medium uppercase tracking-wider mt-0.5">
+                          Task Communication Log
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleCloseModal}
+                      className="w-8 h-8 rounded-lg bg-slate-800/50 border border-slate-600/50 text-slate-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/50 transition-all duration-200 flex items-center justify-center"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 space-y-6">
+                  {/* Info Grid */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg
+                          className="w-4 h-4 text-emerald-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
+                        </svg>
+                        <span className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider">
+                          GCP Officer
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-slate-200">
+                        {selectedRow.user
+                          ? `${selectedRow.user.first_name} ${selectedRow.user.last_name}`
+                          : "Unknown"}
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg
+                          className="w-4 h-4 text-blue-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                        <span className="text-xs font-semibold text-blue-400/80 uppercase tracking-wider">
+                          Location
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-slate-200">
+                        {selectedRow.report
+                          ? `${selectedRow.report.location} (${selectedRow.report.landmark})`
+                          : (selectedRow.collectiondetails?.schedule?.barangay
+                              ?.barangay_name ?? "N/A")}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Date */}
+                  <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-800/20 rounded-lg px-3 py-2 border border-slate-700/20 w-fit">
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <span>
+                      {selectedRow.created_at
+                        ? new Date(selectedRow.created_at).toLocaleString(
+                            "en-US",
+                            {
+                              month: "long",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )
+                        : ""}
+                    </span>
+                  </div>
+
+                  {/* Two Column Layout for Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Task Details */}
+                    <div className="bg-slate-800/20 rounded-xl border border-slate-700/30 overflow-hidden">
+                      <div className="bg-slate-800/50 px-4 py-3 border-b border-slate-700/30">
+                        <div className="flex items-center gap-2">
+                          <svg
+                            className="w-4 h-4 text-orange-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                            />
+                          </svg>
+                          <span className="text-xs font-semibold text-orange-400/80 uppercase tracking-wider">
+                            Task Details
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+                          {selectedRow.task_details || "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* GCP Response */}
+                    <div className="bg-emerald-900/10 rounded-xl border border-emerald-500/20 overflow-hidden">
+                      <div className="bg-emerald-900/20 px-4 py-3 border-b border-emerald-500/20">
+                        <div className="flex items-center gap-2">
+                          <svg
+                            className="w-4 h-4 text-emerald-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+                            />
+                          </svg>
+                          <span className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider">
+                            GCP Response
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">
+                          {selectedRow.gcp_response || "No response yet"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="bg-slate-800/30 border-t border-slate-700/50 px-6 py-4 flex justify-end">
+                  <button
+                    onClick={handleCloseModal}
+                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-sm font-medium text-slate-200 rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )}
       </div>
     </section>
   );
@@ -2092,6 +2774,11 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
     gcp_user_id: "",
   });
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  const totalPages = Math.max(1, Math.ceil(trucks.length / itemsPerPage));
+
   // load existing trucks
   useEffect(() => {
     async function load() {
@@ -2106,6 +2793,21 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
       setLoading(false);
     }
     load();
+
+    const channel = supabase
+      .channel("secretary-trucks-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "garbage_trucks" },
+        () => {
+          load();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleChange = (
@@ -2154,204 +2856,471 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
   };
 
   return (
-    <section className="dashboard-section max-w-2xl mx-auto space-y-6 h-fit">
-      {/* Glow effect */}
-      <div className="dashboard-section-glow" />
-
-      <div className="relative z-10">
-        <h2 className="text-2xl font-black mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
-          Garbage Trucks
-        </h2>
-
-        {/* Compact Add Truck form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Plate number */}
-            <div>
-              <label
-                htmlFor="plate_number"
-                className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
+    <section className="max-w-4xl mx-auto space-y-6 p-6">
+      <div className="bg-slate-900/60 border border-slate-700/50 rounded-2xl shadow-xl backdrop-blur-xl overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-600/20 to-teal-600/20 border-b border-slate-700/50 p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+              <svg
+                className="w-5 h-5 text-emerald-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
               >
-                Plate Number
-              </label>
-              <input
-                id="plate_number"
-                name="plate_number"
-                value={form.plate_number}
-                onChange={handleChange}
-                className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/20"
-                placeholder="NCA1234"
-                required
-              />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                />
+              </svg>
             </div>
-
-            {/* Capacity */}
             <div>
-              <label
-                htmlFor="capacity"
-                className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
-              >
-                Capacity
-              </label>
-              <input
-                id="capacity"
-                type="number"
-                min="0"
-                step="0.25"
-                name="capacity"
-                value={form.capacity}
-                onChange={handleChange}
-                className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/20"
-                placeholder="6.50"
-                required
-              />
-            </div>
-
-            {/* Status */}
-            <div>
-              <label
-                htmlFor="status"
-                className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
-              >
-                Status
-              </label>
-              <select
-                id="status"
-                name="status"
-                value={form.status}
-                onChange={handleChange}
-                className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/20 appearance-none bg-no-repeat pr-8"
-              >
-                <option value="Available">Available</option>
-                <option value="Under maintenance">Under maintenance</option>
-                <option value="Retired">Retired</option>
-              </select>
-            </div>
-
-            {/* Truck code */}
-            <div>
-              <label
-                htmlFor="truck_code"
-                className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
-              >
-                Truck Code
-              </label>
-              <input
-                id="truck_code"
-                name="truck_code"
-                value={form.truck_code}
-                onChange={handleChange}
-                className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-md hover:shadow-emerald-500/20"
-                placeholder="Bool_NCA1234"
-                required
-              />
-            </div>
-
-            {/* GCP Selection */}
-            <div>
-              <label
-                htmlFor="gcp_user_id"
-                className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-2 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text drop-shadow-sm"
-              >
-                Assign GCP
-              </label>
-              <select
-                id="gcp_user_id"
-                name="gcp_user_id"
-                value={form.gcp_user_id}
-                onChange={handleChange}
-                className="w-full rounded-xl bg-slate-900/80 border border-green-800/50 px-4 py-3 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/70 transition-all duration-300 backdrop-blur-xl shadow-md"
-              >
-                <option value="">Select GCP</option>
-                {gcps.map((gcp) => (
-                  <option key={gcp.user_id} value={gcp.user_id}>
-                    {gcp.first_name} {gcp.last_name}
-                  </option>
-                ))}
-              </select>
+              <h2 className="text-xl font-bold text-slate-100">
+                Garbage Trucks
+              </h2>
+              <p className="text-xs text-emerald-400/70 font-medium uppercase tracking-wider mt-0.5">
+                Fleet Management
+              </p>
             </div>
           </div>
+        </div>
 
-          {/* Compact error/success */}
-          {error && (
-            <div className="rounded-xl bg-gradient-to-r from-orange-500/15 to-red-500/15 border border-orange-500/40 p-3 text-orange-200 text-sm backdrop-blur-xl shadow-lg animate-pulse">
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="rounded-xl bg-gradient-to-r from-emerald-500/15 to-teal-500/15 border border-emerald-500/40 p-3 text-emerald-200 text-sm backdrop-blur-xl shadow-lg flex items-center gap-2">
-              <div className="w-4 h-4 bg-emerald-500 rounded-full animate-ping" />
-              {success}
-            </div>
-          )}
-
-          {/* Compact button */}
-          <div className="flex justify-end pt-2 border-t border-green-800/30">
-            <button
-              type="submit"
-              className="group relative inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-sm font-black text-slate-100 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-emerald-500/40 rounded-2xl overflow-hidden"
-            >
-              <span className="relative z-10 uppercase tracking-wide">
-                ＋ Add Truck
-              </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-            </button>
-          </div>
-        </form>
-
-        {/* ✅ SCROLLABLE Truck List */}
-        <div className="space-y-2">
-          <h3 className="text-xl font-bold mb-4 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
-            Existing Trucks
-          </h3>
-          {loading ? (
-            <div className="flex items-center justify-center py-6 text-slate-400">
-              <span className="text-lg animate-spin mr-2">🚛</span>
-              Loading...
-            </div>
-          ) : trucks.length === 0 ? (
-            <div className="text-center py-6 text-slate-400">
-              <div className="text-3xl mb-2 opacity-50">🚛</div>
-              <p className="text-sm">No trucks added yet</p>
-            </div>
-          ) : (
-            <div className="max-h-64 overflow-y-auto rounded-xl border border-green-800/50 bg-slate-900/50 backdrop-blur-xl shadow-inner pr-2 scrollbar-thin scrollbar-thumb-emerald-500/50 scrollbar-track-slate-900/50 scrollbar-thumb-rounded">
-              {trucks.map((t) => (
-                <div
-                  key={t.truck_id}
-                  className="group flex items-center gap-3 p-3 first:pt-4 last:pb-4 rounded-xl border border-green-800/30 hover:bg-slate-800/60 hover:border-green-600/50 transition-all duration-300 backdrop-blur-xl hover:shadow-md mb-2 last:mb-0"
+        <div className="p-6 space-y-6">
+          {/* Add Truck Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Plate number */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="plate_number"
+                  className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800/50 to-gray-800/50 flex items-center justify-center shadow-md group-hover:scale-105 transition-all">
-                    <span className="text-lg">🚛</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm text-slate-100 truncate">
-                      {t.truck_code}
-                    </div>
-                    <div className="text-xs text-slate-400 truncate">
-                      ({t.plate_number})
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <div className="text-xs font-semibold text-emerald-400">
-                      {t.capacity} tons
-                    </div>
-                    <span
-                      className={`ml-2 inline-flex px-2 py-1 rounded-full text-xs font-bold ${
-                        t.status === "Available"
-                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                          : t.status === "Under maintenance"
-                            ? "bg-orange-500/20 text-orange-300 border border-orange-500/40"
-                            : "bg-slate-500/20 text-slate-300 border border-slate-500/40"
-                      }`}
-                    >
-                      {t.status}
-                    </span>
-                  </div>
+                  Plate Number
+                </label>
+                <input
+                  id="plate_number"
+                  name="plate_number"
+                  value={form.plate_number}
+                  onChange={handleChange}
+                  className="w-full rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-colors"
+                  placeholder="NCA1234"
+                  required
+                />
+              </div>
+
+              {/* Capacity */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="capacity"
+                  className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider"
+                >
+                  Capacity (tons)
+                </label>
+                <input
+                  id="capacity"
+                  type="number"
+                  min="0"
+                  step="0.25"
+                  name="capacity"
+                  value={form.capacity}
+                  onChange={handleChange}
+                  className="w-full rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-colors"
+                  placeholder="6.50"
+                  required
+                />
+              </div>
+
+              {/* Status */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="status"
+                  className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider"
+                >
+                  Status
+                </label>
+                <div className="relative">
+                  <select
+                    id="status"
+                    name="status"
+                    value={form.status}
+                    onChange={handleChange}
+                    className="w-full rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-colors appearance-none cursor-pointer"
+                  >
+                    <option value="Available" className="bg-slate-900">
+                      Available
+                    </option>
+                    <option value="Under maintenance" className="bg-slate-900">
+                      Under Maintenance
+                    </option>
+                    <option value="Retired" className="bg-slate-900">
+                      Retired
+                    </option>
+                  </select>
+                  <svg
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500/70 pointer-events-none"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
                 </div>
-              ))}
+              </div>
+
+              {/* Truck code */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="truck_code"
+                  className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider"
+                >
+                  Truck Code
+                </label>
+                <input
+                  id="truck_code"
+                  name="truck_code"
+                  value={form.truck_code}
+                  onChange={handleChange}
+                  className="w-full rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-colors"
+                  placeholder="Bool_NCA1234"
+                  required
+                />
+              </div>
+
+              {/* GCP Selection */}
+              <div className="space-y-1.5 sm:col-span-2">
+                <label
+                  htmlFor="gcp_user_id"
+                  className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider"
+                >
+                  Assign GCP
+                </label>
+                <div className="relative">
+                  <select
+                    id="gcp_user_id"
+                    name="gcp_user_id"
+                    value={form.gcp_user_id}
+                    onChange={handleChange}
+                    className="w-full rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-colors appearance-none cursor-pointer"
+                  >
+                    <option value="" className="bg-slate-900">
+                      Select GCP
+                    </option>
+                    {gcps.map((gcp) => (
+                      <option
+                        key={gcp.user_id}
+                        value={gcp.user_id}
+                        className="bg-slate-900"
+                      >
+                        {gcp.first_name} {gcp.last_name}
+                      </option>
+                    ))}
+                  </select>
+                  <svg
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500/70 pointer-events-none"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
             </div>
-          )}
+
+            {/* Error/Success Messages */}
+            {error && (
+              <div className="flex items-center gap-3 rounded-lg bg-red-500/10 border border-red-500/20 p-3">
+                <svg
+                  className="w-5 h-5 text-red-400 shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span className="text-sm text-red-200/90">{error}</span>
+              </div>
+            )}
+            {success && (
+              <div className="flex items-center gap-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                </div>
+                <span className="text-sm text-emerald-200/90">{success}</span>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold text-white rounded-lg shadow-lg shadow-emerald-900/30 transition-all duration-200 hover:shadow-emerald-500/25"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Add Truck
+              </button>
+            </div>
+          </form>
+
+          {/* Divider */}
+          <div className="h-px bg-slate-700/30" />
+
+          {/* Truck List */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                <svg
+                  className="w-5 h-5 text-emerald-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
+                </svg>
+                Existing Trucks
+                <span className="text-xs font-normal text-slate-500 bg-slate-800/50 px-2 py-0.5 rounded-full">
+                  {trucks.length}
+                </span>
+              </h3>
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-8 text-slate-400">
+                <svg
+                  className="w-6 h-6 animate-spin mr-2 text-emerald-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                <span className="text-sm">Loading trucks...</span>
+              </div>
+            ) : trucks.length === 0 ? (
+              <div className="text-center py-8 bg-slate-800/20 rounded-xl border border-slate-700/30 border-dashed">
+                <svg
+                  className="w-12 h-12 mx-auto text-slate-600 mb-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1}
+                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                  />
+                </svg>
+                <p className="text-sm text-slate-400">No trucks added yet</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-3">
+                  {trucks
+                    .slice(
+                      (currentPage - 1) * itemsPerPage,
+                      currentPage * itemsPerPage,
+                    )
+                    .map((t) => (
+                      <div
+                        key={t.truck_id}
+                        className="flex items-center gap-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30 hover:border-emerald-500/30 hover:bg-slate-800/50 transition-all duration-200 group"
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center group-hover:border-emerald-500/30 transition-colors">
+                          <svg
+                            className="w-6 h-6 text-slate-400 group-hover:text-emerald-400 transition-colors"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                            />
+                          </svg>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-slate-100 truncate">
+                              {t.truck_code}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              ({t.plate_number})
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-slate-400">
+                            <span className="flex items-center gap-1">
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
+                                />
+                              </svg>
+                              {t.capacity} tons
+                            </span>
+                            {t.gcp && (
+                              <span className="flex items-center gap-1 text-emerald-400/70">
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                  />
+                                </svg>
+                                {t.gcp.first_name} {t.gcp.last_name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                            t.status === "Available"
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                              : t.status === "Under maintenance"
+                                ? "bg-orange-500/10 text-orange-400 border-orange-500/30"
+                                : "bg-slate-500/10 text-slate-400 border-slate-500/30"
+                          }`}
+                        >
+                          {t.status}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-700/30">
+                    <div className="text-xs text-slate-500">
+                      Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                      {Math.min(currentPage * itemsPerPage, trucks.length)} of{" "}
+                      {trucks.length} trucks
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() =>
+                          setCurrentPage((p) => Math.max(1, p - 1))
+                        }
+                        disabled={currentPage === 1}
+                        className="p-2 rounded-lg bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 19l-7-7 7-7"
+                          />
+                        </svg>
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        {Array.from(
+                          { length: totalPages },
+                          (_, i) => i + 1,
+                        ).map((page) => (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                              currentPage === page
+                                ? "bg-emerald-600 text-white"
+                                : "bg-slate-800/50 text-slate-400 hover:text-emerald-400 hover:bg-slate-700/50"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() =>
+                          setCurrentPage((p) => Math.min(totalPages, p + 1))
+                        }
+                        disabled={currentPage === totalPages}
+                        className="p-2 rounded-lg bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </section>
@@ -2365,6 +3334,7 @@ export default function SecretaryDashboard() {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [displayName, setDisplayName] = useState("User");
   const [activeTab, setActiveTab] = useState<SecretaryActiveTab>("dashboard");
+  const [initials, setInitials] = useState("");
 
   useEffect(() => {
     async function fetchDisplayName() {
@@ -2382,6 +3352,23 @@ export default function SecretaryDashboard() {
       setDisplayName(
         fullName || profile?.username || authData.user.email || "User",
       );
+
+      // Compute initials
+      if (fullName) {
+        const parts = fullName.split(" ").filter(Boolean);
+        setInitials(
+          parts
+            .map((p) => p[0])
+            .join("")
+            .toUpperCase(),
+        );
+      } else if (profile?.username) {
+        setInitials(profile.username.slice(0, 2).toUpperCase());
+      } else if (authData.user.email) {
+        setInitials(authData.user.email.slice(0, 2).toUpperCase());
+      } else {
+        setInitials("U");
+      }
     }
 
     fetchDisplayName();
@@ -2501,6 +3488,29 @@ export default function SecretaryDashboard() {
     }
 
     fetchCounts();
+
+    const channel = supabase
+      .channel("secretary-counts-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "garbage_trucks" },
+        () => fetchCounts(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_schedules" },
+        () => fetchCounts(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "gcpresponses" },
+        () => fetchCounts(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const summaryCards = [
@@ -3012,6 +4022,9 @@ export default function SecretaryDashboard() {
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-100 font-medium transition-colors whitespace-nowrap ring-1 ring-white/10"
             >
+              <span className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-sm shadow-lg overflow-hidden">
+                {initials}
+              </span>
               <svg
                 className={`w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0 ${profileDropdownOpen ? "rotate-180" : ""}`}
                 fill="none"

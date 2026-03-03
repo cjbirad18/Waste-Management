@@ -395,6 +395,25 @@ function ResidentSchedulesFeature({
     }
 
     fetchSchedules();
+
+    // Realtime: auto-refresh when schedules or collection details change
+    const channel = supabase
+      .channel("resident-schedules-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_schedules" },
+        () => fetchSchedules(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_details" },
+        () => fetchSchedules(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const schedule = schedules.find(
@@ -2077,6 +2096,25 @@ export default function ResidentDashboard() {
     }
 
     fetchUserReports();
+
+    // Realtime: auto-refresh reports when community_reports or report_status_history change
+    const channel = supabase
+      .channel("resident-reports-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_reports" },
+        () => fetchUserReports(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "report_status_history" },
+        () => fetchUserReports(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Fetch delayed collections for resident's barangay
@@ -2100,7 +2138,26 @@ export default function ResidentDashboard() {
     fetchDelayedCollections();
     // Refresh every 5 minutes
     const interval = setInterval(fetchDelayedCollections, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+
+    // Realtime: auto-refresh delayed collections when collection data changes
+    const channel = supabase
+      .channel("resident-delays-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_details" },
+        () => fetchDelayedCollections(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_schedules" },
+        () => fetchDelayedCollections(),
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [residentBarangayId]);
 
   // Form Handlers
@@ -2350,36 +2407,18 @@ export default function ResidentDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100/90 flex flex-col relative overflow-hidden antialiased">
-      {/* Lighter background for mobile, no heavy blur or large gradients */}
-      <style>{`
-        @media (max-width: 600px) {
-          .dashboard-bg-mobile {
-            background: #0f172a;
-          }
-          .dashboard-header-mobile {
-            box-shadow: 0 2px 8px 0 rgba(16, 185, 129, 0.08);
-            backdrop-filter: none;
-            background: #0f172a;
-          }
-        }
-      `}</style>
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-emerald-950/70 text-slate-100/90 flex flex-col relative overflow-hidden antialiased">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 overflow-hidden dashboard-bg-mobile"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
       >
-        {/* Lightweight gradient for desktop, flat color for mobile */}
-        <div
-          className="hidden md:block absolute inset-0 w-full h-full"
-          style={{
-            background: "linear-gradient(135deg, #0f172a 0%, #134e4a 100%)",
-            opacity: 0.18,
-          }}
-        />
-        <div className="md:hidden absolute inset-0 w-full h-full bg-[#0f172a]" />
+        <div className="absolute -top-48 left-1/4 h-[520px] w-[520px] rounded-full bg-emerald-500/12 blur-[130px]" />
+        <div className="absolute top-24 -right-40 h-[420px] w-[420px] rounded-full bg-sky-500/12 blur-[120px]" />
+        <div className="absolute bottom-0 left-0 h-[360px] w-[360px] rounded-full bg-amber-400/10 blur-[110px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.7),transparent_60%)]" />
       </div>
       {/* Top navigation (same as SWMO) */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-emerald-900/40 bg-slate-950/90 shadow-md dashboard-header-mobile">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-emerald-900/40 bg-slate-950/80 shadow-lg shadow-emerald-900/20 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/60">
         <div className="flex items-center justify-between px-2 sm:px-4 md:px-8 py-3 sm:py-4 min-h-16">
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
             <button
@@ -2540,7 +2579,7 @@ export default function ResidentDashboard() {
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={4}
+                  strokeWidth={2}
                   d="M19 9l-7 7-7-7"
                 />
               </svg>
@@ -2551,60 +2590,34 @@ export default function ResidentDashboard() {
                   className="fixed inset-0 z-40"
                   onClick={() => setProfileDropdownOpen(false)}
                 />
-                <div className="absolute right-0 top-full w-56 rounded-lg bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-50">
+                <div className="absolute right-0 mt-2 w-56 rounded-lg bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-50">
                   <div className="p-3 border-b border-slate-800">
                     <p className="text-xs text-slate-400 font-medium">
                       {displayName}
                     </p>
                   </div>
                   <div className="py-2">
-                    <div>
-                      <button
-                        onClick={() => {
-                          setActiveTab("manageAccount");
-                          setProfileDropdownOpen(false);
-                          setSidebarOpen(false);
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-200 hover:bg-slate-800 transition-colors"
-                      >
-                        <svg
-                          className="w-5 h-5 text-slate-300"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M12 4.354V4a2 2 0 10-4 0v.354A7.002 7.002 0 005 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h16l-.405-1.405A2.032 2.032 0 0118 14.159V11a7.002 7.002 0 00-3-6.646z"
-                          />
-                        </svg>
-                        <span>Manage Account</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setProfileDropdownOpen(false);
-                          handleLogout();
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-red-400 hover:bg-slate-800 transition-colors"
-                      >
-                        <svg
-                          className="w-5 h-5 text-red-400"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                          />
-                        </svg>
-                        <span>Logout</span>
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => {
+                        setActiveTab("manageAccount");
+                        setProfileDropdownOpen(false);
+                        setSidebarOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-200 hover:bg-slate-800 transition-colors"
+                    >
+                      <span className="text-lg">⚙️</span>
+                      <span>Manage Account</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setProfileDropdownOpen(false);
+                        handleLogout();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-red-400 hover:bg-slate-800 transition-colors"
+                    >
+                      <span className="text-lg">🚪</span>
+                      <span>Logout</span>
+                    </button>
                   </div>
                 </div>
               </>
@@ -2613,28 +2626,20 @@ export default function ResidentDashboard() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden relative z-10 pt-24 sm:pt-20 md:pt-16">
-        {/* Mobile overlay when sidebar is open */}
+      <div className="flex flex-1 overflow-hidden pt-16">
+        {/* Overlay for mobile */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
         )}
 
-        {/* Sidebar and toggle button */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="md:hidden fixed top-4 left-4 z-[70] inline-flex items-center justify-center h-11 w-11 rounded-lg bg-slate-900/80 text-slate-100 hover:bg-slate-800 transition-colors ring-1 ring-white/10"
-          aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-        >
-          {sidebarOpen ? "✖" : "☰"}
-        </button>
-
+        {/* Sidebar – Resident items */}
         <aside
           className={`
-          fixed z-40 left-0 top-24 sm:top-20 bottom-0 w-72 ${
+          fixed z-40 left-0 top-16 bottom-0 w-64 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           }
           md:fixed md:translate-x-0 md:top-16 md:left-0 md:bottom-0 md:w-64
@@ -2656,22 +2661,21 @@ export default function ResidentDashboard() {
               },
               { label: "My Reports", icon: "📅", tab: "myReports" },
             ].map((item) => (
-              <Button
+              <button
                 key={item.tab}
-                variant={activeTab === item.tab ? "default" : "ghost"}
                 onClick={() => {
                   setActiveTab(item.tab as ResidentActiveTab);
                   if (item.tab !== "dashboard") setSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left h-auto ${
+                className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 transition-colors ${
                   activeTab === item.tab
-                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                    ? "bg-emerald-600 text-white"
                     : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                 }`}
               >
-                <span className="text-xl">{item.icon}</span>
-                <span className="font-medium">{item.label}</span>
-              </Button>
+                <span className="text-lg">{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
             ))}
 
             <div className="pt-6 mt-6 border-t border-slate-800"></div>

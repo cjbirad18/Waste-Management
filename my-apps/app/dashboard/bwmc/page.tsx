@@ -576,6 +576,95 @@ export default function BWMCdashboard() {
     return () => clearInterval(interval);
   }, [currentUser?.barangay?.barangay_id]);
 
+  // ---- Supabase Realtime: auto-refresh when any relevant table changes ----
+  useEffect(() => {
+    if (!currentUser?.barangay?.barangay_id) return;
+
+    const barangayId = currentUser.barangay.barangay_id;
+
+    // Helper to re-fetch all dashboard data
+    const refreshAll = () => {
+      fetchPendingRequests();
+      fetchProcessedAccounts();
+      fetchUsers();
+      // Re-fetch dashboard counts inline
+      (async () => {
+        const todayStr = new Date().toISOString().split("T")[0];
+        try {
+          const [trucksRes, collectionsRes, reportsRes] = await Promise.all([
+            supabase
+              .from("garbage_trucks")
+              .select("truck_id", { count: "exact", head: true }),
+            supabase
+              .from("collection_details")
+              .select("collectiondetails_id", { count: "exact", head: true })
+              .eq("collection_date", todayStr),
+            supabase
+              .from("community_reports")
+              .select("report_id", { count: "exact", head: true })
+              .eq("barangay_id", barangayId),
+          ]);
+          setDashboardCounts((prev) => ({
+            ...prev,
+            activeTrucks: trucksRes.count || 0,
+            dailyCollections: collectionsRes.count || 0,
+            incidentReports: reportsRes.count || 0,
+          }));
+        } catch (err) {
+          console.error("Realtime refresh error:", err);
+        }
+      })();
+      // Re-fetch delayed collections
+      getDelayedCollectionsForBarangay(barangayId)
+        .then((delayed) => {
+          setDelayedCollections(delayed);
+          setDashboardCounts((prev) => ({
+            ...prev,
+            delayedCollections: delayed.length,
+          }));
+        })
+        .catch(console.error);
+    };
+
+    const channel = supabase
+      .channel("bwmc-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "users" },
+        () => refreshAll(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_reports" },
+        () => refreshAll(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_schedules" },
+        () => refreshAll(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_details" },
+        () => refreshAll(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "garbage_trucks" },
+        () => refreshAll(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [
+    currentUser?.barangay?.barangay_id,
+    fetchPendingRequests,
+    fetchProcessedAccounts,
+    fetchUsers,
+  ]);
+
   const summaryCards = [
     {
       label: "Pending Accounts",
@@ -1067,6 +1156,25 @@ export default function BWMCdashboard() {
         }
       }
       fetchSchedules();
+
+      // Realtime: auto-refresh schedules when collection_schedules or collection_details changes
+      const channel = supabase
+        .channel("bwmc-schedules-realtime")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "collection_schedules" },
+          () => fetchSchedules(),
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "collection_details" },
+          () => fetchSchedules(),
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }, []);
 
     const orderedSchedules = [...schedules].sort((a, b) => {
@@ -1314,6 +1422,25 @@ export default function BWMCdashboard() {
       };
 
       fetchReports();
+
+      // Realtime: auto-refresh reports when community_reports or report_status_history changes
+      const channel = supabase
+        .channel("bwmc-reports-realtime")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "community_reports" },
+          () => fetchReports(),
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "report_status_history" },
+          () => fetchReports(),
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }, []);
 
     const getCurrentUserId = async () => {

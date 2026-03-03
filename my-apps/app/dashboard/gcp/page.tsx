@@ -371,6 +371,25 @@ function GCPScheduleSection() {
     }
 
     fetchGCPSchedules();
+
+    // Realtime: auto-refresh when collection_schedules or collection_details changes
+    const channel = supabase
+      .channel("gcp-schedules-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_schedules" },
+        () => fetchGCPSchedules(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_details" },
+        () => fetchGCPSchedules(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return (
@@ -484,6 +503,25 @@ function GCPAssignedTasksSection() {
     };
 
     fetchTasks();
+
+    // Realtime: auto-refresh when gcp_assignment or community_reports changes
+    const channel = supabase
+      .channel("gcp-tasks-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "gcp_assignment" },
+        () => fetchTasks(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_reports" },
+        () => fetchTasks(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleOpenResponse = (assignment: any) => {
@@ -1056,6 +1094,7 @@ export default function GCPDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [statsVisible, setStatsVisible] = useState(true);
   const [displayName, setDisplayName] = useState("User");
+  const [initials, setInitials] = useState("");
   const [activeTab, setActiveTab] = useState<
     | "dashboard"
     | "userAdmin"
@@ -1079,6 +1118,14 @@ export default function GCPDashboard() {
         `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim();
       setDisplayName(
         fullName || profile?.username || authData.user.email || "User",
+      );
+
+      const name = fullName || profile?.username || authData.user.email || "";
+      const parts = name.trim().split(/\s+/);
+      setInitials(
+        parts.length >= 2
+          ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+          : name.slice(0, 2).toUpperCase(),
       );
     }
 
@@ -1297,6 +1344,9 @@ export default function GCPDashboard() {
                 variant="ghost"
                 className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-100 font-medium transition-colors whitespace-nowrap ring-1 ring-white/10"
               >
+                <span className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-sm shadow-lg overflow-hidden">
+                  {initials}
+                </span>
                 <svg
                   className="w-3 h-3 sm:w-4 sm:h-4 text-slate-300 transition-transform duration-300 flex-shrink-0"
                   fill="none"

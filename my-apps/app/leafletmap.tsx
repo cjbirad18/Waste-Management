@@ -34,37 +34,28 @@ import {
 
 const mapCenter: [number, number] = [9.6556, 123.8521];
 
-// Option 2: Debug version - check console for path issues
-const TOWN_HALL_SRC = "/town-hall.png";
-
 const createBarangayIcon = () =>
-  L.divIcon({
-    className: "custom-barangay-icon",
-    html: `<img src="${TOWN_HALL_SRC}" width="36" height="36" style="display: block;" />`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 36],
-    popupAnchor: [0, -36],
+  new L.Icon({
+    iconUrl: markerIcon as unknown as string,
+    shadowUrl: markerShadow as unknown as string,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
   });
 
 const createTruckIcon = (isActive: boolean) =>
   L.divIcon({
     className: "custom-truck-icon",
     html: `
-    <div class="relative">
-      <div class="absolute inset-0 bg-emerald-500/30 rounded-full animate-ping ${isActive ? "block" : "hidden"}"></div>
-      <div class="relative bg-gradient-to-br from-emerald-500 to-teal-600 p-3 rounded-full shadow-xl border-2 border-white">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M10 17h4V5H2v12h3"/>
-          <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1"/>
-          <circle cx="7.5" cy="17.5" r="2.5"/>
-          <circle cx="17.5" cy="17.5" r="2.5"/>
-        </svg>
-      </div>
+    <div style="width:80px;height:80px;position:relative;display:flex;align-items:center;justify-content:center;">
+      <div class="bg-emerald-500/30 rounded-full animate-ping ${isActive ? "block" : "hidden"}" style="position:absolute;inset:0;"></div>
+      <img src="/truck.png" alt="Truck" style="width:70px;height:70px;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.4));position:relative;" />
     </div>
   `,
-    iconSize: [48, 48],
-    iconAnchor: [24, 24],
-    popupAnchor: [0, -24],
+    iconSize: [90, 90],
+    iconAnchor: [45, 45],
+    popupAnchor: [0, -45],
   });
 
 const createResidentIcon = () =>
@@ -939,6 +930,9 @@ function LeafletMap({
             {geojson && (
               <GeoJSON
                 data={geojson}
+                pointToLayer={(feature, latlng) =>
+                  L.marker(latlng, { icon: createBarangayIcon() })
+                }
                 style={(feature?: Feature) => {
                   if (!feature || feature.geometry.type !== "Polygon")
                     return {};

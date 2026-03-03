@@ -545,6 +545,24 @@ export default function AdminDashboard() {
     }
 
     fetchCounts();
+
+    const channel = supabase
+      .channel("swmo-counts-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "users" },
+        () => fetchCounts(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_reports" },
+        () => fetchCounts(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const [dashboardCollectionRows, setDashboardCollectionRows] = useState<
@@ -796,6 +814,19 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchUsers();
+
+    const channel = supabase
+      .channel("swmo-users-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "users" },
+        () => fetchUsers(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [fetchUsers]);
 
   useEffect(() => {
@@ -886,6 +917,21 @@ export default function AdminDashboard() {
     if (activeTab === "manageUsers") {
       fetchOtherUsers();
     }
+
+    if (activeTab !== "manageUsers") return;
+
+    const channel = supabase
+      .channel("swmo-other-users-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "users" },
+        () => fetchOtherUsers(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [activeTab, fetchOtherUsers]);
 
   useEffect(() => {
@@ -1235,6 +1281,26 @@ export default function AdminDashboard() {
     if (activeTab === "incidentReports") {
       fetchIncidentReports();
     }
+
+    if (activeTab !== "incidentReports") return;
+
+    const channel = supabase
+      .channel("swmo-incidents-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_reports" },
+        () => fetchIncidentReports(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "report_status_history" },
+        () => fetchIncidentReports(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [activeTab, fetchIncidentReports]);
 
   useEffect(() => {
@@ -1245,6 +1311,26 @@ export default function AdminDashboard() {
     if (activeTab === "dashboard") {
       fetchDashboardData();
     }
+
+    if (activeTab !== "dashboard") return;
+
+    const channel = supabase
+      .channel("swmo-dashboard-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_details" },
+        () => fetchDashboardData(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_reports" },
+        () => fetchDashboardData(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [activeTab, fetchDashboardData]);
 
   const dashboardStats = [
@@ -1382,6 +1468,52 @@ export default function AdminDashboard() {
       if (insertError) {
         setFormError(`Error saving user profile: ${insertError.message}`);
         return;
+      }
+      // Wait for user to be available in Supabase before calling notification API
+      let userFound = false;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data: checkUser, error: checkError } = await supabase
+          .from("users")
+          .select("user_id")
+          .eq("user_id", userId)
+          .single();
+        if (checkUser && !checkError) {
+          userFound = true;
+          break;
+        }
+        // Wait 200ms before next attempt
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      if (!userFound) {
+        setFormError(
+          "User created, but could not verify user in database for notification.",
+        );
+        return;
+      }
+      // Call notification API to send SMS
+      try {
+        const notifRes = await fetch("/api/notifications/account-created/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            role: userForm.role,
+            createdBy: "SWMO Head", // or dynamic if needed
+            tempPassword: userForm.password,
+          }),
+        });
+        const notifData = await notifRes.json();
+        if (!notifRes.ok) {
+          console.error("Notification API error:", notifData.error);
+          setFormError(
+            `User created, but notification failed: ${notifData.error}`,
+          );
+        } else {
+          console.log("Notification sent:", notifData);
+        }
+      } catch (notifErr) {
+        console.error("Notification API call failed:", notifErr);
+        setFormError(`User created, but notification failed: ${notifErr}`);
       }
       setFormSuccess("User account created successfully!");
       setUserForm({

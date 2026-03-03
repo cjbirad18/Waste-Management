@@ -276,6 +276,21 @@ export default function TcemoDashboard() {
 
   useEffect(() => {
     fetchUsers();
+
+    const channel = supabase
+      .channel("tcemo-users-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "users" },
+        () => {
+          fetchUsers();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [fetchUsers]);
 
   useEffect(() => {
@@ -332,6 +347,24 @@ export default function TcemoDashboard() {
       });
     }
     fetchCounts();
+
+    const channel = supabase
+      .channel("tcemo-counts-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "users" },
+        () => fetchCounts(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_reports" },
+        () => fetchCounts(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const summaryCards = [

@@ -23,23 +23,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user details
+    // Get user details using correct column names
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("name, phone")
+      .select("first_name, last_name, contact_number")
       .eq("user_id", userId)
       .single();
 
     if (userError || !user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      console.error("User lookup error:", userError);
+      return NextResponse.json(
+        { error: "User not found", details: userError?.message },
+        { status: 404 },
+      );
     }
 
-    if (!user.phone) {
+    const phone = user.contact_number;
+    if (!phone) {
       return NextResponse.json(
         { error: "User has no phone number" },
         { status: 400 },
       );
     }
+
+    const userName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
 
     // Role-specific messages
     const roleMessages: Record<string, string> = {
@@ -53,41 +60,50 @@ export async function POST(request: NextRequest) {
     const roleName = roleMessages[role] || role;
     const creator = createdBy === "SWMO Head" ? "SWMO Head" : "TCEMO Head";
 
-    let message = `Welcome to Track the Truck! Your account has been created by ${creator}.\n\n`;
-    message += `Role: ${roleName}\n`;
-    message += `Username: ${user.phone}\n`;
-
+    let message = `TTruck: Hey ${userName || "there"}! Good news, you're now part of the team as ${roleName}. ${creator} set things up for you. Go ahead and open the app to get started.`;
     if (tempPassword) {
-      message += `Temporary Password: ${tempPassword}\n\n`;
-      message += `Please login and change your password immediately for security.`;
-    } else {
-      message += `\nPlease check your email for login instructions.`;
+      message += ` Your Temporary Password: ${tempPassword}. Change it right away and do not share it with anyone.\n\n`;
+    }
+    message += ` -TrackTheTruck`;
+
+    // Send SMS with proper error handling
+    let smsResult: { success: boolean; error?: string } = { success: false };
+    try {
+      const result = await sendSMS(phone, message);
+      smsResult = { success: true, ...result };
+    } catch (smsErr: any) {
+      console.error("SMS sending failed:", smsErr);
+      smsResult = {
+        success: false,
+        error: smsErr?.message || String(smsErr),
+      };
     }
 
-    // Send SMS
-    const smsResult = await sendSMS(user.phone, message);
-
-    // Log notification
-    await supabase.from("sms_notifications").insert({
-      user_id: userId,
-      notification_type: "account_created",
-      message: message,
-      phone_number: user.phone,
-      status: smsResult.success ? "sent" : "failed",
-      error_message: smsResult.success ? null : smsResult.error,
-    });
+    // Log notification (non-blocking, don't crash if this fails)
+    try {
+      await supabase.from("sms_notifications").insert({
+        user_id: userId,
+        notification_type: "account_created",
+        message: message,
+        phone_number: phone,
+        status: smsResult.success ? "sent" : "failed",
+        error_message: smsResult.success ? null : smsResult.error || null,
+      });
+    } catch (logErr) {
+      console.error("Failed to log SMS notification:", logErr);
+    }
 
     return NextResponse.json({
       success: smsResult.success,
       message: smsResult.success
         ? "Account creation notification sent successfully"
-        : "Failed to send notification",
-      error: smsResult.error,
+        : "Failed to send SMS notification",
+      error: smsResult.error || null,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error sending account creation notification:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error?.message || "Internal server error" },
       { status: 500 },
     );
   }
