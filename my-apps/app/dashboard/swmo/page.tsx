@@ -375,6 +375,7 @@ export default function AdminDashboard() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingUserForm, setEditingUserForm] = useState<any>(null);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [isViewOnly, setIsViewOnly] = useState(false);
   const [otherUsersError, setOtherUsersError] = useState<string | null>(null);
   const [otherUsersSuccess, setOtherUsersSuccess] = useState<string | null>(
     null,
@@ -421,6 +422,8 @@ export default function AdminDashboard() {
   const [activeReportOption, setActiveReportOption] = useState<
     "wasteCollection" | "barangayConcerns"
   >("wasteCollection");
+  // when generating barangay concerns report TA requirement: select barangay first
+  const [reportBarangayId, setReportBarangayId] = useState<string>("");
   const [wasteCollectionData, setWasteCollectionData] = useState<
     { month: string; tons: number }[]
   >([]);
@@ -802,7 +805,9 @@ export default function AdminDashboard() {
       const { data, error } = await supabase
         .from("users")
         .select("*")
-        .order("date_created", { ascending: false });
+        // order alphabetically by first name then last name for display
+        .order("first_name", { ascending: true })
+        .order("last_name", { ascending: true });
       if (error) throw error;
       setUsers(data as User[]);
     } catch (error) {
@@ -1413,6 +1418,10 @@ export default function AdminDashboard() {
       return "Password must be at least 6 characters";
     if (userForm.role === "BWMC" && !userForm.barangay_id)
       return "Barangay is required for BWMC role";
+    // phone must start with 09 and exactly 11 digits
+    const phoneRegex = /^09\d{9}$/;
+    if (!phoneRegex.test(userForm.contact_number))
+      return "Contact number must start with 09 and be 11 digits";
     return null;
   };
 
@@ -1555,11 +1564,9 @@ export default function AdminDashboard() {
     if (manageAccountForm.password !== manageAccountForm.confirm_password) {
       return "Passwords do not match.";
     }
-    if (
-      manageAccountForm.contact_number.length < 11 &&
-      manageAccountForm.contact_number.length > 11
-    ) {
-      return "Contact number must be 11 digits.";
+    // validate contact starts with 09 and exactly 11 digits
+    if (!/^09\d{9}$/.test(manageAccountForm.contact_number)) {
+      return "Contact number must start with 09 and be 11 digits.";
     }
     return null;
   };
@@ -1634,6 +1641,24 @@ export default function AdminDashboard() {
   // Fetch other users (TCEMO, Secretary, BWMC, GCP)
   // Start editing a user
   const handleEditUser = (user: User) => {
+    setIsViewOnly(false);
+    setEditingUserId(user.user_id);
+    setEditingUserForm({
+      username: user.username,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      contact_number: user.contact_number,
+      password: "",
+      confirm_password: "",
+    });
+    setShowEditUserModal(true);
+    setOtherUsersError(null);
+    setOtherUsersSuccess(null);
+  };
+
+  const handleViewUser = (user: User) => {
+    setIsViewOnly(true);
     setEditingUserId(user.user_id);
     setEditingUserForm({
       username: user.username,
@@ -1671,8 +1696,9 @@ export default function AdminDashboard() {
       return;
     }
 
-    if (editingUserForm.contact_number.length !== 11) {
-      setOtherUsersError("Contact number must be exactly 11 digits.");
+    // must start with 09 and be 11 digits
+    if (!/^09\d{9}$/.test(editingUserForm.contact_number)) {
+      setOtherUsersError("Contact number must start with 09 and be 11 digits.");
       return;
     }
 
@@ -2702,15 +2728,23 @@ export default function AdminDashboard() {
                     </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <InputField
-                        label="Contact Number"
-                        name="contact_number"
-                        type="tel"
-                        value={userForm.contact_number}
-                        onChange={handleUserFormChange}
-                        required
-                        placeholder="09xx-xxx-xxxx"
-                      />
+                      <div className="flex flex-col">
+                        <InputField
+                          label="Contact Number"
+                          name="contact_number"
+                          type="tel"
+                          value={userForm.contact_number}
+                          onChange={handleUserFormChange}
+                          required
+                          placeholder="09xx-xxx-xxxx"
+                        />
+                        {userForm.contact_number &&
+                          !/^09\d{9}$/.test(userForm.contact_number) && (
+                            <p className="text-xs text-red-400 mt-1">
+                              Number must start with 09 and be 11 digits
+                            </p>
+                          )}
+                      </div>
                       <InputField
                         label="Email"
                         name="email"
@@ -3136,7 +3170,7 @@ export default function AdminDashboard() {
                                     Edit
                                   </button>
                                   <button
-                                    onClick={() => handleEditUser(user)}
+                                    onClick={() => handleViewUser(user)}
                                     className="text-slate-300 hover:text-slate-100"
                                   >
                                     View
@@ -3873,7 +3907,35 @@ export default function AdminDashboard() {
               {activeReportOption === "wasteCollection" && <ReportsAnalytics />}
 
               {activeReportOption === "barangayConcerns" && (
-                <BarangayConcernsAnalytics />
+                <>
+                  {/* dropdown to choose barangay before showing chart */}
+                  <div className="mb-4">
+                    <Label className="text-xs font-semibold text-slate-100">
+                      Select Barangay
+                    </Label>
+                    <select
+                      className="mt-1 block w-full rounded-md bg-slate-900/80 border border-slate-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      value={reportBarangayId}
+                      onChange={(e) => setReportBarangayId(e.target.value)}
+                    >
+                      <option value="">-- choose barangay --</option>
+                      {barangayOptions.map((b) => (
+                        <option key={b.value} value={String(b.value)}>
+                          {b.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {reportBarangayId ? (
+                    <BarangayConcernsAnalytics
+                      barangayId={Number(reportBarangayId) || undefined}
+                    />
+                  ) : (
+                    <p className="text-xs text-slate-400">
+                      Please select a barangay to view the chart.
+                    </p>
+                  )}
+                </>
               )}
             </section>
           )}
@@ -3905,10 +3967,12 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <h2 className="text-lg font-bold text-slate-100">
-                        Edit User Account
+                        {isViewOnly ? "View User Account" : "Edit User Account"}
                       </h2>
                       <p className="text-xs text-slate-400 mt-1">
-                        Update user information
+                        {isViewOnly
+                          ? "User details (read-only)"
+                          : "Update user information"}
                       </p>
                     </div>
                   </div>
@@ -3950,6 +4014,7 @@ export default function AdminDashboard() {
                             first_name: e.target.value,
                           })
                         }
+                        disabled={isViewOnly}
                       />
                     </div>
                     <div className="space-y-2">
@@ -3965,6 +4030,7 @@ export default function AdminDashboard() {
                             last_name: e.target.value,
                           })
                         }
+                        disabled={isViewOnly}
                       />
                     </div>
                   </div>
@@ -3982,6 +4048,7 @@ export default function AdminDashboard() {
                           email: e.target.value,
                         })
                       }
+                      disabled={isViewOnly}
                     />
                   </div>
 
@@ -3998,22 +4065,31 @@ export default function AdminDashboard() {
                           contact_number: e.target.value,
                         })
                       }
+                      disabled={isViewOnly}
                     />
+                    {editingUserForm.contact_number &&
+                      !/^09\d{9}$/.test(editingUserForm.contact_number) && (
+                        <p className="text-xs text-red-400">
+                          Number must start with 09 and be 11 digits
+                        </p>
+                      )}
                   </div>
                 </div>
 
                 {/* Modal Footer */}
                 <div className="sticky bottom-0 bg-slate-950 border-t border-slate-800 p-6 flex gap-3">
-                  <Button
-                    onClick={() => handleSaveUserEdit(editingUserId || "")}
-                    className="flex-1"
-                  >
-                    <span>💾</span>
-                    Save Changes
-                  </Button>
+                  {!isViewOnly && (
+                    <Button
+                      onClick={() => handleSaveUserEdit(editingUserId || "")}
+                      className="flex-1"
+                    >
+                      <span>💾</span>
+                      Save Changes
+                    </Button>
+                  )}
                   <Button onClick={handleCancelEdit} className="flex-1">
                     <span>✖️</span>
-                    Cancel
+                    {isViewOnly ? "Close" : "Cancel"}
                   </Button>
                 </div>
               </div>
