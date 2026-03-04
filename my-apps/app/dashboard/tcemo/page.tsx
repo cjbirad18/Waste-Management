@@ -186,7 +186,11 @@ export default function TcemoDashboard() {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [errorUsers, setErrorUsers] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "manageUsers" | "manageAccount" | "generateReports"
+    | "dashboard"
+    | "manageUsers"
+    | "manageAccount"
+    | "generateReports"
+    | "schedules"
   >("dashboard");
 
   useEffect(() => {
@@ -239,6 +243,19 @@ export default function TcemoDashboard() {
   const [manageAccountSuccess, setManageAccountSuccess] = useState<
     string | null
   >(null);
+
+  // Schedules
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const [schedulesError, setSchedulesError] = useState<string | null>(null);
+  const [schedulesBarangayFilter, setSchedulesBarangayFilter] =
+    useState<string>("all");
+  const [schedulesBarangays, setSchedulesBarangays] = useState<
+    { barangay_id: number | string; barangay_name: string }[]
+  >([]);
+  const [schedulesSearch, setSchedulesSearch] = useState("");
+  const [schedulesPage, setSchedulesPage] = useState(1);
+  const schedulesPageSize = 10;
 
   // Reports
   const [activeReportOption, setActiveReportOption] =
@@ -366,6 +383,112 @@ export default function TcemoDashboard() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // ---------- Fetch Schedules ----------
+  useEffect(() => {
+    async function fetchBarangays() {
+      try {
+        const { data, error } = await supabase
+          .from("barangay")
+          .select("barangay_id, barangay_name")
+          .order("barangay_name", { ascending: true });
+        if (error) throw error;
+        setSchedulesBarangays(data || []);
+      } catch {}
+    }
+    fetchBarangays();
+  }, []);
+
+  const fetchSchedules = useCallback(async () => {
+    setLoadingSchedules(true);
+    setSchedulesError(null);
+    try {
+      const { data, error } = await supabase
+        .from("collection_schedules")
+        .select(
+          `
+          schedule_id,
+          barangay:barangay_id (
+            barangay_name,
+            barangay_id
+          ),
+          days,
+          start_time,
+          end_time,
+          status,
+          date_created,
+          gcp_user:gcp_user_id (
+            first_name,
+            last_name
+          ),
+          collection_details:collection_details (
+            collectiondetails_id,
+            truck:truck_id (
+              plate_number,
+              truck_code
+            ),
+            collection_date,
+            status
+          )
+        `,
+        )
+        .order("date_created", { ascending: false });
+
+      if (error) throw error;
+      setSchedules(data || []);
+    } catch (err) {
+      setSchedulesError((err as Error).message || "Failed to load schedules.");
+    } finally {
+      setLoadingSchedules(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSchedules();
+
+    const channel = supabase
+      .channel("tcemo-schedules-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_schedules" },
+        () => fetchSchedules(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_details" },
+        () => fetchSchedules(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchSchedules]);
+
+  // Filtered & searched schedules
+  const filteredSchedules = schedules.filter((s) => {
+    const matchesBarangay =
+      schedulesBarangayFilter === "all" ||
+      String(s.barangay?.barangay_id) === schedulesBarangayFilter;
+    const matchesSearch =
+      !schedulesSearch ||
+      (s.barangay?.barangay_name || "")
+        .toLowerCase()
+        .includes(schedulesSearch.toLowerCase()) ||
+      (s.days || "").toLowerCase().includes(schedulesSearch.toLowerCase()) ||
+      `${s.gcp_user?.first_name || ""} ${s.gcp_user?.last_name || ""}`
+        .toLowerCase()
+        .includes(schedulesSearch.toLowerCase());
+    return matchesBarangay && matchesSearch;
+  });
+
+  const schedulesTotalPages = Math.ceil(
+    filteredSchedules.length / schedulesPageSize,
+  );
+  const paginatedSchedules = filteredSchedules.slice(
+    (schedulesPage - 1) * schedulesPageSize,
+    schedulesPage * schedulesPageSize,
+  );
 
   const summaryCards = [
     {
@@ -814,6 +937,7 @@ export default function TcemoDashboard() {
             {[
               { label: "Dashboard", icon: "📊", tab: "dashboard" },
               { label: "Manage Users", icon: "👥", tab: "manageUsers" },
+              { label: "Schedules", icon: "📅", tab: "schedules" },
               { label: "Generate Report", icon: "📈", tab: "generateReports" },
             ].map((item) => (
               <button
@@ -823,6 +947,7 @@ export default function TcemoDashboard() {
                     item.tab as
                       | "dashboard"
                       | "manageUsers"
+                      | "schedules"
                       | "generateReports"
                       | "manageAccount",
                   );
@@ -1207,6 +1332,181 @@ export default function TcemoDashboard() {
                   )}
                 </div>
               </div>
+            </section>
+          )}
+
+          {/* SCHEDULES TAB */}
+          {activeTab === "schedules" && (
+            <section className="space-y-6">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
+                    Schedules
+                  </p>
+                  <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
+                    Barangay Collection Schedules
+                  </h1>
+                </div>
+                <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Live
+                </span>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="w-full sm:w-64">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-emerald-300 mb-1">
+                    Filter by Barangay
+                  </Label>
+                  <select
+                    value={schedulesBarangayFilter}
+                    onChange={(e) => {
+                      setSchedulesBarangayFilter(e.target.value);
+                      setSchedulesPage(1);
+                    }}
+                    className="block w-full rounded-lg bg-slate-900/80 border border-emerald-700/60 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500 appearance-none"
+                  >
+                    <option value="all">All Barangays</option>
+                    {schedulesBarangays.map((b) => (
+                      <option key={b.barangay_id} value={b.barangay_id}>
+                        {b.barangay_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="w-full sm:w-64">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-emerald-300 mb-1">
+                    Search
+                  </Label>
+                  <Input
+                    placeholder="Search barangay, day, or GCP..."
+                    value={schedulesSearch}
+                    onChange={(e) => {
+                      setSchedulesSearch(e.target.value);
+                      setSchedulesPage(1);
+                    }}
+                    className="bg-slate-900/80 border-emerald-700/60 text-slate-100 placeholder:text-slate-500 focus:ring-emerald-500/70"
+                  />
+                </div>
+              </div>
+
+              {/* Table */}
+              {loadingSchedules ? (
+                <TruckLoader />
+              ) : schedulesError ? (
+                <div className="rounded-2xl border border-red-700/70 bg-red-900/40 p-4 text-sm text-red-100">
+                  Error: {schedulesError}
+                </div>
+              ) : filteredSchedules.length === 0 ? (
+                <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-8 text-center">
+                  <p className="text-slate-400 text-sm">No schedules found.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto rounded-2xl border border-slate-800/70 bg-slate-900/80 shadow-xl shadow-black/40">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-slate-800 text-slate-200 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                            Barangay
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                            Schedule Days
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider hidden md:table-cell">
+                            Start Time
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider hidden lg:table-cell">
+                            Assigned GCP
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider hidden sm:table-cell">
+                            Collections
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedSchedules.map((s: any) => (
+                          <tr
+                            key={s.schedule_id}
+                            className="border-t border-slate-800 hover:bg-slate-800/60 transition-colors"
+                          >
+                            <td className="px-4 py-3">
+                              <span className="font-medium text-slate-100">
+                                {s.barangay?.barangay_name || "N/A"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 text-xs font-medium">
+                                📅 {s.days || "N/A"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 hidden md:table-cell text-slate-300">
+                              {s.start_time
+                                ? s.start_time.length > 5
+                                  ? s.start_time.slice(0, 5)
+                                  : s.start_time
+                                : "N/A"}
+                            </td>
+                            <td className="px-4 py-3 hidden lg:table-cell text-slate-300">
+                              {s.gcp_user
+                                ? `${s.gcp_user.first_name} ${s.gcp_user.last_name}`
+                                : "Unassigned"}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge
+                                className={
+                                  (s.status || "").toLowerCase() === "active"
+                                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                    : "bg-slate-700/40 text-slate-400 border-slate-600/40"
+                                }
+                              >
+                                {s.status || "N/A"}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 hidden sm:table-cell">
+                              <span className="text-slate-300">
+                                {Array.isArray(s.collection_details)
+                                  ? s.collection_details.length
+                                  : 0}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination */}
+                  {schedulesTotalPages > 1 && (
+                    <div className="flex justify-center items-center gap-3 mt-4">
+                      <Button
+                        disabled={schedulesPage === 1}
+                        onClick={() => setSchedulesPage(schedulesPage - 1)}
+                        variant="outline"
+                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-xs text-slate-300">
+                        Page {schedulesPage} of {schedulesTotalPages} (
+                        {filteredSchedules.length} total)
+                      </span>
+                      <Button
+                        disabled={schedulesPage === schedulesTotalPages}
+                        onClick={() => setSchedulesPage(schedulesPage + 1)}
+                        variant="outline"
+                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
             </section>
           )}
 
