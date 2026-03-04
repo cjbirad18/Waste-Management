@@ -238,7 +238,7 @@ export default function LoginClient() {
     <div
       className={`min-h-screen flex items-center justify-center font-sans relative overflow-hidden ${
         isLightTheme
-          ? "bg-gradient-to-br from-emerald-50 via-slate-50 to-teal-100 text-gray-900"
+          ? "bg-gradient-to-br from-emerald-300 via-slate-300 to-teal-300 text-gray-900"
           : "bg-gradient-to-br from-slate-900 via-gray-900 to-emerald-900/80 text-slate-200"
       }`}
     >
@@ -247,7 +247,7 @@ export default function LoginClient() {
         <div
           className={`absolute inset-0 animate-pulse ${
             isLightTheme
-              ? "bg-gradient-to-br from-emerald-300/30 to-teal-300/30"
+              ? "bg-gradient-to-br from-emerald-400/40 to-teal-400/40"
               : "bg-gradient-to-br from-green-500/10 to-emerald-500/10"
           }`}
         />
@@ -265,7 +265,7 @@ export default function LoginClient() {
           <p className="text-xs uppercase tracking-[0.3em] bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-bold">
             Track-the-Truck
           </p>
-          <h1 className="mt-2 text-2xl md:text-3xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-2xl">
+          <h1 className="mt-2 text-2xl md:text-3xl font-bold bg-gradient-to-r from-slate-400 to-emerald-500 bg-clip-text text-transparent drop-shadow-2xl">
             Role Login
           </h1>
           <p className="text-sm text-emerald-400 mt-1 font-medium">
