@@ -2463,7 +2463,10 @@ export default function ResidentDashboard() {
               <button
                 className="relative p-2 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-100 ring-1 ring-white/10"
                 aria-label="Notifications"
-                onClick={() => setActiveTab("notifications")}
+                onClick={() => {
+                  setActiveTab("notifications");
+                  setSidebarOpen(false);
+                }}
               >
                 <svg
                   className="w-6 h-6"
@@ -2478,103 +2481,12 @@ export default function ResidentDashboard() {
                     d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                   />
                 </svg>
+                {unreadReportCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-slate-950">
+                    {unreadReportCount}
+                  </span>
+                )}
               </button>
-              {/* Hover dropdown for notifications */}
-              {activeTab === "notifications" && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center">
-                  <div className="bg-slate-800/80 border border-emerald-400/40 rounded-2xl shadow-emerald-900/40 shadow-2xl h-150 w-full max-w-6xl mx-auto p-10 relative">
-                    <div className="flex items-center justify-between border-b border-emerald-800/30 pb-4 mb-6">
-                      <span className="text-2xl font-bold text-emerald-300">
-                        Notifications
-                      </span>
-                      <button
-                        className="text-xs text-slate-400 hover:text-emerald-300"
-                        onClick={() => setActiveTab("dashboard")}
-                      >
-                        Close
-                      </button>
-                    </div>
-                    <div className="overflow-x-auto rounded-2xl border border-emerald-800/20 bg-slate-800/90 shadow-lg">
-                      <table className="min-w-full text-sm">
-                        <thead>
-                          <tr className="bg-slate-900/80">
-                            <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                              Message
-                            </th>
-                            <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                              Status
-                            </th>
-                            <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                              Date
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {reportsLoading ? (
-                            <tr>
-                              <td
-                                colSpan={3}
-                                className="p-4 text-center text-slate-400"
-                              >
-                                Loading...
-                              </td>
-                            </tr>
-                          ) : userReports.length === 0 ? (
-                            <tr>
-                              <td
-                                colSpan={3}
-                                className="p-4 text-center text-slate-400"
-                              >
-                                No notifications received.
-                              </td>
-                            </tr>
-                          ) : (
-                            userReports.map((report) => (
-                              <tr
-                                key={report.report_id}
-                                className="border-b border-emerald-800/20 hover:bg-slate-800/60 transition-colors"
-                              >
-                                <td className="px-4 py-2 text-emerald-200 font-bold max-w-[220px] truncate">
-                                  {report.description}
-                                </td>
-                                <td className="px-4 py-2">
-                                  <span
-                                    className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${
-                                      report.current_status === "Resolved"
-                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                                        : report.current_status === "Ongoing" ||
-                                            report.current_status ===
-                                              "In Progress"
-                                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                                          : report.current_status === "Rejected"
-                                            ? "bg-red-500/20 text-red-300 border-red-500/40"
-                                            : "bg-slate-500/30 text-slate-200 border-slate-500/60"
-                                    }`}
-                                  >
-                                    {report.current_status || "Unknown"}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-2 text-slate-300 whitespace-nowrap">
-                                  {report.date_submitted
-                                    ? new Date(
-                                        report.date_submitted,
-                                      ).toLocaleString()
-                                    : "N/A"}
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                  {/* Modal background overlay */}
-                  <div
-                    className="fixed inset-0 bg-black/20 z-40"
-                    onClick={() => setActiveTab("dashboard")}
-                  ></div>
-                </div>
-              )}
             </div>
             <button
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
@@ -3167,6 +3079,174 @@ export default function ResidentDashboard() {
                 </section>
               );
             })()}
+
+          {/* Notifications */}
+          {activeTab === "notifications" && (
+            <section className="dashboard-section max-w-8xl mx-auto">
+              <div className="dashboard-section-glow" />
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold text-white tracking-tight">
+                    Notifications
+                  </h2>
+                  <p className="text-slate-400 text-sm">
+                    Your report status updates
+                  </p>
+                </div>
+              </div>
+
+              {reportsLoading && <TruckLoader />}
+              {reportsError && (
+                <p className="text-red-300 mb-2">{reportsError}</p>
+              )}
+              {!reportsLoading && !reportsError && userReports.length === 0 && (
+                <div className="bg-slate-900/40 rounded-3xl border border-slate-800/50 p-12 text-center">
+                  <div className="w-20 h-20 rounded-3xl bg-slate-800/50 flex items-center justify-center mx-auto mb-6">
+                    <svg
+                      className="w-10 h-10 text-slate-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-300 mb-2">
+                    No notifications yet
+                  </h3>
+                  <p className="text-slate-500 text-sm">
+                    Submit an incident report and you'll see status updates
+                    here.
+                  </p>
+                </div>
+              )}
+              {!reportsLoading && !reportsError && userReports.length > 0 && (
+                <div className="space-y-3">
+                  {userReports.map((report) => (
+                    <div
+                      key={report.report_id}
+                      className="group relative bg-slate-900/40 rounded-2xl p-5 border border-slate-800/50 hover:border-emerald-500/20 transition-all duration-300"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-start gap-4 flex-1 min-w-0">
+                          <div
+                            className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center border ${
+                              report.current_status === "Resolved"
+                                ? "bg-emerald-500/10 border-emerald-500/20"
+                                : report.current_status === "Ongoing" ||
+                                    report.current_status === "In Progress"
+                                  ? "bg-amber-500/10 border-amber-500/20"
+                                  : report.current_status === "Rejected"
+                                    ? "bg-red-500/10 border-red-500/20"
+                                    : "bg-slate-800/50 border-slate-700/50"
+                            }`}
+                          >
+                            <svg
+                              className={`w-5 h-5 ${
+                                report.current_status === "Resolved"
+                                  ? "text-emerald-400"
+                                  : report.current_status === "Ongoing" ||
+                                      report.current_status === "In Progress"
+                                    ? "text-amber-400"
+                                    : report.current_status === "Rejected"
+                                      ? "text-red-400"
+                                      : "text-slate-400"
+                              }`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              {report.current_status === "Resolved" ? (
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              ) : report.current_status === "Rejected" ? (
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              ) : (
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              )}
+                            </svg>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-white truncate">
+                              {report.description}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1">
+                              Report RP-{report.report_id} •{" "}
+                              {report.date_submitted
+                                ? new Date(
+                                    report.date_submitted,
+                                  ).toLocaleString()
+                                : "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border flex-shrink-0 ${
+                            report.current_status === "Resolved"
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                              : report.current_status === "Ongoing" ||
+                                  report.current_status === "In Progress"
+                                ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                : report.current_status === "Rejected"
+                                  ? "bg-red-500/10 text-red-400 border-red-500/20"
+                                  : "bg-slate-500/10 text-slate-300 border-slate-500/20"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              report.current_status === "Resolved"
+                                ? "bg-emerald-400"
+                                : report.current_status === "Ongoing" ||
+                                    report.current_status === "In Progress"
+                                  ? "bg-amber-400"
+                                  : report.current_status === "Rejected"
+                                    ? "bg-red-400"
+                                    : "bg-slate-400"
+                            }`}
+                          />
+                          {report.current_status || "Submitted"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </main>
       </div>
     </div>

@@ -798,9 +798,7 @@ function LeafletMap({
                   <h3 className="text-lg font-semibold text-white">
                     Arrival Time
                   </h3>
-                  <p className="text-md text-slate-400">
-                    Next collection
-                  </p>
+                  <p className="text-md text-slate-400">Next collection</p>
                 </div>
               </div>
 
