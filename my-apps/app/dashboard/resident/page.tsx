@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import dynamic from "next/dynamic";
 import TruckLoader from "../../loading/TruckLoader";
+import SharedCalendar from "../../components/SharedCalendar";
 import {
   getDelayedCollectionsForBarangay,
   DelayedCollection,
@@ -627,7 +628,11 @@ function ResidentSchedulesFeature({
             <div className="p-6">
               <div className="w-full overflow-x-auto">
                 <div className="min-w-[320px]">
-                  <ScheduleCalendar schedule={schedule} />
+                  <SharedCalendar
+                    year={new Date().getFullYear()}
+                    month={new Date().getMonth()}
+                    pattern={schedule.days as "MWF" | "TTH" | "" | null}
+                  />
                 </div>
               </div>
             </div>
@@ -1895,6 +1900,15 @@ export default function ResidentDashboard() {
   const [reportsError, setReportsError] = useState<string | null>(null);
   const [unreadReportCount, setUnreadReportCount] = useState<number>(0);
 
+  // My Reports filter/sort states
+  const [myReportsFilterTab, setMyReportsFilterTab] = useState<
+    "all" | "Submitted" | "Ongoing" | "Resolved" | "Rejected"
+  >("all");
+  const [myReportsDateSort, setMyReportsDateSort] = useState<
+    "newest" | "oldest"
+  >("newest");
+  const [myReportsSearch, setMyReportsSearch] = useState("");
+
   // Delayed collections state
   const [delayedCollections, setDelayedCollections] = useState<
     DelayedCollection[]
@@ -2069,11 +2083,10 @@ export default function ResidentDashboard() {
         const { data, error } = await supabase
           .from("community_reports")
           .select(
-            "report_id, description, current_status, date_submitted, barangay_id",
+            "report_id, description, current_status, date_submitted, barangay_id, location",
           )
           .eq("user_id", userId)
-          .order("date_submitted", { ascending: false })
-          .limit(10);
+          .order("date_submitted", { ascending: false });
 
         if (error) {
           setReportsError("Failed to load reports.");
@@ -2886,164 +2899,274 @@ export default function ResidentDashboard() {
           )}
 
           {/* My Reports */}
-          {activeTab === "myReports" && (
-            <section className="dashboard-section max-w-8xl mx-auto">
-              <div className="dashboard-section-glow" />
-              <h2 className="text-4xl font-bold text-emerald-300 mb-4">
-                My Recent Reports
-              </h2>
+          {activeTab === "myReports" &&
+            (() => {
+              // Filter by tab
+              const tabFiltered =
+                myReportsFilterTab === "all"
+                  ? userReports
+                  : userReports.filter(
+                      (r) => r.current_status === myReportsFilterTab,
+                    );
 
-              {reportsLoading && <TruckLoader />}
-              {reportsError && (
-                <p className="text-red-300 mb-2">{reportsError}</p>
-              )}
-              {!reportsLoading && !reportsError && userReports.length === 0 && (
-                <p className="text-slate-300">
-                  You have not submitted any reports yet.
-                </p>
-              )}
-              {!reportsLoading && !reportsError && userReports.length > 0 && (
-                <div className="overflow-x-auto rounded-2xl border border-emerald-800/30 bg-slate-900/70 shadow-lg">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="bg-slate-900/80">
-                        <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                          Report ID
-                        </th>
-                        <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                          Location
-                        </th>
-                        <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                          Status
-                        </th>
-                        <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                          Date
-                        </th>
-                        <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {userReports.map((report) => (
-                        <tr
-                          key={report.report_id}
-                          className="text-md border-b border-emerald-800/20 hover:bg-slate-800/60 transition-colors"
-                        >
-                          <td className="px-4 py-2 font-bold text-emerald-200">
-                            RP-{report.report_id}
-                          </td>
-                          <td className="px-4 py-2 text-slate-200 max-w-[160px] truncate">
-                            {report.location || "N/A"}
-                          </td>
-                          <td className="px-4 py-2">
-                            <span
-                              className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${
-                                report.current_status === "Resolved"
-                                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                                  : report.current_status === "Ongoing" ||
-                                      report.current_status === "In Progress"
-                                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                                    : report.current_status === "Rejected"
-                                      ? "bg-red-500/20 text-red-300 border-red-500/40"
-                                      : "bg-slate-500/30 text-slate-200 border-slate-500/60"
+              // Filter by search
+              const searchFiltered = tabFiltered.filter((r) => {
+                const s = myReportsSearch.toLowerCase();
+                if (!s) return true;
+                return (
+                  (r.location && r.location.toLowerCase().includes(s)) ||
+                  (r.description && r.description.toLowerCase().includes(s)) ||
+                  (r.report_id && String(r.report_id).includes(s))
+                );
+              });
+
+              // Sort by date
+              const sortedReports = [...searchFiltered].sort((a, b) => {
+                const dateA = new Date(a.date_submitted).getTime();
+                const dateB = new Date(b.date_submitted).getTime();
+                return myReportsDateSort === "newest"
+                  ? dateB - dateA
+                  : dateA - dateB;
+              });
+
+              return (
+                <section className="dashboard-section max-w-8xl mx-auto">
+                  <div className="dashboard-section-glow" />
+                  <h2 className="text-4xl font-bold text-emerald-300 mb-4">
+                    My Recent Reports
+                  </h2>
+
+                  {/* Filter tabs + Sort dropdown + Search */}
+                  {!reportsLoading &&
+                    !reportsError &&
+                    userReports.length > 0 && (
+                      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        {/* Tab filters */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {(
+                            [
+                              "all",
+                              "Submitted",
+                              "Ongoing",
+                              "Resolved",
+                              "Rejected",
+                            ] as const
+                          ).map((tab) => (
+                            <button
+                              key={tab}
+                              onClick={() => setMyReportsFilterTab(tab)}
+                              className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all duration-200 ${
+                                myReportsFilterTab === tab
+                                  ? "bg-emerald-600/20 text-emerald-400 border-emerald-500/40"
+                                  : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:bg-slate-700/60 hover:text-slate-200"
                               }`}
                             >
-                              {report.current_status || "Unknown"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2 text-slate-300 whitespace-nowrap">
-                            {report.date_submitted
-                              ? new Date(report.date_submitted).toLocaleString()
-                              : "N/A"}
-                          </td>
-                          <td className="px-4 py-2">
-                            <button
-                              onClick={() => {
-                                setSelectedMessage(report.description);
-                                setModalOpen(true);
-                              }}
-                              className="text-emerald-400 hover:underline mr-3"
-                            >
-                              View
+                              {tab === "all" ? "All" : tab}
                             </button>
-                            <button
-                              className="text-slate-400 hover:underline"
-                              // TODO: Implement history modal if needed
-                            >
-                              History
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                          ))}
+                        </div>
 
-              {modalOpen && (
-                <div
-                  className="pt-50 fixed inset-0 backdrop-blur-sm z-50 flex justify-center items-center"
-                  onClick={() => setModalOpen(false)}
-                  onKeyDown={(e) => e.key === "Escape" && setModalOpen(false)}
-                  tabIndex={-1}
-                  role="presentation"
-                >
-                  <div
-                    className="relative max-w-lg w-full text-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.7)] rounded-2xl border border-emerald-700/60 bg-gradient-to-b from-slate-900/95 to-slate-800/90 transform transition-all duration-200 ease-out"
-                    onClick={(e) => e.stopPropagation()}
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="report-message-title"
-                  >
-                    {/* Title bar */}
-                    <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-3 border-b border-emerald-700/70">
-                      <div className="flex items-center gap-3">
-                        <span className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-emerald-600/10 text-emerald-300 border border-emerald-700/30">
-                          💬
-                        </span>
-                        <h3
-                          id="report-message-title"
-                          className="ml-1 text-sm font-semibold tracking-wide text-slate-100"
-                        >
-                          Report Message
-                        </h3>
+                        <div className="flex items-center gap-3">
+                          {/* Date sort dropdown */}
+                          <select
+                            value={myReportsDateSort}
+                            onChange={(e) =>
+                              setMyReportsDateSort(
+                                e.target.value as "newest" | "oldest",
+                              )
+                            }
+                            className="rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 appearance-none cursor-pointer"
+                          >
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                          </select>
+
+                          {/* Search */}
+                          <input
+                            type="text"
+                            placeholder="Search reports..."
+                            value={myReportsSearch}
+                            onChange={(e) => setMyReportsSearch(e.target.value)}
+                            className="rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 w-48"
+                          />
+                        </div>
                       </div>
+                    )}
 
-                      <button
-                        onClick={() => setModalOpen(false)}
-                        className="text-sm font-semibold text-slate-400 hover:text-red-400 px-2 py-1 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
-                        aria-label="Close dialog"
-                      >
-                        ✕
-                      </button>
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-6">
-                      <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-3">
-                        MESSAGE
+                  {reportsLoading && <TruckLoader />}
+                  {reportsError && (
+                    <p className="text-red-300 mb-2">{reportsError}</p>
+                  )}
+                  {!reportsLoading &&
+                    !reportsError &&
+                    userReports.length === 0 && (
+                      <p className="text-slate-300">
+                        You have not submitted any reports yet.
                       </p>
-                      <div className="rounded-lg bg-slate-900/80 border border-slate-700/70 px-4 py-3">
-                        <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed break-words">
-                          {selectedMessage || "No message available."}
-                        </p>
+                    )}
+                  {!reportsLoading &&
+                    !reportsError &&
+                    userReports.length > 0 && (
+                      <div className="overflow-x-auto rounded-2xl border border-emerald-800/30 bg-slate-900/70 shadow-lg">
+                        <table className="min-w-full text-sm">
+                          <thead>
+                            <tr className="bg-slate-900/80">
+                              <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                Report ID
+                              </th>
+                              <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                Location
+                              </th>
+                              <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                Status
+                              </th>
+                              <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                Date
+                              </th>
+                              <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sortedReports.length === 0 ? (
+                              <tr>
+                                <td
+                                  colSpan={5}
+                                  className="px-4 py-6 text-center text-slate-400"
+                                >
+                                  No reports match your filters.
+                                </td>
+                              </tr>
+                            ) : (
+                              sortedReports.map((report) => (
+                                <tr
+                                  key={report.report_id}
+                                  className="text-md border-b border-emerald-800/20 hover:bg-slate-800/60 transition-colors"
+                                >
+                                  <td className="px-4 py-2 font-bold text-emerald-200">
+                                    RP-{report.report_id}
+                                  </td>
+                                  <td className="px-4 py-2 text-slate-200 max-w-[160px] truncate">
+                                    {report.location || "N/A"}
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <span
+                                      className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${
+                                        report.current_status === "Resolved"
+                                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                          : report.current_status ===
+                                                "Ongoing" ||
+                                              report.current_status ===
+                                                "In Progress"
+                                            ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                                            : report.current_status ===
+                                                "Rejected"
+                                              ? "bg-red-500/20 text-red-300 border-red-500/40"
+                                              : "bg-slate-500/30 text-slate-200 border-slate-500/60"
+                                      }`}
+                                    >
+                                      {report.current_status || "Unknown"}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2 text-slate-300 whitespace-nowrap">
+                                    {report.date_submitted
+                                      ? new Date(
+                                          report.date_submitted,
+                                        ).toLocaleString()
+                                      : "N/A"}
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <button
+                                      onClick={() => {
+                                        setSelectedMessage(report.description);
+                                        setModalOpen(true);
+                                      }}
+                                      className="text-emerald-400 hover:underline mr-3"
+                                    >
+                                      View
+                                    </button>
+                                    <button
+                                      className="text-slate-400 hover:underline"
+                                      // TODO: Implement history modal if needed
+                                    >
+                                      History
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
                       </div>
+                    )}
 
-                      <div className="mt-5 flex justify-end">
-                        <button
-                          onClick={() => setModalOpen(false)}
-                          className="px-4 py-2 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 transition-colors"
-                        >
-                          Close
-                        </button>
+                  {modalOpen && (
+                    <div
+                      className="pt-50 fixed inset-0 backdrop-blur-sm z-50 flex justify-center items-center"
+                      onClick={() => setModalOpen(false)}
+                      onKeyDown={(e) =>
+                        e.key === "Escape" && setModalOpen(false)
+                      }
+                      tabIndex={-1}
+                      role="presentation"
+                    >
+                      <div
+                        className="relative max-w-lg w-full text-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.7)] rounded-2xl border border-emerald-700/60 bg-gradient-to-b from-slate-900/95 to-slate-800/90 transform transition-all duration-200 ease-out"
+                        onClick={(e) => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="report-message-title"
+                      >
+                        {/* Title bar */}
+                        <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-3 border-b border-emerald-700/70">
+                          <div className="flex items-center gap-3">
+                            <span className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-emerald-600/10 text-emerald-300 border border-emerald-700/30">
+                              💬
+                            </span>
+                            <h3
+                              id="report-message-title"
+                              className="ml-1 text-sm font-semibold tracking-wide text-slate-100"
+                            >
+                              Report Message
+                            </h3>
+                          </div>
+
+                          <button
+                            onClick={() => setModalOpen(false)}
+                            className="text-sm font-semibold text-slate-400 hover:text-red-400 px-2 py-1 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+                            aria-label="Close dialog"
+                          >
+                            ✕
+                          </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6">
+                          <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-3">
+                            MESSAGE
+                          </p>
+                          <div className="rounded-lg bg-slate-900/80 border border-slate-700/70 px-4 py-3">
+                            <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed break-words">
+                              {selectedMessage || "No message available."}
+                            </p>
+                          </div>
+
+                          <div className="mt-5 flex justify-end">
+                            <button
+                              onClick={() => setModalOpen(false)}
+                              className="px-4 py-2 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 transition-colors"
+                            >
+                              Close
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
+                  )}
+                </section>
+              );
+            })()}
         </main>
       </div>
     </div>

@@ -955,6 +955,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
   `,
           )
           .eq("barangay_id", selectedBarangay)
+          .neq("status", "Archived")
           .order("date_created", { ascending: false });
         if (error) throw error;
         setSchedules((data as any[]) || []);
@@ -990,13 +991,33 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
     };
   }, [selectedBarangay]);
 
+  // Fetch archived schedules on mount + realtime
+  useEffect(() => {
+    fetchArchivedSchedules();
+
+    const archivedChannel = supabase
+      .channel("secretary-archived-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_schedules" },
+        () => {
+          fetchArchivedSchedules();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(archivedChannel);
+    };
+  }, []);
+
   const fetchArchivedSchedules = async () => {
     setArchivedLoading(true);
     try {
       const res = await supabase
         .from("collection_schedules")
         .select(
-          `schedule_id, days, start_time, date_created, barangay:barangay_id ( barang_id, barangay_name ), gcp_user:gcp_user_id ( user_id, first_name, last_name )`,
+          `schedule_id, days, start_time, date_created, barangay:barangay_id ( barangay_id, barangay_name ), gcp_user:gcp_user_id ( user_id, first_name, last_name )`,
         )
         .eq("status", "Archived")
         .order("date_created", { ascending: false });
@@ -1070,6 +1091,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
       setSchedules((s) =>
         s.filter((sc: any) => sc.schedule_id !== schedule.schedule_id),
       );
+      fetchArchivedSchedules();
     } catch (err) {
       alert("Failed to archive schedule.");
     }
@@ -1179,30 +1201,47 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
   return (
     <>
       <div className="space-y-4 h-fit max-h-[92vh]">
-        {/* Compact Barangay Select */}
-        <div>
-          <label
-            htmlFor="barangay_select"
-            className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text"
+        {/* Top row: Barangay Select + Archived Button */}
+        <div className="flex items-end justify-between gap-4">
+          {/* Compact Barangay Select */}
+          <div className="flex-1">
+            <label
+              htmlFor="barangay_select"
+              className="block text-slate-100 font-bold uppercase tracking-wider text-xs mb-1.5 bg-gradient-to-r from-slate-100 to-slate-50 bg-clip-text"
+            >
+              Barangay
+            </label>
+            <select
+              id="barangay_select"
+              className="block w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 
+                     focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500 
+                     appearance-none pr-8"
+              value={selectedBarangay}
+              onChange={(e) => setSelectedBarangay(e.target.value)}
+              required
+            >
+              <option value="">Select Barangay</option>
+              {barangays.map((b) => (
+                <option key={b.barangay_id} value={b.barangay_id}>
+                  {b.barangay_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-700/60 text-slate-100 rounded-2xl border border-green-800/40 hover:bg-slate-700/80 transition whitespace-nowrap"
+            onClick={() => {
+              setArchivedOpen(true);
+              fetchArchivedSchedules();
+            }}
+            title="View archived schedules"
           >
-            Barangay
-          </label>
-          <select
-            id="barangay_select"
-            className="block w-full rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 
-                   focus:outline-none focus:ring focus:ring-emerald-500/50 focus:border-emerald-500 
-                   appearance-none pr-8"
-            value={selectedBarangay}
-            onChange={(e) => setSelectedBarangay(e.target.value)}
-            required
-          >
-            <option value="">Select Barangay</option>
-            {barangays.map((b) => (
-              <option key={b.barangay_id} value={b.barangay_id}>
-                {b.barangay_name}
-              </option>
-            ))}
-          </select>
+            Archived
+            <span className="text-xs text-slate-300">
+              ({archivedSchedules.length})
+            </span>
+          </button>
         </div>
 
         {/* Loading/Error - Minimal */}
@@ -1227,21 +1266,6 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
 
         {/* Full Month Calendar container */}
         <div className="max-h-[75vh] overflow-y-auto rounded-xl bg-gradient-to-br from-slate-800/90 to-gray-800/90 border border-green-800/50 shadow-xl backdrop-blur-xl">
-          <div className="flex items-center justify-end p-3 border-b border-green-800/20">
-            <button
-              className="inline-flex items-center gap-2 px-3 py-2 bg-slate-700/60 text-slate-100 rounded-2xl border border-green-800/40 hover:bg-slate-700/80 transition"
-              onClick={() => {
-                setArchivedOpen(true);
-                fetchArchivedSchedules();
-              }}
-              title="View archived schedules"
-            >
-              Archived
-              <span className="text-xs text-slate-300">
-                ({archivedSchedules.length})
-              </span>
-            </button>
-          </div>
           {schedules.map((schedule, index) => (
             <div
               key={schedule.schedule_id}
@@ -1306,7 +1330,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
                         Edit
                       </button>
                       <button
-                        className="h-8 px-3 bg-amber-600 hover:bg-amber-700 text-xs font-bold text-white rounded-lg shadow-md 
+                        className="h-8 px-3 bg-slate-900/80 hover:bg-emerald-600 text-xs font-bold text-white rounded-lg shadow-md 
                                hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex items-center justify-center whitespace-nowrap"
                         onClick={() => handleArchive(schedule)}
                       >
@@ -1334,68 +1358,207 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
       </div>
 
       {/* Archived schedules modal */}
-      {archivedOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={() => setArchivedOpen(false)}
-        >
+      {archivedOpen &&
+        createPortal(
           <div
-            className="w-full max-w-3xl max-h-[80vh] overflow-y-auto rounded-2xl bg-slate-900/98 border border-emerald-700/40 p-4"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setArchivedOpen(false)}
           >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-bold text-slate-100">
-                Archived Schedules
-              </h3>
-              <div className="flex items-center gap-2">
-                <button
-                  className="px-3 py-1 rounded-2xl bg-slate-700/60 text-slate-200"
-                  onClick={() => {
-                    fetchArchivedSchedules();
-                  }}
-                >
-                  Refresh
-                </button>
-                <button
-                  className="px-3 py-1 rounded-2xl bg-red-600 text-white"
-                  onClick={() => setArchivedOpen(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-
-            {archivedLoading ? (
-              <div className="py-6 text-center text-slate-300">Loading...</div>
-            ) : archivedSchedules.length === 0 ? (
-              <div className="py-6 text-center text-slate-400">
-                No archived schedules.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {archivedSchedules.map((a) => (
-                  <div
-                    key={a.schedule_id}
-                    className="p-3 rounded-lg bg-slate-800/80 border border-green-800/30 flex items-center justify-between"
-                  >
+            <div
+              className="relative w-full max-w-3xl max-h-[80vh] overflow-hidden bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-slate-600/20 to-slate-500/20 border-b border-slate-700/50 p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-500/20 border border-slate-500/30 flex items-center justify-center">
+                      <svg
+                        className="w-5 h-5 text-slate-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                        />
+                      </svg>
+                    </div>
                     <div>
-                      <div className="font-semibold text-slate-100">
-                        {a.barangay?.barangay_name ?? "(No barangay)"}
-                      </div>
-                      <div className="text-xs text-slate-300">
-                        {a.days} • {a.start_time}
-                      </div>
-                      <div className="text-xs text-slate-400">
-                        {new Date(a.date_created).toLocaleString()}
-                      </div>
+                      <h3 className="text-lg font-bold text-slate-100">
+                        Archived Schedules
+                      </h3>
+                      <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">
+                        Historical records
+                      </p>
                     </div>
                   </div>
-                ))}
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="flex items-center gap-2 px-4 py-2 bg-slate-700/50 hover:bg-slate-600/50 text-slate-200 text-sm font-medium rounded-lg border border-slate-600/50 transition-colors"
+                      onClick={() => fetchArchivedSchedules()}
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9M4 7l3 9m-3 9l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
+                        />
+                      </svg>
+                      Refresh
+                    </button>
+                    <button
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600/90 hover:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors"
+                      onClick={() => setArchivedOpen(false)}
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                      Close
+                    </button>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+
+              {/* Content */}
+              <div className="p-5 overflow-y-auto max-h-[calc(80vh-80px)]">
+                {archivedLoading ? (
+                  <TruckLoader />
+                ) : archivedSchedules.length === 0 ? (
+                  <div className="text-center py-12 bg-slate-800/20 rounded-xl border border-slate-700/30 border-dashed">
+                    <svg
+                      className="w-12 h-12 mx-auto text-slate-600 mb-3"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1}
+                        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                      />
+                    </svg>
+                    <p className="text-sm text-slate-400">
+                      No archived schedules found
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-3">
+                    {archivedSchedules.map((a) => (
+                      <div
+                        key={a.schedule_id}
+                        className="flex items-center gap-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30 hover:border-slate-600/50 transition-all duration-200"
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center shrink-0">
+                          <svg
+                            className="w-6 h-6 text-slate-500"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
+                          </svg>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-slate-100 truncate">
+                              {a.barangay?.barangay_name ??
+                                "Unassigned Barangay"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-slate-400">
+                            <span className="flex items-center gap-1">
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              </svg>
+                              {a.start_time}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
+                              </svg>
+                              {a.days}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <div className="text-xs text-slate-500">
+                            {new Date(a.date_created).toLocaleDateString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              },
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-600 mt-0.5">
+                            {new Date(a.date_created).toLocaleTimeString(
+                              "en-US",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              },
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
@@ -1639,6 +1802,16 @@ function SecretaryReportsSection() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  // Tab filter
+  const [reportFilterTab, setReportFilterTab] = useState<
+    "all" | "Needs Action" | "Ongoing" | "Resolved"
+  >("all");
+
+  // Date sort
+  const [reportDateSort, setReportDateSort] = useState<"newest" | "oldest">(
+    "newest",
+  );
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -1658,7 +1831,7 @@ function SecretaryReportsSection() {
       const { data: reportData, error: reportError } = await supabase
         .from("community_reports")
         .select("*")
-        .eq("current_status", "Needs Action")
+        .in("current_status", ["Needs Action", "Ongoing", "Resolved"])
         .order("date_submitted", { ascending: false });
 
       if (reportError) {
@@ -1802,6 +1975,10 @@ function SecretaryReportsSection() {
 
   // Filtered reports
   const filteredReports = reports.filter((r) => {
+    // Tab filter
+    if (reportFilterTab !== "all" && r.current_status !== reportFilterTab)
+      return false;
+
     const search = searchTerm.toLowerCase();
     return (
       !search ||
@@ -1811,19 +1988,26 @@ function SecretaryReportsSection() {
     );
   });
 
+  // Sorted + Filtered reports
+  const sortedReports = [...filteredReports].sort((a, b) => {
+    const dateA = new Date(a.date_submitted).getTime();
+    const dateB = new Date(b.date_submitted).getTime();
+    return reportDateSort === "newest" ? dateB - dateA : dateA - dateB;
+  });
+
   // Pagination
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredReports.length / itemsPerPage),
+    Math.ceil(sortedReports.length / itemsPerPage),
   );
   const safePage = Math.min(currentPage, totalPages);
-  const paginatedReports = filteredReports.slice(
+  const paginatedReports = sortedReports.slice(
     (safePage - 1) * itemsPerPage,
     safePage * itemsPerPage,
   );
   const showingFrom =
-    filteredReports.length === 0 ? 0 : (safePage - 1) * itemsPerPage + 1;
-  const showingTo = Math.min(safePage * itemsPerPage, filteredReports.length);
+    sortedReports.length === 0 ? 0 : (safePage - 1) * itemsPerPage + 1;
+  const showingTo = Math.min(safePage * itemsPerPage, sortedReports.length);
 
   if (loading) return <TruckLoader />;
   if (error) return <div className="text-red-700">{error}</div>;
@@ -1839,32 +2023,66 @@ function SecretaryReportsSection() {
             Passed Incident Reports
           </h2>
 
-          {/* Search bar */}
-          <div className="flex items-center justify-end mb-4 gap-3">
-            <div className="relative w-full max-w-xs">
-              <input
-                type="text"
-                placeholder="Search reports..."
-                value={searchTerm}
+          {/* Filter tabs + Sort + Search */}
+          <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              {(["all", "Needs Action", "Ongoing", "Resolved"] as const).map(
+                (tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => {
+                      setReportFilterTab(tab);
+                      setCurrentPage(1);
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all duration-200 ${
+                      reportFilterTab === tab
+                        ? "bg-emerald-600/20 text-emerald-400 border-emerald-500/40"
+                        : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:bg-slate-700/60 hover:text-slate-200"
+                    }`}
+                  >
+                    {tab === "all" ? "All" : tab}
+                  </button>
+                ),
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <select
+                value={reportDateSort}
                 onChange={(e) => {
-                  setSearchTerm(e.target.value);
+                  setReportDateSort(e.target.value as "newest" | "oldest");
                   setCurrentPage(1);
                 }}
-                className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 pl-9 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500"
-              />
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+                className="rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 appearance-none cursor-pointer"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+              <div className="relative w-full max-w-xs">
+                <input
+                  type="text"
+                  placeholder="Search reports..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 pl-9 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500"
                 />
-              </svg>
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
             </div>
           </div>
 
@@ -1922,8 +2140,18 @@ function SecretaryReportsSection() {
                         {report.landmark || "—"}
                       </td>
                       <td className="px-5 py-4">
-                        <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                          Needs Action
+                        <span
+                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            report.current_status === "Needs Action"
+                              ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                              : report.current_status === "Ongoing"
+                                ? "bg-blue-500/15 text-blue-300 border border-blue-500/30"
+                                : report.current_status === "Resolved"
+                                  ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                                  : "bg-slate-500/15 text-slate-400 border border-slate-500/30"
+                          }`}
+                        >
+                          {report.current_status}
                         </span>
                       </td>
                       <td className="px-5 py-4 text-slate-400 whitespace-nowrap">
@@ -1940,13 +2168,17 @@ function SecretaryReportsSection() {
                         )}
                       </td>
                       <td className="px-5 py-4">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenAssign(report)}
-                          className="text-emerald-400 hover:text-emerald-300 font-semibold text-sm transition-colors"
-                        >
-                          Assign
-                        </button>
+                        {report.current_status === "Needs Action" ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAssign(report)}
+                            className="text-emerald-400 hover:text-emerald-300 font-semibold text-sm transition-colors"
+                          >
+                            Assign
+                          </button>
+                        ) : (
+                          <span className="text-slate-500 text-sm">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -1956,8 +2188,8 @@ function SecretaryReportsSection() {
               {/* Pagination */}
               <div className="flex items-center justify-between px-5 py-3.5 border-t border-green-800/30 bg-slate-900/60">
                 <span className="text-xs text-slate-500">
-                  Showing {showingFrom} to {showingTo} of{" "}
-                  {filteredReports.length} results
+                  Showing {showingFrom} to {showingTo} of {sortedReports.length}{" "}
+                  results
                 </span>
                 <div className="flex items-center gap-1.5">
                   <button
@@ -2233,6 +2465,14 @@ function SecretaryGcpResponsesSection() {
   const [gcpCurrentPage, setGcpCurrentPage] = useState(1);
   const gcpItemsPerPage = 5;
 
+  // Tab filter
+  const [gcpFilterTab, setGcpFilterTab] = useState<
+    "all" | "responded" | "pending"
+  >("all");
+
+  // Date sort
+  const [gcpDateSort, setGcpDateSort] = useState<"newest" | "oldest">("newest");
+
   const handleOpenModal = (row: any) => {
     setSelectedRow(row);
     setModalOpen(true);
@@ -2319,8 +2559,12 @@ function SecretaryGcpResponsesSection() {
     };
   }, []);
 
-  // Filtered rows
+  // Filtered rows (search + tab)
   const filteredRows = rows.filter((r) => {
+    // Tab filter
+    if (gcpFilterTab === "responded" && !r.gcp_response) return false;
+    if (gcpFilterTab === "pending" && r.gcp_response) return false;
+
     const search = gcpSearchTerm.toLowerCase();
     if (!search) return true;
     const gcpName = r.user ? `${r.user.first_name} ${r.user.last_name}` : "";
@@ -2337,21 +2581,28 @@ function SecretaryGcpResponsesSection() {
     );
   });
 
+  // Sort
+  const sortedRows = [...filteredRows].sort((a, b) => {
+    const dateA = new Date(a.created_at).getTime();
+    const dateB = new Date(b.created_at).getTime();
+    return gcpDateSort === "newest" ? dateB - dateA : dateA - dateB;
+  });
+
   // Pagination
   const gcpTotalPages = Math.max(
     1,
-    Math.ceil(filteredRows.length / gcpItemsPerPage),
+    Math.ceil(sortedRows.length / gcpItemsPerPage),
   );
   const gcpSafePage = Math.min(gcpCurrentPage, gcpTotalPages);
-  const paginatedRows = filteredRows.slice(
+  const paginatedRows = sortedRows.slice(
     (gcpSafePage - 1) * gcpItemsPerPage,
     gcpSafePage * gcpItemsPerPage,
   );
   const gcpShowingFrom =
-    filteredRows.length === 0 ? 0 : (gcpSafePage - 1) * gcpItemsPerPage + 1;
+    sortedRows.length === 0 ? 0 : (gcpSafePage - 1) * gcpItemsPerPage + 1;
   const gcpShowingTo = Math.min(
     gcpSafePage * gcpItemsPerPage,
-    filteredRows.length,
+    sortedRows.length,
   );
 
   if (loading) return <TruckLoader />;
@@ -2366,32 +2617,68 @@ function SecretaryGcpResponsesSection() {
           GCP Responses
         </h2>
 
-        {/* Search bar */}
-        <div className="flex items-center justify-end mb-4 gap-3">
-          <div className="relative w-full max-w-xs">
-            <input
-              type="text"
-              placeholder="Search responses..."
-              value={gcpSearchTerm}
+        {/* Filter tabs + Sort + Search */}
+        <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            {(["all", "responded", "pending"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => {
+                  setGcpFilterTab(tab);
+                  setGcpCurrentPage(1);
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all duration-200 ${
+                  gcpFilterTab === tab
+                    ? "bg-emerald-600/20 text-emerald-400 border-emerald-500/40"
+                    : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:bg-slate-700/60 hover:text-slate-200"
+                }`}
+              >
+                {tab === "all"
+                  ? "All"
+                  : tab === "responded"
+                    ? "Responded"
+                    : "Pending"}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <select
+              value={gcpDateSort}
               onChange={(e) => {
-                setGcpSearchTerm(e.target.value);
+                setGcpDateSort(e.target.value as "newest" | "oldest");
                 setGcpCurrentPage(1);
               }}
-              className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 pl-9 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500"
-            />
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+              className="rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 appearance-none cursor-pointer"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+            <div className="relative w-full max-w-xs">
+              <input
+                type="text"
+                placeholder="Search responses..."
+                value={gcpSearchTerm}
+                onChange={(e) => {
+                  setGcpSearchTerm(e.target.value);
+                  setGcpCurrentPage(1);
+                }}
+                className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 pl-9 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500"
               />
-            </svg>
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
           </div>
         </div>
 
@@ -2483,7 +2770,7 @@ function SecretaryGcpResponsesSection() {
             <div className="flex items-center justify-between px-5 py-3.5 border-t border-green-800/30 bg-slate-900/60">
               <span className="text-xs text-slate-500">
                 Showing {gcpShowingFrom} to {gcpShowingTo} of{" "}
-                {filteredRows.length} results
+                {sortedRows.length} results
               </span>
               <div className="flex items-center gap-1.5">
                 <button
@@ -4255,9 +4542,11 @@ export default function SecretaryDashboard() {
             <div className="dashboard-section max-w-6xl mx-auto overflow-hidden">
               <div className="dashboard-section-glow" />
               <div className="relative z-10">
-                <h2 className="text-3xl font-black mb-8 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-2xl">
-                  Schedules Overview
-                </h2>
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-3xl font-black bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-2xl">
+                    Schedules Overview
+                  </h2>
+                </div>
                 <SchedulesSidebarItem barangays={barangays} />
               </div>
             </div>

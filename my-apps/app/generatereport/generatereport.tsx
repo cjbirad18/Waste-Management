@@ -557,24 +557,41 @@ export default function ReportsAnalytics({
               {/* Charts Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Waste Collection Chart */}
-                <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-emerald-800/50 p-6 sm:p-8 shadow-2xl shadow-emerald-900/30 backdrop-blur-2xl overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-
-                  <div className="relative z-10">
-                    <div className="mb-6">
-                      <h3 className="text-xl font-bold text-emerald-300">
-                        Monthly Waste Collected
-                      </h3>
-                      <p className="text-sm text-slate-400 mt-1">
-                        Waste collection metrics in tons
-                      </p>
+                <div className="bg-slate-900/60 border border-slate-700/50 rounded-2xl shadow-xl backdrop-blur-xl overflow-hidden">
+                  <div className="bg-gradient-to-r from-emerald-600/20 to-teal-600/20 border-b border-slate-700/50 p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                        <svg
+                          className="w-5 h-5 text-emerald-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-100">
+                          Monthly Waste Collected
+                        </h3>
+                        <p className="text-xs text-emerald-400/70 font-medium uppercase tracking-wider mt-0.5">
+                          Tons per month
+                        </p>
+                      </div>
                     </div>
+                  </div>
 
-                    <div className="h-80 bg-slate-900/60 rounded-2xl p-4 border border-slate-700/50">
+                  <div className="p-5">
+                    <div className="h-72 bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={wasteCollectionData}
-                          margin={{ top: 20, right: 30, bottom: 60, left: 50 }}
+                          margin={{ top: 10, right: 20, bottom: 40, left: 40 }}
                         >
                           <defs>
                             <linearGradient
@@ -586,12 +603,12 @@ export default function ReportsAnalytics({
                             >
                               <stop
                                 offset="0"
-                                stopColor="#2563eb"
-                                stopOpacity={0.8}
+                                stopColor="#10b981"
+                                stopOpacity={0.9}
                               />
                               <stop
                                 offset="1"
-                                stopColor="#1d4ed8"
+                                stopColor="#059669"
                                 stopOpacity={0.6}
                               />
                             </linearGradient>
@@ -599,37 +616,34 @@ export default function ReportsAnalytics({
                           <CartesianGrid
                             strokeDasharray="3 3"
                             stroke="#334155"
-                            opacity={0.3}
+                            opacity={0.2}
                           />
                           <XAxis
                             dataKey="month"
-                            stroke="#cbd5e1"
-                            tick={{
-                              fill: "#cbd5e1",
-                              fontSize: 12,
-                              fontWeight: 600,
-                            }}
+                            stroke="#64748b"
+                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                            axisLine={{ stroke: "#334155" }}
                           />
                           <YAxis
-                            stroke="#cbd5e1"
-                            tick={{ fill: "#cbd5e1", fontSize: 12 }}
+                            stroke="#64748b"
+                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                            axisLine={{ stroke: "#334155" }}
                           />
                           <Tooltip
                             contentStyle={{
-                              backgroundColor: "#1e293b",
+                              backgroundColor: "#0f172a",
                               borderColor: "#10b981",
-                              borderRadius: "12px",
-                              color: "#e5e7eb",
-                              fontSize: 12,
-                              padding: "12px",
-                              boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
+                              borderRadius: "8px",
+                              color: "#e2e8f0",
+                              fontSize: "12px",
+                              boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
                             }}
                             cursor={{ fill: "rgba(16, 185, 129, 0.1)" }}
                           />
                           <Bar
                             dataKey="tons"
                             fill="url(#wasteGrad)"
-                            radius={[8, 8, 0, 0]}
+                            radius={[6, 6, 0, 0]}
                             name="Waste (tons)"
                           />
                         </BarChart>
@@ -639,24 +653,41 @@ export default function ReportsAnalytics({
                 </div>
 
                 {/* Efficiency Chart */}
-                <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-emerald-800/50 p-6 sm:p-8 shadow-2xl shadow-emerald-900/30 backdrop-blur-2xl overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-transparent to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
-
-                  <div className="relative z-10">
-                    <div className="mb-6">
-                      <h3 className="text-xl font-bold text-cyan-300">
-                        Collection Efficiency
-                      </h3>
-                      <p className="text-sm text-slate-400 mt-1">
-                        Completion rate percentage per month
-                      </p>
+                <div className="bg-slate-900/60 border border-slate-700/50 rounded-2xl shadow-xl backdrop-blur-xl overflow-hidden">
+                  <div className="bg-gradient-to-r from-cyan-600/20 to-blue-600/20 border-b border-slate-700/50 p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center">
+                        <svg
+                          className="w-5 h-5 text-cyan-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-100">
+                          Collection Efficiency
+                        </h3>
+                        <p className="text-xs text-cyan-400/70 font-medium uppercase tracking-wider mt-0.5">
+                          Completion rate %
+                        </p>
+                      </div>
                     </div>
+                  </div>
 
-                    <div className="h-80 bg-slate-900/60 rounded-2xl p-4 border border-slate-700/50">
+                  <div className="p-5">
+                    <div className="h-72 bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={performanceData}
-                          margin={{ top: 20, right: 30, bottom: 60, left: 50 }}
+                          margin={{ top: 10, right: 20, bottom: 40, left: 40 }}
                         >
                           <defs>
                             <linearGradient
@@ -669,50 +700,47 @@ export default function ReportsAnalytics({
                               <stop
                                 offset="0"
                                 stopColor="#06b6d4"
-                                stopOpacity={0.8}
+                                stopOpacity={0.9}
                               />
                               <stop
                                 offset="1"
                                 stopColor="#0891b2"
-                                stopOpacity={0.4}
+                                stopOpacity={0.6}
                               />
                             </linearGradient>
                           </defs>
                           <CartesianGrid
                             strokeDasharray="3 3"
                             stroke="#334155"
-                            opacity={0.3}
+                            opacity={0.2}
                           />
                           <XAxis
                             dataKey="month"
-                            stroke="#cbd5e1"
-                            tick={{
-                              fill: "#cbd5e1",
-                              fontSize: 12,
-                              fontWeight: 600,
-                            }}
+                            stroke="#64748b"
+                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                            axisLine={{ stroke: "#334155" }}
                           />
                           <YAxis
-                            stroke="#cbd5e1"
-                            tick={{ fill: "#cbd5e1", fontSize: 12 }}
+                            stroke="#64748b"
+                            tick={{ fill: "#94a3b8", fontSize: 11 }}
                             domain={[0, 100]}
+                            axisLine={{ stroke: "#334155" }}
                           />
                           <Tooltip
                             contentStyle={{
-                              backgroundColor: "#1e293b",
+                              backgroundColor: "#0f172a",
                               borderColor: "#06b6d4",
-                              borderRadius: "12px",
-                              color: "#e5e7eb",
-                              fontSize: 12,
-                              padding: "12px",
-                              boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
+                              borderRadius: "8px",
+                              color: "#e2e8f0",
+                              fontSize: "12px",
+                              boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
                             }}
                             cursor={{ fill: "rgba(6, 182, 212, 0.1)" }}
                           />
                           <Bar
                             dataKey="efficiency"
                             fill="url(#effGrad)"
-                            radius={[8, 8, 0, 0]}
+                            radius={[6, 6, 0, 0]}
                             name="Efficiency (%)"
                           />
                         </BarChart>
@@ -730,19 +758,47 @@ export default function ReportsAnalytics({
       {activeReportOption === "barangayConcerns" && (
         <>
           {loadingReportData ? (
-            <div className="overflow-x-auto rounded-lg border border-slate-800 max-h-[480px] bg-slate-950">
+            <div className="bg-slate-900/60 border border-slate-700/50 rounded-2xl p-8 backdrop-blur-xl">
               <TruckLoader />
             </div>
           ) : errorReportData ? (
-            <div className="border border-red-300 rounded-lg bg-red-50 p-6 sm:p-8 text-red-700">
-              <p className="text-center font-semibold">⚠️ {errorReportData}</p>
+            <div className="flex items-center gap-3 rounded-xl bg-red-500/10 border border-red-500/20 p-6">
+              <svg
+                className="w-6 h-6 text-red-400 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <span className="text-sm font-medium text-red-200">
+                {errorReportData}
+              </span>
             </div>
           ) : concernStats.length === 0 ? (
-            <div className="border border-gray-300 rounded-lg bg-slate-950 p-8 text-gray-600 text-center">
-              <p className="text-lg font-semibold mb-2 text-white/80">
-                📭 No Data Available
+            <div className="text-center py-12 bg-slate-900/60 border border-slate-700/50 rounded-2xl border-dashed">
+              <svg
+                className="w-16 h-16 mx-auto text-slate-600 mb-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1}
+                  d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                />
+              </svg>
+              <p className="text-base font-semibold text-slate-300 mb-1">
+                No Data Available
               </p>
-              <p className="text-sm text-white/80">
+              <p className="text-sm text-slate-500">
                 No barangay concerns found for the selected scope.
               </p>
             </div>
@@ -753,19 +809,87 @@ export default function ReportsAnalytics({
                 {concernStatCards.map((card, idx) => (
                   <div
                     key={idx}
-                    className={`border-2 ${card.borderColor} ${card.bgColor} rounded-lg p-6 transition-all duration-300`}
+                    className={`bg-slate-900/60 border rounded-xl p-5 backdrop-blur-xl transition-all duration-200 hover:border-opacity-70 ${
+                      card.label === "Needs Action"
+                        ? "border-amber-500/30 hover:border-amber-500/50"
+                        : card.label === "Ongoing"
+                          ? "border-blue-500/30 hover:border-blue-500/50"
+                          : card.label === "Resolved"
+                            ? "border-emerald-500/30 hover:border-emerald-500/50"
+                            : "border-slate-500/30 hover:border-slate-500/50"
+                    }`}
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold text-gray-700">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                         {card.label}
-                      </h3>
-                      <span className="text-2xl">{card.icon}</span>
+                      </span>
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                          card.label === "Needs Action"
+                            ? "bg-amber-500/10 text-amber-400"
+                            : card.label === "Ongoing"
+                              ? "bg-blue-500/10 text-blue-400"
+                              : card.label === "Resolved"
+                                ? "bg-emerald-500/10 text-emerald-400"
+                                : "bg-slate-500/10 text-slate-400"
+                        }`}
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          {card.label === "Needs Action" && (
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
+                          )}
+                          {card.label === "Ongoing" && (
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m15.356 2H20M20 20v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H20"
+                            />
+                          )}
+                          {card.label === "Resolved" && (
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          )}
+                          {card.label === "Total Reports" && (
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                            />
+                          )}
+                        </svg>
+                      </div>
                     </div>
-                    <p className={`${card.color} text-3xl font-bold`}>
+                    <p
+                      className={`text-3xl font-bold ${
+                        card.label === "Needs Action"
+                          ? "text-amber-400"
+                          : card.label === "Ongoing"
+                            ? "text-blue-400"
+                            : card.label === "Resolved"
+                              ? "text-emerald-400"
+                              : "text-slate-200"
+                      }`}
+                    >
                       {card.value}
                     </p>
                     {card.label === "Resolved" && totalConcerns > 0 && (
-                      <p className="text-xs text-gray-600 mt-2">
+                      <p className="text-xs text-slate-500 mt-2">
                         {resolutionRate}% resolution rate
                       </p>
                     )}
@@ -774,138 +898,155 @@ export default function ReportsAnalytics({
               </div>
 
               {/* Chart */}
-              <div className="group relative rounded-3xl bg-gradient-to-br from-slate-800/95 to-gray-800/95 border border-emerald-800/50 p-6 sm:p-8 shadow-2xl shadow-emerald-900/30 backdrop-blur-2xl overflow-hidden">
-                <div className="mb-6">
-                  <h3 className="text-xl font-bold text-white/80">
-                    Monthly Barangay Concerns
-                  </h3>
-                  <p className="text-sm text-white/80 mt-1">
-                    Status breakdown by month
-                  </p>
+              <div className="bg-slate-900/60 border border-slate-700/50 rounded-2xl shadow-xl backdrop-blur-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-amber-600/20 via-blue-600/20 to-emerald-600/20 border-b border-slate-700/50 p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-700/50 border border-slate-600/50 flex items-center justify-center">
+                      <svg
+                        className="w-5 h-5 text-slate-300"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-100">
+                        Monthly Barangay Concerns
+                      </h3>
+                      <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">
+                        Status breakdown by month
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="h-96 bg-slate-950 rounded-lg p-4 border border-slate-800">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={concernStats}
-                      margin={{ top: 20, right: 30, bottom: 60, left: 50 }}
-                    >
-                      <defs>
-                        <linearGradient
-                          id="needsActionGrad"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="0"
-                            stopColor="#f59e0b"
-                            stopOpacity={0.8}
-                          />
-                          <stop
-                            offset="1"
-                            stopColor="#d97706"
-                            stopOpacity={0.6}
-                          />
-                        </linearGradient>
-                        <linearGradient
-                          id="ongoingGrad"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="0"
-                            stopColor="#3b82f6"
-                            stopOpacity={0.8}
-                          />
-                          <stop
-                            offset="1"
-                            stopColor="#1d4ed8"
-                            stopOpacity={0.6}
-                          />
-                        </linearGradient>
-                        <linearGradient
-                          id="resolvedGrad"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="0"
-                            stopColor="#10b981"
-                            stopOpacity={0.8}
-                          />
-                          <stop
-                            offset="1"
-                            stopColor="#047857"
-                            stopOpacity={0.6}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#e5e7eb"
-                        opacity={0.5}
-                      />
-                      <XAxis
-                        dataKey="month"
-                        stroke="#6b7280"
-                        tick={{
-                          fill: "#6b7280",
-                          fontSize: 12,
-                          fontWeight: 600,
-                        }}
-                      />
-                      <YAxis
-                        stroke="#6b7280"
-                        tick={{ fill: "#6b7280", fontSize: 12 }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "#ffffff",
-                          borderColor: "#d1d5db",
-                          borderRadius: "8px",
-                          color: "#1f2937",
-                          fontSize: 12,
-                          padding: "12px",
-                          boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                        }}
-                        cursor={{ fill: "rgba(37, 99, 235, 0.1)" }}
-                      />
-                      <Legend
-                        verticalAlign="top"
-                        align="right"
-                        wrapperStyle={{
-                          color: "#6b7280",
-                          fontSize: 12,
-                          fontWeight: 600,
-                          paddingBottom: "20px",
-                        }}
-                      />
-                      <Bar
-                        dataKey="needsAction"
-                        fill="url(#needsActionGrad)"
-                        name="Needs Action"
-                        radius={[8, 8, 0, 0]}
-                      />
-                      <Bar
-                        dataKey="ongoing"
-                        fill="url(#ongoingGrad)"
-                        name="Ongoing"
-                        radius={[8, 8, 0, 0]}
-                      />
-                      <Bar
-                        dataKey="resolved"
-                        fill="url(#resolvedGrad)"
-                        name="Resolved"
-                        radius={[8, 8, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="p-5">
+                  <div className="h-80 bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={concernStats}
+                        margin={{ top: 10, right: 20, bottom: 40, left: 40 }}
+                      >
+                        <defs>
+                          <linearGradient
+                            id="needsActionGrad"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="0"
+                              stopColor="#f59e0b"
+                              stopOpacity={0.9}
+                            />
+                            <stop
+                              offset="1"
+                              stopColor="#d97706"
+                              stopOpacity={0.6}
+                            />
+                          </linearGradient>
+                          <linearGradient
+                            id="ongoingGrad"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="0"
+                              stopColor="#3b82f6"
+                              stopOpacity={0.9}
+                            />
+                            <stop
+                              offset="1"
+                              stopColor="#2563eb"
+                              stopOpacity={0.6}
+                            />
+                          </linearGradient>
+                          <linearGradient
+                            id="resolvedGrad"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="0"
+                              stopColor="#10b981"
+                              stopOpacity={0.9}
+                            />
+                            <stop
+                              offset="1"
+                              stopColor="#059669"
+                              stopOpacity={0.6}
+                            />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="#334155"
+                          opacity={0.2}
+                        />
+                        <XAxis
+                          dataKey="month"
+                          stroke="#64748b"
+                          tick={{ fill: "#94a3b8", fontSize: 11 }}
+                          axisLine={{ stroke: "#334155" }}
+                        />
+                        <YAxis
+                          stroke="#64748b"
+                          tick={{ fill: "#94a3b8", fontSize: 11 }}
+                          axisLine={{ stroke: "#334155" }}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#0f172a",
+                            borderColor: "#334155",
+                            borderRadius: "8px",
+                            color: "#e2e8f0",
+                            fontSize: "12px",
+                            boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+                          }}
+                          cursor={{ fill: "rgba(255, 255, 255, 0.05)" }}
+                        />
+                        <Legend
+                          verticalAlign="top"
+                          align="right"
+                          wrapperStyle={{
+                            color: "#94a3b8",
+                            fontSize: "11px",
+                            paddingBottom: "15px",
+                          }}
+                        />
+                        <Bar
+                          dataKey="needsAction"
+                          fill="url(#needsActionGrad)"
+                          name="Needs Action"
+                          radius={[4, 4, 0, 0]}
+                        />
+                        <Bar
+                          dataKey="ongoing"
+                          fill="url(#ongoingGrad)"
+                          name="Ongoing"
+                          radius={[4, 4, 0, 0]}
+                        />
+                        <Bar
+                          dataKey="resolved"
+                          fill="url(#resolvedGrad)"
+                          name="Resolved"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
             </>

@@ -432,269 +432,282 @@ export default function BarangayConcernsAnalytics({
           </div>
 
           {/* Chart Section */}
-          <div className="border border-slate-800 rounded-lg bg-slate-950/60 p-6 sm:p-8">
-            <div className="mb-6">
-              <h3 className="text-xl font-bold text-white/80">
-                {viewMode === "monthly"
-                  ? `${selectedMonth} Report`
-                  : `${selectedYear} Yearly Overview`}
-              </h3>
-              <p className="text-sm text-white/80 mt-1">
-                {viewMode === "monthly"
-                  ? `Status breakdown for ${selectedMonth}`
-                  : `Aggregated data for ${selectedYear}`}
-              </p>
+          <div className="bg-slate-900/60 border border-slate-700/50 rounded-2xl shadow-xl backdrop-blur-xl overflow-hidden">
+            <div className="bg-slate-900/80 border-b border-slate-700/50 p-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-700/50 border border-slate-600/50 flex items-center justify-center">
+                  <svg
+                    className="w-5 h-5 text-slate-300"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-100">
+                    {viewMode === "monthly"
+                      ? `${selectedMonth} Report`
+                      : `${selectedYear} Yearly Overview`}
+                  </h3>
+                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-0.5">
+                    {viewMode === "monthly"
+                      ? `Status breakdown for ${selectedMonth}`
+                      : `Aggregated data for ${selectedYear}`}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            {viewMode === "monthly" && stats.length > 0 ? (
-              <div className="h-96 bg-slate-900/50 rounded-lg p-4 border border-slate-700">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={stats}
-                    margin={{ top: 20, right: 30, bottom: 60, left: 50 }}
-                  >
-                    <defs>
-                      <linearGradient
-                        id="needsActionGrad"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0"
-                          stopColor="#f59e0b"
-                          stopOpacity={0.8}
-                        />
-                        <stop
-                          offset="1"
-                          stopColor="#d97706"
-                          stopOpacity={0.6}
-                        />
-                      </linearGradient>
-                      <linearGradient
-                        id="ongoingGrad"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0"
-                          stopColor="#3b82f6"
-                          stopOpacity={0.8}
-                        />
-                        <stop
-                          offset="1"
-                          stopColor="#1d4ed8"
-                          stopOpacity={0.6}
-                        />
-                      </linearGradient>
-                      <linearGradient
-                        id="resolvedGrad"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0"
-                          stopColor="#10b981"
-                          stopOpacity={0.8}
-                        />
-                        <stop
-                          offset="1"
-                          stopColor="#047857"
-                          stopOpacity={0.6}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="#475569"
-                      opacity={0.3}
-                    />
-                    <XAxis
-                      dataKey="month"
-                      stroke="#94a3b8"
-                      tick={{
-                        fill: "#cbd5e1",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    />
-                    <YAxis
-                      stroke="#94a3b8"
-                      tick={{ fill: "#cbd5e1", fontSize: 12 }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#1e293b",
-                        borderColor: "#475569",
-                        borderRadius: "8px",
-                        color: "#e2e8f0",
-                        fontSize: 12,
-                        padding: "12px",
-                        boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
-                      }}
-                      cursor={{ fill: "rgba(59, 130, 246, 0.1)" }}
-                    />
-                    <Legend
-                      verticalAlign="top"
-                      align="right"
-                      wrapperStyle={{
-                        color: "#cbd5e1",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        paddingBottom: "20px",
-                      }}
-                    />
-                    <Bar
-                      dataKey="needsAction"
-                      fill="url(#needsActionGrad)"
-                      name="Needs Action"
-                      radius={[8, 8, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="ongoing"
-                      fill="url(#ongoingGrad)"
-                      name="Ongoing"
-                      radius={[8, 8, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="resolved"
-                      fill="url(#resolvedGrad)"
-                      name="Resolved"
-                      radius={[8, 8, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : viewMode === "yearly" ? (
-              <div className="h-96 bg-slate-950/60 rounded-lg p-4 border border-slate-700">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={yearlyStats}
-                    margin={{ top: 20, right: 30, bottom: 60, left: 50 }}
-                  >
-                    <defs>
-                      <linearGradient
-                        id="needsActionGrad"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0"
-                          stopColor="#f59e0b"
-                          stopOpacity={0.8}
-                        />
-                        <stop
-                          offset="1"
-                          stopColor="#d97706"
-                          stopOpacity={0.6}
-                        />
-                      </linearGradient>
-                      <linearGradient
-                        id="ongoingGrad"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0"
-                          stopColor="#3b82f6"
-                          stopOpacity={0.8}
-                        />
-                        <stop
-                          offset="1"
-                          stopColor="#1d4ed8"
-                          stopOpacity={0.6}
-                        />
-                      </linearGradient>
-                      <linearGradient
-                        id="resolvedGrad"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0"
-                          stopColor="#10b981"
-                          stopOpacity={0.8}
-                        />
-                        <stop
-                          offset="1"
-                          stopColor="#047857"
-                          stopOpacity={0.6}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="#475569"
-                      opacity={0.3}
-                    />
-                    <XAxis
-                      dataKey="month"
-                      stroke="#94a3b8"
-                      tick={{
-                        fill: "#cbd5e1",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    />
-                    <YAxis
-                      stroke="#94a3b8"
-                      tick={{ fill: "#cbd5e1", fontSize: 12 }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#1e293b",
-                        borderColor: "#475569",
-                        borderRadius: "8px",
-                        color: "#e2e8f0",
-                        fontSize: 12,
-                        padding: "12px",
-                        boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
-                      }}
-                      cursor={{ fill: "rgba(59, 130, 246, 0.1)" }}
-                    />
-                    <Legend
-                      verticalAlign="top"
-                      align="right"
-                      wrapperStyle={{
-                        color: "#cbd5e1",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        paddingBottom: "20px",
-                      }}
-                    />
-                    <Bar
-                      dataKey="needsAction"
-                      fill="url(#needsActionGrad)"
-                      name="Needs Action"
-                      radius={[8, 8, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="ongoing"
-                      fill="url(#ongoingGrad)"
-                      name="Ongoing"
-                      radius={[8, 8, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="resolved"
-                      fill="url(#resolvedGrad)"
-                      name="Resolved"
-                      radius={[8, 8, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : null}
+            <div className="p-5">
+              {viewMode === "monthly" && stats.length > 0 ? (
+                <div className="h-80 bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={stats}
+                      margin={{ top: 10, right: 20, bottom: 40, left: 40 }}
+                    >
+                      <defs>
+                        <linearGradient
+                          id="needsActionGrad"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0"
+                            stopColor="#f59e0b"
+                            stopOpacity={0.9}
+                          />
+                          <stop
+                            offset="1"
+                            stopColor="#d97706"
+                            stopOpacity={0.6}
+                          />
+                        </linearGradient>
+                        <linearGradient
+                          id="ongoingGrad"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0"
+                            stopColor="#3b82f6"
+                            stopOpacity={0.9}
+                          />
+                          <stop
+                            offset="1"
+                            stopColor="#2563eb"
+                            stopOpacity={0.6}
+                          />
+                        </linearGradient>
+                        <linearGradient
+                          id="resolvedGrad"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0"
+                            stopColor="#10b981"
+                            stopOpacity={0.9}
+                          />
+                          <stop
+                            offset="1"
+                            stopColor="#059669"
+                            stopOpacity={0.6}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="#334155"
+                        opacity={0.2}
+                      />
+                      <XAxis
+                        dataKey="month"
+                        stroke="#64748b"
+                        tick={{ fill: "#94a3b8", fontSize: 11 }}
+                        axisLine={{ stroke: "#334155" }}
+                      />
+                      <YAxis
+                        stroke="#64748b"
+                        tick={{ fill: "#94a3b8", fontSize: 11 }}
+                        axisLine={{ stroke: "#334155" }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#0f172a",
+                          borderColor: "#334155",
+                          borderRadius: "8px",
+                          color: "#e2e8f0",
+                          fontSize: "12px",
+                          boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+                        }}
+                        cursor={{ fill: "rgba(255, 255, 255, 0.05)" }}
+                      />
+                      <Legend
+                        verticalAlign="top"
+                        align="right"
+                        wrapperStyle={{
+                          color: "#94a3b8",
+                          fontSize: "11px",
+                          paddingBottom: "15px",
+                        }}
+                      />
+                      <Bar
+                        dataKey="needsAction"
+                        fill="url(#needsActionGrad)"
+                        name="Needs Action"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="ongoing"
+                        fill="url(#ongoingGrad)"
+                        name="Ongoing"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="resolved"
+                        fill="url(#resolvedGrad)"
+                        name="Resolved"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : viewMode === "yearly" ? (
+                <div className="h-80 bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={yearlyStats}
+                      margin={{ top: 10, right: 20, bottom: 40, left: 40 }}
+                    >
+                      <defs>
+                        <linearGradient
+                          id="needsActionGradYearly"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0"
+                            stopColor="#f59e0b"
+                            stopOpacity={0.9}
+                          />
+                          <stop
+                            offset="1"
+                            stopColor="#d97706"
+                            stopOpacity={0.6}
+                          />
+                        </linearGradient>
+                        <linearGradient
+                          id="ongoingGradYearly"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0"
+                            stopColor="#3b82f6"
+                            stopOpacity={0.9}
+                          />
+                          <stop
+                            offset="1"
+                            stopColor="#2563eb"
+                            stopOpacity={0.6}
+                          />
+                        </linearGradient>
+                        <linearGradient
+                          id="resolvedGradYearly"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0"
+                            stopColor="#10b981"
+                            stopOpacity={0.9}
+                          />
+                          <stop
+                            offset="1"
+                            stopColor="#059669"
+                            stopOpacity={0.6}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="#334155"
+                        opacity={0.2}
+                      />
+                      <XAxis
+                        dataKey="month"
+                        stroke="#64748b"
+                        tick={{ fill: "#94a3b8", fontSize: 11 }}
+                        axisLine={{ stroke: "#334155" }}
+                      />
+                      <YAxis
+                        stroke="#64748b"
+                        tick={{ fill: "#94a3b8", fontSize: 11 }}
+                        axisLine={{ stroke: "#334155" }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#0f172a",
+                          borderColor: "#334155",
+                          borderRadius: "8px",
+                          color: "#e2e8f0",
+                          fontSize: "12px",
+                          boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+                        }}
+                        cursor={{ fill: "rgba(255, 255, 255, 0.05)" }}
+                      />
+                      <Legend
+                        verticalAlign="top"
+                        align="right"
+                        wrapperStyle={{
+                          color: "#94a3b8",
+                          fontSize: "11px",
+                          paddingBottom: "15px",
+                        }}
+                      />
+                      <Bar
+                        dataKey="needsAction"
+                        fill="url(#needsActionGradYearly)"
+                        name="Needs Action"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="ongoing"
+                        fill="url(#ongoingGradYearly)"
+                        name="Ongoing"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="resolved"
+                        fill="url(#resolvedGradYearly)"
+                        name="Resolved"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : null}
+            </div>
           </div>
         </>
       )}

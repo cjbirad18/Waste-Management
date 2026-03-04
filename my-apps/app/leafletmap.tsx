@@ -198,10 +198,10 @@ const StatusBadge = ({
   variant?: "default" | "warning" | "success" | "info";
 }) => {
   const variants = {
-    default: "bg-slate-100 text-slate-700 border-slate-200",
-    warning: "bg-amber-50 text-amber-700 border-amber-200",
-    success: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    info: "bg-blue-50 text-blue-700 border-blue-200",
+    default: "bg-slate-800/80 text-slate-300 border-slate-700/50",
+    warning: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+    success: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+    info: "bg-blue-500/10 text-blue-400 border-blue-500/30",
   };
 
   return (
@@ -222,7 +222,7 @@ const InfoCard = ({
   className?: string;
 }) => (
   <div
-    className={`bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-white/20 shadow-xl shadow-slate-900/5 ${className}`}
+    className={`bg-slate-900/90 backdrop-blur-xl rounded-2xl border border-emerald-500/20 shadow-xl shadow-black/30 ${className}`}
   >
     {children}
   </div>
@@ -713,10 +713,10 @@ function LeafletMap({
 
   if (isLoading) {
     return (
-      <div className="w-full h-[50vh] flex items-center justify-center bg-slate-50 rounded-3xl">
+      <div className="w-full h-[50vh] flex items-center justify-center bg-slate-900/50 rounded-3xl border border-slate-800/50">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
-          <span className="text-sm text-slate-500 font-medium">
+          <span className="text-sm text-slate-400 font-medium">
             Loading map...
           </span>
         </div>
@@ -730,25 +730,21 @@ function LeafletMap({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-wrap">
           {role === "GCP" && gcpLocationWarning && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-full text-amber-700 text-sm font-medium shadow-sm">
+            <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 text-sm font-medium shadow-sm">
               <AlertCircle size={16} />
               <span>{gcpLocationWarning}</span>
             </div>
           )}
 
           {role === "Resident" && (
-            <div className="flex bg-slate-100 p-1 rounded-xl">
+            <div className="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/50">
               <button
                 onClick={() => setAutoCenter(true)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 
   ${
     autoCenter
-      ? theme === "night"
-        ? "bg-slate-800 text-emerald-400 shadow-sm"
-        : "bg-white text-emerald-600 shadow-sm"
-      : theme === "night"
-        ? "text-slate-400 hover:text-emerald-400"
-        : "text-slate-500 hover:text-slate-700"
+      ? "bg-emerald-600/20 text-emerald-400 shadow-sm border border-emerald-500/30"
+      : "text-slate-400 hover:text-emerald-300"
   }
 `}
               >
@@ -760,12 +756,8 @@ function LeafletMap({
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
   ${
     !autoCenter
-      ? theme === "night"
-        ? "bg-slate-800 text-emerald-400 shadow-sm"
-        : "bg-white text-blue-600 shadow-sm"
-      : theme === "night"
-        ? "text-slate-400 hover:text-emerald-400"
-        : "text-slate-500 hover:text-slate-700"
+      ? "bg-blue-600/20 text-blue-400 shadow-sm border border-blue-500/30"
+      : "text-slate-400 hover:text-emerald-300"
   }
 `}
               >
@@ -784,7 +776,7 @@ function LeafletMap({
 
           <button
             onClick={() => setTheme((t) => (t === "day" ? "night" : "day"))}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-medium text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-all shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 border border-slate-700/50 rounded-full text-sm font-medium text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 transition-all shadow-sm"
           >
             {theme === "day" ? <Moon size={16} /> : <Sun size={16} />}
             <span className="capitalize">{theme}</span>
@@ -793,88 +785,49 @@ function LeafletMap({
       </div>
 
       {/* Map Container */}
-      <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-slate-900/20 border border-slate-200">
+      <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-black/30 border border-slate-700/50">
         {/* ETA Card - Desktop */}
         {role === "Resident" && (
           <div className="absolute top-4 left-4 z-[500] hidden md:block ">
-            <InfoCard className="bg-slate-900/40 p-4 min-w-[300px]">
+            <InfoCard className="p-4 min-w-[300px]">
               <div className="flex items-center gap-3 mb-3">
-                <div
-                  className={
-                    `p-2 rounded-xl ` +
-                    (theme === "night" ? "bg-emerald-900/30" : "bg-emerald-100")
-                  }
-                >
-                  <Clock
-                    size={20}
-                    className={
-                      theme === "night"
-                        ? "text-emerald-300"
-                        : "text-emerald-600"
-                    }
-                  />
+                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                  <Clock size={20} className="text-emerald-400" />
                 </div>
                 <div>
-                  <h3
-                    className={
-                      `text-lg font-semibold ` +
-                      (theme === "night" ? "text-white" : "text-slate-900")
-                    }
-                  >
+                  <h3 className="text-lg font-semibold text-white">
                     Arrival Time
                   </h3>
-                  <p
-                    className={
-                      `text-md ` +
-                      (theme === "night" ? "text-white" : "text-black")
-                    }
-                  >
+                  <p className="text-md text-slate-400">
                     Next collection
                   </p>
                 </div>
               </div>
 
-              <div
-                className={
-                  `rounded-xl p-3 mb-4 ` +
-                  (theme === "night" ? "bg-slate-800" : "bg-slate-50")
-                }
-              >
+              <div className="rounded-xl p-3 mb-4 bg-slate-800/80 border border-slate-700/30">
                 {etaMinutes == null ? (
-                  <div
-                    className={
-                      `flex items-center gap-2 text-sm ` +
-                      (theme === "night" ? "text-slate-300" : "text-slate-500")
-                    }
-                  >
-                    <div
-                      className={
-                        `w-4 h-4 border-2 rounded-full animate-spin ` +
-                        (theme === "night"
-                          ? "border-slate-600 border-t-emerald-400"
-                          : "border-slate-300 border-t-emerald-500")
-                      }
-                    />
+                  <div className="flex items-center gap-2 text-sm text-slate-300">
+                    <div className="w-4 h-4 border-2 rounded-full animate-spin border-slate-600 border-t-emerald-400" />
                     <span className="text-[17px]">Locating trucks...</span>
                   </div>
                 ) : (
                   <div>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold text-emerald-600">
+                      <span className="text-3xl font-bold text-emerald-400">
                         {etaMinutes}
                       </span>
-                      <span className="text-sm font-medium text-slate-600">
+                      <span className="text-sm font-medium text-slate-400">
                         min{etaMinutes !== 1 ? "s" : ""}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                       Estimated arrival
                     </p>
                   </div>
                 )}
               </div>
 
-              <p className="text-[13px] text-white/200 leading-relaxed">
+              <p className="text-[13px] text-slate-500 leading-relaxed">
                 Based on live GPS data • 15-20 km/h avg speed
               </p>
             </InfoCard>
@@ -887,22 +840,22 @@ function LeafletMap({
             <InfoCard className="p-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-emerald-100 rounded-lg">
-                    <Clock size={18} className="text-emerald-600" />
+                  <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                    <Clock size={18} className="text-emerald-400" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900">
+                    <h3 className="text-sm font-semibold text-white">
                       Arrival
                     </h3>
                     {etaMinutes != null && (
-                      <p className="text-lg font-bold text-emerald-600">
+                      <p className="text-lg font-bold text-emerald-400">
                         {etaMinutes} min
                       </p>
                     )}
                   </div>
                 </div>
                 {etaMinutes == null && (
-                  <div className="w-5 h-5 border-2 border-slate-200 border-t-emerald-500 rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-slate-700 border-t-emerald-400 rounded-full animate-spin" />
                 )}
               </div>
             </InfoCard>
@@ -910,7 +863,7 @@ function LeafletMap({
         )}
 
         {/* Map */}
-        <div className="w-full h-[60vh] min-h-[400px] relative bg-slate-100">
+        <div className="w-full h-[60vh] min-h-[400px] relative bg-slate-900">
           <MapContainer
             center={currentCenter}
             zoom={14}
