@@ -77,6 +77,7 @@ function InputField({
   onChange,
   required = false,
   placeholder = "",
+  disabled = false,
 }: {
   label: string;
   name: string;
@@ -85,6 +86,7 @@ function InputField({
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
     <div className="mb-4 space-y-2">
@@ -100,6 +102,9 @@ function InputField({
         required={required}
         placeholder={placeholder}
         autoComplete="off"
+        disabled={disabled}
+        readOnly={disabled}
+        className={disabled ? "cursor-not-allowed opacity-60" : undefined}
       />
     </div>
   );
@@ -604,13 +609,17 @@ export default function TcemoDashboard() {
     setUserForm({ ...userForm, [e.target.name]: e.target.value });
   };
 
+  // Derived: check if any SWMO Head is currently active
+  const activeSWMOHead = swmoHeads.find(
+    (u) => u.status.toLowerCase() === "active",
+  );
+
   const handleAddUser = async (e: FormEvent) => {
     e.preventDefault();
-    const activeSWMO = swmoHeads.find((u) => u.status === "Active"); // changed
 
-    if (activeSWMO) {
-      window.alert(
-        "An SWMO Head account is currently active. Please deactivate the account before creating a new one.",
+    if (activeSWMOHead) {
+      setFormError(
+        `An SWMO Head account (${activeSWMOHead.email}) is currently active. Please deactivate it before creating a new one.`,
       );
       return;
     }
@@ -621,6 +630,32 @@ export default function TcemoDashboard() {
       setFormError(validationError);
       return;
     }
+
+    // Check if email already exists in users table
+    const { data: existingUser, error: emailCheckError } = await supabase
+      .from("users")
+      .select("email, status")
+      .eq("email", userForm.email.trim())
+      .maybeSingle();
+
+    if (emailCheckError) {
+      setFormError(`Error checking email: ${emailCheckError.message}`);
+      return;
+    }
+
+    if (existingUser) {
+      if (existingUser.status?.toLowerCase() === "active") {
+        setFormError(
+          "This email is already associated with an active account. Please use a different email.",
+        );
+      } else {
+        setFormError(
+          "This email already exists in the system. Please use a different email or reactivate the existing account.",
+        );
+      }
+      return;
+    }
+
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userForm.email,
@@ -756,6 +791,16 @@ export default function TcemoDashboard() {
   };
 
   const handleActivateSWMOHead = async (userId: string) => {
+    // Prevent activating if another SWMO Head is already active
+    const alreadyActive = swmoHeads.find(
+      (u) => u.status.toLowerCase() === "active" && u.user_id !== userId,
+    );
+    if (alreadyActive) {
+      window.alert(
+        `Cannot activate: SWMO Head account (${alreadyActive.email}) is still active. Deactivate it first.`,
+      );
+      return;
+    }
     // open confirm modal for activation
     setConfirmModalAction("activate");
     setConfirmModalTarget({ userId });
@@ -1064,189 +1109,102 @@ export default function TcemoDashboard() {
                     Create an account for the Solid Waste Management Office
                     head.
                   </p>
+                  {activeSWMOHead && (
+                    <div className="px-3 py-2 mb-4 bg-yellow-500/10 text-yellow-300 border border-yellow-500/30 rounded-lg text-xs">
+                      An SWMO Head account (
+                      <strong>{activeSWMOHead.email}</strong>) is currently
+                      active. Deactivate it first to create a new one.
+                    </div>
+                  )}
                   <form
                     onSubmit={handleAddUser}
                     className="space-y-2"
                     noValidate
                   >
-                    {formError && (
-                      <div className="px-3 py-2 bg-red-500/10 text-red-300 border border-red-500/30 rounded-lg text-xs">
-                        {formError}
-                      </div>
-                    )}
-                    {formSuccess && (
-                      <div className="px-3 py-2 bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs">
-                        {formSuccess}
-                      </div>
-                    )}
-                    <InputField
-                      label="First Name"
-                      name="first_name"
-                      type="text"
-                      value={userForm.first_name}
-                      onChange={handleUserFormChange}
-                      required
-                    />
-                    <InputField
-                      label="Last Name"
-                      name="last_name"
-                      type="text"
-                      value={userForm.last_name}
-                      onChange={handleUserFormChange}
-                      required
-                    />
-                    <InputField
-                      label="Contact Number"
-                      name="contact_number"
-                      type="tel"
-                      value={userForm.contact_number}
-                      onChange={handleUserFormChange}
-                      required
-                    />
-                    <InputField
-                      label="Email"
-                      name="email"
-                      type="email"
-                      value={userForm.email}
-                      onChange={handleUserFormChange}
-                      required
-                    />
-                    {/* SWMO Head list */}
-                    <div className="dashboard-section overflow-hidden">
-                      <div className="relative z-10">
-                        <h3 className="text-lg font-bold mb-3 text-slate-100">
-                          SWMO Head Accounts
-                        </h3>
-                        {loadingSWMOHeads ? (
-                          <TruckLoader />
-                        ) : (
-                          <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-950">
-                            <table className="min-w-full text-sm">
-                              <thead className="bg-slate-800 text-slate-200 sticky top-0 z-10">
-                                <tr>
-                                  <th className="px-3 py-2 text-left text-xs font-medium">
-                                    Name
-                                  </th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium hidden sm:table-cell">
-                                    Email
-                                  </th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium">
-                                    Status
-                                  </th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium">
-                                    Action
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {swmoHeadsPage.map((user) => (
-                                  <tr
-                                    key={user.user_id}
-                                    className="border-t border-slate-800 hover:bg-slate-800 transition-colors"
-                                  >
-                                    <td className="px-3 py-2">
-                                      {user.first_name} {user.last_name}
-                                      <div className="sm:hidden text-xs text-slate-400">
-                                        {user.email}
-                                      </div>
-                                    </td>
-                                    <td className="px-3 py-2 hidden sm:table-cell">
-                                      {user.email}
-                                    </td>
-                                    <td className="px-3 py-2 capitalize">
-                                      {user.status}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                      {user.status.toLowerCase() ===
-                                      "active" ? (
-                                        <Button
-                                          variant="destructive"
-                                          onClick={() =>
-                                            openConfirmModal(
-                                              "deactivate",
-                                              user.user_id,
-                                              `${user.first_name} ${user.last_name}`,
-                                            )
-                                          }
-                                        >
-                                          Deactivate
-                                        </Button>
-                                      ) : (
-                                        <Button
-                                          onClick={() =>
-                                            openConfirmModal(
-                                              "activate",
-                                              user.user_id,
-                                              `${user.first_name} ${user.last_name}`,
-                                            )
-                                          }
-                                        >
-                                          Activate
-                                        </Button>
-                                      )}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                            {/* Pagination controls for SWMO Head list */}
-                            {swmoTotalPages > 1 && (
-                              <div className="flex justify-center items-center gap-2 mt-4">
-                                <Button
-                                  disabled={swmoPage === 1}
-                                  onClick={() => setSwmoPage(swmoPage - 1)}
-                                  variant="outline"
-                                >
-                                  Prev
-                                </Button>
-                                <span className="text-xs text-slate-300">
-                                  Page {swmoPage} of {swmoTotalPages}
-                                </span>
-                                <Button
-                                  disabled={swmoPage === swmoTotalPages}
-                                  onClick={() => setSwmoPage(swmoPage + 1)}
-                                  variant="outline"
-                                >
-                                  Next
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mb-4">
-                      <label
-                        className="block mb-1 text-xs font-medium text-slate-300"
-                        htmlFor="password"
-                      >
-                        Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          id="password"
-                          className="w-full px-3 py-2 border border-slate-700 rounded-lg bg-slate-800 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
-                          type={showPassword ? "text" : "password"}
-                          name="password"
-                          value={userForm.password}
-                          onChange={handleUserFormChange}
-                          placeholder="Password"
-                          required
-                        />
-                        <button
-                          type="button"
-                          className="absolute right-2 top-2 text-slate-400 text-xs"
-                          onClick={() => setShowPassword(!showPassword)}
+                    <fieldset
+                      disabled={!!activeSWMOHead}
+                      className="disabled:opacity-50"
+                    >
+                      {formError && (
+                        <div className="px-3 py-2 bg-red-500/10 text-red-300 border border-red-500/30 rounded-lg text-xs">
+                          {formError}
+                        </div>
+                      )}
+                      {formSuccess && (
+                        <div className="px-3 py-2 bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs">
+                          {formSuccess}
+                        </div>
+                      )}
+                      <InputField
+                        label="First Name"
+                        name="first_name"
+                        type="text"
+                        value={userForm.first_name}
+                        onChange={handleUserFormChange}
+                        required
+                      />
+                      <InputField
+                        label="Last Name"
+                        name="last_name"
+                        type="text"
+                        value={userForm.last_name}
+                        onChange={handleUserFormChange}
+                        required
+                      />
+                      <InputField
+                        label="Contact Number"
+                        name="contact_number"
+                        type="tel"
+                        value={userForm.contact_number}
+                        onChange={handleUserFormChange}
+                        required
+                      />
+                      <InputField
+                        label="Email"
+                        name="email"
+                        type="email"
+                        value={userForm.email}
+                        onChange={handleUserFormChange}
+                        required
+                      />
+
+                      <div className="mb-4">
+                        <label
+                          className="block mb-1 text-xs font-medium text-slate-300"
+                          htmlFor="password"
                         >
-                          {showPassword ? "Hide" : "Show"}
-                        </button>
+                          Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            id="password"
+                            className="w-full px-3 py-2 border border-slate-700 rounded-lg bg-slate-800 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
+                            type={showPassword ? "text" : "password"}
+                            name="password"
+                            value={userForm.password}
+                            onChange={handleUserFormChange}
+                            placeholder="Password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-2 top-2 text-slate-400 text-xs"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? "Hide" : "Show"}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex justify-end mt-4">
-                      <Button type="submit" className="h-auto">
-                        Add User
-                      </Button>
-                    </div>
+                      <div className="flex justify-end mt-4">
+                        <Button
+                          type="submit"
+                          className="h-auto"
+                          disabled={!!activeSWMOHead}
+                        >
+                          Add User
+                        </Button>
+                      </div>
+                    </fieldset>
                   </form>
                 </div>
               </div>
@@ -1700,6 +1658,7 @@ function ManageAccountSection({
             value={form.email}
             onChange={onChange}
             required
+            disabled
           />
           <InputField
             label="Contact Number"

@@ -23,6 +23,8 @@ export async function POST(req: NextRequest) {
       scheduleTime,
       oldPattern,
       newPattern,
+      oldStartTime,
+      newStartTime,
     } = await req.json();
 
     console.log("Schedule update notification request:", {
@@ -33,6 +35,8 @@ export async function POST(req: NextRequest) {
       scheduleTime,
       oldPattern,
       newPattern,
+      oldStartTime,
+      newStartTime,
     });
 
     const notifications = [];
@@ -104,12 +108,37 @@ export async function POST(req: NextRequest) {
       return dayMap[pattern] || pattern;
     };
 
+    // Helper to format time for display (e.g. "05:00" -> "5:00 AM")
+    const formatTime = (time: string): string => {
+      if (!time) return "";
+      const [hours, minutes] = time.split(":").map(Number);
+      const period = hours >= 12 ? "PM" : "AM";
+      const displayHours = hours % 12 || 12;
+      return `${displayHours}:${String(minutes).padStart(2, "0")} ${period}`;
+    };
+
     if (updateType === "archived") {
       message = `NOTICE: The garbage collection schedule for ${scheduleDate} has been cancelled. You will be notified of the new schedule.\n\n - Track the Truck`;
     } else if (updateType === "updated" && oldPattern && newPattern) {
       const newDays = getFullDayNames(newPattern);
       const oldDays = getFullDayNames(oldPattern);
-      message = `Garbage Collection Updated!!\nCollection days are now ${newDays} (${newPattern}) instead of ${oldDays} (${oldPattern}).\nKindly place your trash out on the new schedule. Thank you!\n\n - Track the Truck`;
+
+      const patternChanged = oldPattern !== newPattern;
+      const timeChanged =
+        oldStartTime && newStartTime && oldStartTime !== newStartTime;
+
+      let changes = "";
+      if (patternChanged && timeChanged) {
+        changes = `Collection days are now ${newDays} (${newPattern}) instead of ${oldDays} (${oldPattern}).\nDeparture time changed from ${formatTime(oldStartTime)} to ${formatTime(newStartTime)}.`;
+      } else if (patternChanged) {
+        changes = `Collection days are now ${newDays} (${newPattern}) instead of ${oldDays} (${oldPattern}).`;
+      } else if (timeChanged) {
+        changes = `Departure time has been changed from ${formatTime(oldStartTime)} to ${formatTime(newStartTime)}.\nCollection days remain ${newDays} (${newPattern}).`;
+      } else {
+        changes = `Collection schedule has been updated. Days: ${newDays} (${newPattern}), Departure: ${formatTime(newStartTime || scheduleTime)}.`;
+      }
+
+      message = `Garbage Collection Updated!!\n${changes}\nKindly place your trash out on the new schedule. Thank you!\n\n - Track the Truck`;
     }
 
     console.log("Total recipients to notify:", recipients.length, recipients);

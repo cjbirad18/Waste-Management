@@ -1984,7 +1984,10 @@ export default function AdminDashboard() {
                 value={form.email}
                 onChange={onChange}
                 required
+                disabled
+                readOnly
                 placeholder="user@tagbilaran.gov.ph"
+                className="cursor-not-allowed opacity-60"
               />
             </div>
           </div>

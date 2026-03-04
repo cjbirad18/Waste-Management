@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  ChangeEvent,
+  FormEvent,
+} from "react";
 import {
   format,
   startOfMonth,
@@ -404,11 +411,497 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
   );
 }
 
+// ---- Delay Reason Options ----
+const DELAY_REASONS = [
+  "Vehicle Breakdown",
+  "Heavy Traffic",
+  "Bad Weather / Flooding",
+  "Route Obstruction",
+  "Fuel Issue",
+  "Manpower Shortage",
+  "Tire Puncture",
+  "Other",
+] as const;
+
+const ESTIMATED_DELAYS = [
+  "15 minutes",
+  "30 minutes",
+  "1 hour",
+  "2+ hours",
+] as const;
+
+// ---- Delay Detection Helper ----
+function isTodayScheduled(pattern: string): boolean {
+  const dayOfWeek = new Date().getDay(); // 0=Sun, 1=Mon, ...
+  if (pattern === "MWF") return [1, 3, 5].includes(dayOfWeek);
+  if (pattern === "TTH") return [2, 4].includes(dayOfWeek);
+  return false;
+}
+
+function isCollectionPastStartTime(startTime: string | null): boolean {
+  if (!startTime) return false;
+  const now = new Date();
+  const [h, m] = startTime.split(":").map(Number);
+  const scheduled = new Date();
+  scheduled.setHours(h, m, 0, 0);
+  // Consider delayed if 15+ minutes past start time
+  return now.getTime() - scheduled.getTime() > 15 * 60 * 1000;
+}
+
+function formatTime12(time: string | null): string {
+  if (!time) return "N/A";
+  const [h, m] = time.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 || 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+// ---- Collection Delay Monitor Component ----
+function CollectionDelayMonitor({
+  schedules,
+  manualOpenSchedule,
+  onManualHandled,
+}: {
+  schedules: Schedule[];
+  manualOpenSchedule?: Schedule | null;
+  onManualHandled?: () => void;
+}) {
+  const [delayModalOpen, setDelayModalOpen] = useState(false);
+  const [minimized, setMinimized] = useState(false);
+  const [delayReason, setDelayReason] = useState("");
+  const [customReason, setCustomReason] = useState("");
+  const [submittedReason, setSubmittedReason] = useState<string | null>(null);
+  const [delayNotes, setDelayNotes] = useState("");
+  const [estimatedDelay, setEstimatedDelay] = useState("");
+  const [delaySaving, setDelaySaving] = useState(false);
+  const [delayError, setDelayError] = useState<string | null>(null);
+  const [delaySuccess, setDelaySuccess] = useState<string | null>(null);
+  const [delaySubmitted, setDelaySubmitted] = useState(false);
+  const [delayedSchedule, setDelayedSchedule] = useState<Schedule | null>(null);
+
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasAutoShown = useRef(false);
+
+  // Detect delayed schedules
+  const checkForDelays = useCallback(() => {
+    if (delaySubmitted) return; // Already submitted a reason today
+
+    for (const schedule of schedules) {
+      if (
+        isTodayScheduled(schedule.days) &&
+        isCollectionPastStartTime(schedule.start_time)
+      ) {
+        setDelayedSchedule(schedule);
+        if (!minimized) {
+          setDelayModalOpen(true);
+        }
+        return;
+      }
+    }
+  }, [schedules, delaySubmitted, minimized]);
+
+  // Initial check + 10-minute re-popup interval
+  useEffect(() => {
+    // Check once on mount / schedules change (with small delay for data to load)
+    const timeout = setTimeout(() => {
+      if (!hasAutoShown.current && !delaySubmitted) {
+        checkForDelays();
+        hasAutoShown.current = true;
+      }
+    }, 3000);
+
+    // Set up 10-minute interval to re-show if not submitted
+    intervalRef.current = setInterval(
+      () => {
+        if (!delaySubmitted) {
+          // Force re-open even if minimized
+          for (const schedule of schedules) {
+            if (
+              isTodayScheduled(schedule.days) &&
+              isCollectionPastStartTime(schedule.start_time)
+            ) {
+              setDelayedSchedule(schedule);
+              setMinimized(false);
+              setDelayModalOpen(true);
+              return;
+            }
+          }
+        }
+      },
+      10 * 60 * 1000,
+    ); // 10 minutes
+
+    return () => {
+      clearTimeout(timeout);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [schedules, delaySubmitted, checkForDelays]);
+
+  // Clear interval once submitted
+  useEffect(() => {
+    if (delaySubmitted && intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, [delaySubmitted]);
+
+  // Manual open from parent (Report Delay button on card)
+  useEffect(() => {
+    if (manualOpenSchedule) {
+      setDelayedSchedule(manualOpenSchedule);
+      setMinimized(false);
+      setDelayModalOpen(true);
+      onManualHandled?.();
+    }
+  }, [manualOpenSchedule, onManualHandled]);
+
+  const handleMinimize = () => {
+    setMinimized(true);
+    setDelayModalOpen(false);
+  };
+
+  const handleOpenFromMinimized = () => {
+    setMinimized(false);
+    setDelayModalOpen(true);
+  };
+
+  const handleSubmitDelay = async () => {
+    if (!delayReason) {
+      setDelayError("Please select a delay reason.");
+      return;
+    }
+    if (delayReason === "Custom reason" && !customReason.trim()) {
+      setDelayError("Please provide your custom reason.");
+      return;
+    }
+
+    setDelaySaving(true);
+    setDelayError(null);
+    setDelaySuccess(null);
+
+    try {
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !authData?.user) throw new Error("Not authenticated");
+
+      // Get GCP's name for notification
+      const { data: profile } = await supabase
+        .from("users")
+        .select("first_name, last_name")
+        .eq("user_id", authData.user.id)
+        .single();
+      const gcpName = profile
+        ? `${profile.first_name} ${profile.last_name}`.trim()
+        : "Unknown";
+
+      // Save delay info to collection_details
+      if (delayedSchedule) {
+        const today = new Date().toISOString().slice(0, 10);
+
+        // Check if there's an existing collection_details for today
+        const { data: existing } = await supabase
+          .from("collection_details")
+          .select("collectiondetails_id")
+          .eq("schedule_id", delayedSchedule.schedule_id)
+          .eq("collection_date", today)
+          .maybeSingle();
+
+        // Determine main reason (use custom text if provided)
+        const mainReason =
+          delayReason === "Custom reason" ? customReason.trim() : delayReason;
+        // Build a combined delay_reason string with all info (include estimated delay only if provided)
+        const combinedReason = `${mainReason}${estimatedDelay ? ` | Est. delay: ${estimatedDelay}` : ""}${delayNotes.trim() ? ` | Notes: ${delayNotes.trim()}` : ""}`;
+
+        if (existing?.collectiondetails_id) {
+          // Update existing record
+          await supabase
+            .from("collection_details")
+            .update({
+              delay_reason: combinedReason,
+              status: "Delayed",
+            })
+            .eq("collectiondetails_id", existing.collectiondetails_id);
+        } else {
+          // Get truck
+          const { data: truck } = await supabase
+            .from("garbage_trucks")
+            .select("truck_id")
+            .eq("gcp_user_id", authData.user.id)
+            .single();
+
+          // Insert new record with delay info
+          await supabase.from("collection_details").insert({
+            schedule_id: delayedSchedule.schedule_id,
+            truck_id: truck?.truck_id || null,
+            collection_date: today,
+            delay_reason: combinedReason,
+            status: "Delayed",
+          });
+        }
+
+        // Send SMS notifications to Secretary, BWMC, and Residents
+        try {
+          await fetch("/api/notifications/collection-delay", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              scheduleId: delayedSchedule.schedule_id,
+              barangayId: delayedSchedule.barangay?.barangay_id,
+              barangayName:
+                delayedSchedule.barangay?.barangay_name || "Unknown",
+              delayReason: mainReason,
+              delayNotes: delayNotes.trim() || undefined,
+              estimatedDelay: estimatedDelay || undefined,
+              gcpName,
+            }),
+          });
+        } catch (notifyErr) {
+          console.error("Failed to send delay notifications:", notifyErr);
+        }
+        // remember submitted reason for display
+        setSubmittedReason(mainReason);
+      }
+
+      setDelaySuccess("Delay reason submitted successfully.");
+      setDelaySubmitted(true);
+      setTimeout(() => {
+        setDelayModalOpen(false);
+        setDelaySuccess(null);
+      }, 2000);
+    } catch (err: any) {
+      setDelayError(err.message || "Failed to submit delay reason.");
+    } finally {
+      setDelaySaving(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Minimized floating indicator - pulse to remind GCP */}
+      {minimized && !delaySubmitted && delayedSchedule && (
+        <div className="fixed bottom-6 right-6 z-50 animate-bounce">
+          <button
+            type="button"
+            onClick={handleOpenFromMinimized}
+            className="flex items-center gap-2 rounded-full bg-slate-900 hover:bg-amber-500 text-white px-5 py-3 shadow-2xl shadow-amber-900/50 border border-amber-400/50 transition-all"
+          >
+            <span className="text-xl">⚠️</span>
+            <span className="text-sm font-semibold">Report Delay</span>
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-300 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-200" />
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Delay Submitted badge */}
+      {delaySubmitted && delayedSchedule && (
+        <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs text-amber-200 flex items-center gap-2">
+          <span>⚠️</span>
+          <span>
+            Delay reported for{" "}
+            <strong>{delayedSchedule.barangay?.barangay_name || "N/A"}</strong>:{" "}
+            {submittedReason || delayReason} (est. {estimatedDelay})
+          </span>
+        </div>
+      )}
+
+      {/* Delay Modal */}
+      <Dialog
+        open={delayModalOpen}
+        onOpenChange={(open: boolean) => {
+          if (!open && !delaySubmitted) {
+            // Minimize instead of closing
+            handleMinimize();
+          } else {
+            setDelayModalOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md bg-slate-900 border border-emerald-500/30 rounded-2xl shadow-2xl p-0 overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-emerald-600/20 to-teal-600/20 border-b border-emerald-500/20 p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <svg
+                  className="w-5 h-5 text-emerald-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold text-slate-100">
+                  Collection Delay Report
+                </DialogTitle>
+                <p className="text-xs text-emerald-400/70 font-medium uppercase tracking-wider mt-1">
+                  Delay Notification
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+              <p className="text-sm text-emerald-200/90">
+                Your collection for{" "}
+                <strong className="text-emerald-100">
+                  {delayedSchedule?.barangay?.barangay_name || "N/A"}
+                </strong>{" "}
+                scheduled at{" "}
+                <strong className="text-emerald-100">
+                  {formatTime12(delayedSchedule?.start_time || null)}
+                </strong>{" "}
+                appears to be delayed.
+              </p>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-5 space-y-5">
+            {/* Delay Reason */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider">
+                Reason for delay <span className="text-red-400">*</span>
+              </Label>
+              <div className="relative">
+                <select
+                  value={delayReason}
+                  onChange={(e) => setDelayReason(e.target.value)}
+                  className="w-full rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="" className="bg-slate-900">
+                    Select a reason...
+                  </option>
+                  {DELAY_REASONS.map((reason) => (
+                    <option
+                      key={reason}
+                      value={reason}
+                      className="bg-slate-900"
+                    >
+                      {reason}
+                    </option>
+                  ))}
+                  <option value="Custom reason" className="bg-slate-900">
+                    Custom reason
+                  </option>
+                </select>
+                <svg
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500/70 pointer-events-none"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+
+              {delayReason === "Custom reason" && (
+                <Input
+                  type="text"
+                  value={customReason}
+                  onChange={(e) => setCustomReason(e.target.value)}
+                  className="mt-2 rounded-lg bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+                  placeholder="Type your reason here..."
+                  maxLength={100}
+                />
+              )}
+            </div>
+
+            {/* Messages */}
+            {delayError && (
+              <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 p-3">
+                <svg
+                  className="w-4 h-4 text-red-400 shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span className="text-xs text-red-200/90">{delayError}</span>
+              </div>
+            )}
+
+            {delaySuccess && (
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
+                <div className="w-4 h-4 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                </div>
+                <span className="text-xs text-emerald-200/90">
+                  {delaySuccess}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="bg-slate-800/30 border-t border-slate-700/50 px-5 py-4 flex items-center justify-between gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleMinimize}
+              disabled={delaySaving}
+              className="text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 text-sm"
+            >
+              Minimize
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmitDelay}
+              disabled={delaySaving}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg shadow-lg shadow-emerald-900/30 transition-all duration-200 hover:shadow-emerald-500/25 disabled:opacity-50"
+            >
+              {delaySaving ? (
+                <span className="flex items-center gap-2">
+                  <svg
+                    className="w-4 h-4 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9M4 7l3 9m-3 9l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
+                    />
+                  </svg>
+                  Submitting...
+                </span>
+              ) : (
+                "Submit Report"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 // Schedules Viewer for GCP
 function GCPScheduleSection() {
   const [mainLoading, setMainLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [manualDelaySchedule, setManualDelaySchedule] =
+    useState<Schedule | null>(null);
 
   useEffect(() => {
     async function fetchGCPSchedules() {
@@ -478,6 +971,15 @@ function GCPScheduleSection() {
           My Assigned Schedule
         </h2>
 
+        {/* Delay Monitor - auto-pops when collection is delayed */}
+        {!mainLoading && schedules.length > 0 && (
+          <CollectionDelayMonitor
+            schedules={schedules}
+            manualOpenSchedule={manualDelaySchedule}
+            onManualHandled={() => setManualDelaySchedule(null)}
+          />
+        )}
+
         {mainLoading ? (
           <TruckLoader />
         ) : error ? (
@@ -490,9 +992,21 @@ function GCPScheduleSection() {
               key={schedule.schedule_id}
               className="mb-8 rounded-2xl border border-green-800/40 bg-slate-900/70 p-4 shadow-inner shadow-green-900/30"
             >
-              <h3 className="font-semibold text-lg mb-2 text-slate-100">
-                Barangay: {schedule.barangay?.barangay_name || "N/A"}
-              </h3>
+              <div className="flex items-center justify-between mb-2 gap-3">
+                <h3 className="font-semibold text-lg text-slate-100">
+                  Barangay: {schedule.barangay?.barangay_name || "N/A"}
+                </h3>
+                {isTodayScheduled(schedule.days) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setManualDelaySchedule(schedule)}
+                    className="h-auto text-xs px-3 py-1.5 border-amber-600/50 text-amber-400 hover:bg-amber-600/20 hover:text-amber-300"
+                  >
+                    ⚠️ Report Delay
+                  </Button>
+                )}
+              </div>
               <div className="text-slate-200 text-sm mb-1">
                 <span className="font-semibold text-emerald-300">
                   Days/Pattern:
@@ -1778,7 +2292,9 @@ export default function GCPDashboard() {
                 value={form.email}
                 onChange={onChange}
                 required
-                className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
+                disabled
+                readOnly
+                className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500 cursor-not-allowed opacity-60"
                 placeholder="user@tagbilaran.gov.ph"
               />
             </div>

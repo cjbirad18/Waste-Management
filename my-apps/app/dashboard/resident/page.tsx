@@ -1644,6 +1644,7 @@ function ManageAccountSection({
             value={form.email}
             onChange={onChange}
             required
+            disabled
           />
           <InputField
             label="Contact Number"
@@ -1687,6 +1688,7 @@ function InputField({
   onChange,
   required = false,
   placeholder = "",
+  disabled = false,
 }: {
   label: string;
   name: string;
@@ -1695,6 +1697,7 @@ function InputField({
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
     <div className="mb-4 space-y-2">
@@ -1710,7 +1713,11 @@ function InputField({
         required={required}
         placeholder={placeholder}
         autoComplete="off"
-        className="text-xs"
+        disabled={disabled}
+        readOnly={disabled}
+        className={
+          disabled ? "text-xs cursor-not-allowed opacity-60" : "text-xs"
+        }
       />
     </div>
   );
@@ -2515,7 +2522,7 @@ export default function ResidentDashboard() {
                   className="fixed inset-0 z-40"
                   onClick={() => setProfileDropdownOpen(false)}
                 />
-                <div className="absolute right-0 mt-2 w-56 rounded-lg bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-50">
+                <div className="absolute right-0 mt-55 w-56 rounded-lg bg-slate-900 border border-slate-800 shadow-xl overflow-hidden z-50">
                   <div className="p-3 border-b border-slate-800">
                     <p className="text-xs text-slate-400 font-medium">
                       {displayName}

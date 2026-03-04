@@ -302,6 +302,10 @@ function ScheduleFormWithCalendar({
     (b) => !scheduledBarangayIds.includes(b.barangay_id),
   );
 
+  // Filter out GCPs already assigned to an active schedule
+  const assignedGcpIds = new Set(schedules.map((s) => s.gcp_user_id));
+  const availableGcps = gcps.filter((g) => !assignedGcpIds.has(g.user_id));
+
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
@@ -618,7 +622,7 @@ function ScheduleFormWithCalendar({
                   <option value="" className="bg-slate-900">
                     Select
                   </option>
-                  {gcps.map((g) => (
+                  {availableGcps.map((g) => (
                     <option
                       key={g.user_id}
                       value={g.user_id}
@@ -912,6 +916,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
   const [error, setError] = useState<string | null>(null);
   const [editScheduleId, setEditScheduleId] = useState<string | null>(null);
   const [editPattern, setEditPattern] = useState("");
+  const [editStartTime, setEditStartTime] = useState("");
   const [schedules, setSchedules] = useState<SidebarSchedule[]>([]);
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [archivedSchedules, setArchivedSchedules] = useState<any[]>([]);
@@ -938,6 +943,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
       barangay_id
     ),
     days,
+    start_time,
     date_created,
     gcp_user:gcp_user_id (
       first_name,
@@ -1101,6 +1107,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
   const handleEdit = (schedule: any) => {
     setEditScheduleId(schedule.schedule_id as string);
     setEditPattern(schedule.days as string);
+    setEditStartTime(schedule.start_time || "05:00");
   };
 
   // Save edit
@@ -1111,7 +1118,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
     try {
       const { error } = await supabase
         .from("collection_schedules")
-        .update({ days: editPattern })
+        .update({ days: editPattern, start_time: editStartTime })
         .eq("schedule_id", schedule.schedule_id);
 
       if (error) throw error;
@@ -1127,9 +1134,11 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
             barangayId: schedule.barangay.barangay_id,
             updateType: "updated",
             scheduleDate: schedule.date_created,
-            scheduleTime: schedule.start_time,
+            scheduleTime: editStartTime,
             oldPattern: schedule.days,
             newPattern: editPattern,
+            oldStartTime: schedule.start_time,
+            newStartTime: editStartTime,
           }),
         },
       );
@@ -1159,7 +1168,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
       setSchedules((s) =>
         s.map((sc: any) =>
           sc.schedule_id === schedule.schedule_id
-            ? { ...sc, days: editPattern }
+            ? { ...sc, days: editPattern, start_time: editStartTime }
             : sc,
         ),
       );
@@ -1281,6 +1290,11 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
                   </div>
                   <div className="text-xs text-emerald-400 break-words">
                     {schedule.days}
+                    {schedule.start_time && (
+                      <span className="ml-2 text-slate-400">
+                        • Departure: {schedule.start_time}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -1301,6 +1315,19 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
                         </option>
                         <option value="TTH">Tuesday, Thursday (TTH)</option>
                       </select>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-slate-400 whitespace-nowrap">
+                          Departure:
+                        </span>
+                        <input
+                          type="time"
+                          value={editStartTime}
+                          onChange={(e) => setEditStartTime(e.target.value)}
+                          className="w-full xs:w-28 sm:w-32 h-8 rounded-lg bg-slate-900/80 border border-slate-600/50 px-2 py-1 text-xs text-slate-200
+                                 focus:outline-none focus:ring-1 focus:ring-emerald-400/50 focus:border-emerald-500/70
+                                 transition-all backdrop-blur-sm shadow-sm cursor-pointer"
+                        />
+                      </div>
                       <button
                         disabled={isSavingSchedule}
                         className={`h-8 px-3 text-xs font-bold text-white rounded-lg shadow-md transition-all duration-200 flex items-center justify-center whitespace-nowrap ${
@@ -1700,7 +1727,10 @@ function ManageAccountSection({
               value={form.email}
               onChange={onChange}
               required
+              disabled
+              readOnly
               placeholder="user@tagbilaran.gov.ph"
+              className="cursor-not-allowed opacity-60"
             />
           </div>
         </div>
@@ -1788,6 +1818,9 @@ function InputField({
 function SecretaryReportsSection() {
   const [reports, setReports] = useState<any[]>([]);
   const [gcpUsers, setGcpUsers] = useState<any[]>([]);
+  const [barangayList, setBarangayList] = useState<
+    { barangay_id: string; barangay_name: string }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -1796,6 +1829,13 @@ function SecretaryReportsSection() {
   const [selectedGcpId, setSelectedGcpId] = useState("");
   const [taskDetails, setTaskDetails] = useState("");
   const [assignError, setAssignError] = useState("");
+
+  // View modal state
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewReport, setViewReport] = useState<any | null>(null);
+
+  // Barangay filter
+  const [barangayFilter, setBarangayFilter] = useState<string>("all");
 
   // Search & Pagination
   const [searchTerm, setSearchTerm] = useState("");
@@ -1830,7 +1870,7 @@ function SecretaryReportsSection() {
       // 2) all passed incidents (status Needs Action)
       const { data: reportData, error: reportError } = await supabase
         .from("community_reports")
-        .select("*")
+        .select("*, barangay:barangay_id(barangay_id, barangay_name)")
         .in("current_status", ["Needs Action", "Ongoing", "Resolved"])
         .order("date_submitted", { ascending: false });
 
@@ -1852,6 +1892,14 @@ function SecretaryReportsSection() {
       if (!gcpError) {
         setGcpUsers(gcpData || []);
       }
+
+      // 4) fetch barangays for filter dropdown
+      const { data: brgyData } = await supabase
+        .from("barangay")
+        .select("barangay_id, barangay_name")
+        .order("barangay_name", { ascending: true });
+
+      setBarangayList(brgyData || []);
 
       setLoading(false);
     };
@@ -1975,6 +2023,10 @@ function SecretaryReportsSection() {
 
   // Filtered reports
   const filteredReports = reports.filter((r) => {
+    // Barangay filter
+    if (barangayFilter !== "all" && String(r.barangay_id) !== barangayFilter)
+      return false;
+
     // Tab filter
     if (reportFilterTab !== "all" && r.current_status !== reportFilterTab)
       return false;
@@ -1984,7 +2036,9 @@ function SecretaryReportsSection() {
       !search ||
       (r.location && r.location.toLowerCase().includes(search)) ||
       (r.landmark && r.landmark.toLowerCase().includes(search)) ||
-      (r.report_id && String(r.report_id).toLowerCase().includes(search))
+      (r.report_id && String(r.report_id).toLowerCase().includes(search)) ||
+      (r.barangay?.barangay_name &&
+        r.barangay.barangay_name.toLowerCase().includes(search))
     );
   });
 
@@ -2015,7 +2069,7 @@ function SecretaryReportsSection() {
   return (
     <>
       {/* Main card with passed incidents */}
-      <section className="dashboard-section max-w-6xl mx-auto rounded-3xl bg-slate-900/95 border border-slate-800 px-10 py-8 shadow-2xl">
+      <section className="dashboard-section max-w-9xl mx-auto rounded-3xl bg-slate-900/95 border border-slate-800 px-10 py-8 shadow-2xl">
         <div className="dashboard-section-glow" />
 
         <div className="relative z-5000">
@@ -2023,65 +2077,90 @@ function SecretaryReportsSection() {
             Passed Incident Reports
           </h2>
 
-          {/* Filter tabs + Sort + Search */}
-          <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              {(["all", "Needs Action", "Ongoing", "Resolved"] as const).map(
-                (tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => {
-                      setReportFilterTab(tab);
-                      setCurrentPage(1);
-                    }}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all duration-200 ${
-                      reportFilterTab === tab
-                        ? "bg-emerald-600/20 text-emerald-400 border-emerald-500/40"
-                        : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:bg-slate-700/60 hover:text-slate-200"
-                    }`}
-                  >
-                    {tab === "all" ? "All" : tab}
-                  </button>
-                ),
-              )}
-            </div>
-
+          {/* Barangay filter + Filter tabs + Sort + Search */}
+          <div className="flex flex-col gap-3 mb-4">
+            {/* Barangay dropdown */}
             <div className="flex items-center gap-3">
+              <label className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider whitespace-nowrap">
+                Barangay
+              </label>
               <select
-                value={reportDateSort}
+                value={barangayFilter}
                 onChange={(e) => {
-                  setReportDateSort(e.target.value as "newest" | "oldest");
+                  setBarangayFilter(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 appearance-none cursor-pointer"
+                className="flex-1 max-w-xs rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 appearance-none cursor-pointer"
               >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
+                <option value="all">All Barangays</option>
+                {barangayList.map((b) => (
+                  <option key={b.barangay_id} value={b.barangay_id}>
+                    {b.barangay_name}
+                  </option>
+                ))}
               </select>
-              <div className="relative w-full max-w-xs">
-                <input
-                  type="text"
-                  placeholder="Search reports..."
-                  value={searchTerm}
+            </div>
+
+            {/* Filter tabs + Sort + Search */}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                {(["all", "Needs Action", "Ongoing", "Resolved"] as const).map(
+                  (tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => {
+                        setReportFilterTab(tab);
+                        setCurrentPage(1);
+                      }}
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all duration-200 ${
+                        reportFilterTab === tab
+                          ? "bg-emerald-600/20 text-emerald-400 border-emerald-500/40"
+                          : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:bg-slate-700/60 hover:text-slate-200"
+                      }`}
+                    >
+                      {tab === "all" ? "All" : tab}
+                    </button>
+                  ),
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <select
+                  value={reportDateSort}
                   onChange={(e) => {
-                    setSearchTerm(e.target.value);
+                    setReportDateSort(e.target.value as "newest" | "oldest");
                     setCurrentPage(1);
                   }}
-                  className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 pl-9 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500"
-                />
-                <svg
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                  className="rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 appearance-none cursor-pointer"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                </select>
+                <div className="relative w-full max-w-xs">
+                  <input
+                    type="text"
+                    placeholder="Search reports..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full rounded-lg bg-slate-900/80 border border-green-800/50 pl-9 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500"
                   />
-                </svg>
+                  <svg
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
@@ -2108,6 +2187,9 @@ function SecretaryReportsSection() {
                       Report ID
                     </th>
                     <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Barangay
+                    </th>
+                    <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
                       Location
                     </th>
                     <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -2132,6 +2214,9 @@ function SecretaryReportsSection() {
                     >
                       <td className="px-5 py-4 text-emerald-400 font-bold whitespace-nowrap">
                         RP-{report.report_id}
+                      </td>
+                      <td className="px-5 py-4 text-slate-300">
+                        {report.barangay?.barangay_name || "—"}
                       </td>
                       <td className="px-5 py-4 text-slate-300">
                         {report.location}
@@ -2168,17 +2253,27 @@ function SecretaryReportsSection() {
                         )}
                       </td>
                       <td className="px-5 py-4">
-                        {report.current_status === "Needs Action" ? (
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => handleOpenAssign(report)}
-                            className="text-emerald-400 hover:text-emerald-300 font-semibold text-sm transition-colors"
+                            onClick={() => {
+                              setViewReport(report);
+                              setViewModalOpen(true);
+                            }}
+                            className="text-blue-400 hover:text-blue-300 font-semibold text-sm transition-colors"
                           >
-                            Assign
+                            View
                           </button>
-                        ) : (
-                          <span className="text-slate-500 text-sm">—</span>
-                        )}
+                          {report.current_status === "Needs Action" && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAssign(report)}
+                              className="text-emerald-400 hover:text-emerald-300 font-semibold text-sm transition-colors"
+                            >
+                              Assign
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -2443,6 +2538,277 @@ function SecretaryReportsSection() {
                     />
                   </svg>
                   Assign Task
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {/* View Report Detail Modal */}
+      {viewModalOpen &&
+        viewReport &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setViewModalOpen(false)}
+          >
+            <div
+              className="relative w-full max-w-2xl max-h-[90vh] bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-blue-600/20 to-cyan-600/20 border-b border-slate-700/50 p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+                      <svg
+                        className="w-5 h-5 text-blue-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-100">
+                        Report Details
+                      </h3>
+                      <p className="text-xs text-blue-400/70 font-medium uppercase tracking-wider mt-0.5">
+                        RP-{viewReport.report_id}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setViewModalOpen(false)}
+                    className="w-8 h-8 rounded-lg bg-slate-800/50 border border-slate-600/50 text-slate-400 hover:text-white hover:bg-red-500/20 hover:border-red-500/50 transition-all duration-200 flex items-center justify-center"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-4 overflow-y-auto">
+                {/* Status badge */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Status:
+                  </span>
+                  <span
+                    className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
+                      viewReport.current_status === "Needs Action"
+                        ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                        : viewReport.current_status === "Ongoing"
+                          ? "bg-blue-500/15 text-blue-300 border border-blue-500/30"
+                          : viewReport.current_status === "Resolved"
+                            ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                            : "bg-slate-500/15 text-slate-400 border border-slate-500/30"
+                    }`}
+                  >
+                    {viewReport.current_status}
+                  </span>
+                </div>
+
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg
+                        className="w-4 h-4 text-emerald-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"
+                        />
+                      </svg>
+                      <span className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider">
+                        Barangay
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium text-slate-200">
+                      {viewReport.barangay?.barangay_name || "—"}
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg
+                        className="w-4 h-4 text-emerald-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                      </svg>
+                      <span className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider">
+                        Location
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium text-slate-200">
+                      {viewReport.location}
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg
+                        className="w-4 h-4 text-blue-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                        />
+                      </svg>
+                      <span className="text-xs font-semibold text-blue-400/80 uppercase tracking-wider">
+                        Landmark
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium text-slate-200">
+                      {viewReport.landmark || "—"}
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg
+                        className="w-4 h-4 text-purple-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                      <span className="text-xs font-semibold text-purple-400/80 uppercase tracking-wider">
+                        Date Submitted
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium text-slate-200">
+                      {new Date(viewReport.date_submitted).toLocaleString(
+                        "en-US",
+                        {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                        },
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Description */}
+                {viewReport.description && (
+                  <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg
+                        className="w-4 h-4 text-amber-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M4 6h16M4 12h16M4 18h7"
+                        />
+                      </svg>
+                      <span className="text-xs font-semibold text-amber-400/80 uppercase tracking-wider">
+                        Description
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+                      {viewReport.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Photo */}
+                {viewReport.photo_path && (
+                  <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg
+                        className="w-4 h-4 text-cyan-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                      <span className="text-xs font-semibold text-cyan-400/80 uppercase tracking-wider">
+                        Photo Evidence
+                      </span>
+                    </div>
+                    <img
+                      src={viewReport.photo_path}
+                      alt="Incident photo"
+                      className="w-full max-h-64 object-contain rounded-lg border border-slate-700/30"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="bg-slate-800/30 border-t border-slate-700/50 px-6 py-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setViewModalOpen(false)}
+                  className="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-sm font-medium text-slate-200 rounded-lg transition-colors"
+                >
+                  Close
                 </button>
               </div>
             </div>
