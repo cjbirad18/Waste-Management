@@ -7,6 +7,17 @@ import React, {
   ChangeEvent,
   FormEvent,
 } from "react";
+
+// utility used by several dashboards for creating temporary passwords
+function generateTempPassword(length = 12) {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import dynamic from "next/dynamic";
@@ -265,6 +276,13 @@ export default function TcemoDashboard() {
   // Reports
   const [activeReportOption, setActiveReportOption] =
     useState<ReportOption>("wasteCollection");
+
+  // when generating barangay concerns report the user must pick a barangay first
+  const [reportBarangayId, setReportBarangayId] = useState<string>("");
+  const [barangayOptions, setBarangayOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
+
   const [wasteCollectionData, setWasteCollectionData] = useState<
     { month: string; tons: number }[]
   >([]);
@@ -404,6 +422,16 @@ export default function TcemoDashboard() {
     fetchBarangays();
   }, []);
 
+  // convert the list we already fetch for schedules into select options
+  useEffect(() => {
+    setBarangayOptions(
+      schedulesBarangays.map((b) => ({
+        value: String(b.barangay_id),
+        label: b.barangay_name,
+      })),
+    );
+  }, [schedulesBarangays]);
+
   const fetchSchedules = useCallback(async () => {
     setLoadingSchedules(true);
     setSchedulesError(null);
@@ -524,15 +552,12 @@ export default function TcemoDashboard() {
       !userForm.first_name.trim() ||
       !userForm.last_name.trim() ||
       !userForm.email.trim() ||
-      !userForm.contact_number.trim() ||
-      !userForm.password.trim()
+      !userForm.contact_number.trim()
     ) {
       return "All fields are required";
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userForm.email)) return "Invalid email format";
-    if (userForm.password.length < 6)
-      return "Password must be at least 6 characters";
     return null;
   };
 
@@ -657,39 +682,55 @@ export default function TcemoDashboard() {
     }
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userForm.email,
-        password: userForm.password,
-      });
-      if (authError) {
-        setFormError(`Account creation error: ${authError.message}`);
-        return;
-      }
-      if (!authData?.user) {
-        setFormError("User not found after sign up.");
-        return;
-      }
-      const userId = authData.user.id;
-      const uniqueUsername = `swmohead_${Date.now()}`;
-      const { error: insertError } = await supabase.from("users").insert([
-        {
-          user_id: userId,
-          username: uniqueUsername,
+      const tempPassword = generateTempPassword(10);
+      // call backend admin create
+      const res = await fetch("/api/admin/create-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: userForm.email,
+          username: `swmohead_${Date.now()}`,
           first_name: userForm.first_name,
           last_name: userForm.last_name,
-          email: userForm.email,
           contact_number: userForm.contact_number,
           role: "SWMO Head",
-          status: "active", // changed
-        },
-      ]);
-      if (insertError) {
-        setFormError(`Error saving user profile: ${insertError.message}`);
-        return;
+          tempPassword,
+        }),
+      });
+      const text = await res.text();
+      let payload: any;
+      try {
+        payload = JSON.parse(text);
+      } catch (parseErr) {
+        throw new Error(`Server returned invalid JSON: ${text}`);
       }
+      if (!res.ok || !payload.success) {
+        throw new Error(payload.error || `Failed to create user: ${text}`);
+      }
+      const userId = payload.userId;
+      const uniqueUsername = `swmohead_${Date.now()}`;
       setFormSuccess(
         `User account created successfully! Username: ${uniqueUsername}`,
       );
+      // send notification with temp password
+      try {
+        const notifRes = await fetch("/api/notifications/account-created/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            role: "SWMO Head",
+            createdBy: "TCEMO Head",
+            tempPassword,
+          }),
+        });
+        const notifData = await notifRes.json();
+        if (!notifRes.ok) {
+          console.error("Notification API error:", notifData.error);
+        }
+      } catch (notifErr) {
+        console.error("Notification API call failed:", notifErr);
+      }
       setUserForm({
         first_name: "",
         last_name: "",
@@ -1168,33 +1209,12 @@ export default function TcemoDashboard() {
                         required
                       />
 
-                      <div className="mb-4">
-                        <label
-                          className="block mb-1 text-xs font-medium text-slate-300"
-                          htmlFor="password"
-                        >
-                          Password
-                        </label>
-                        <div className="relative">
-                          <input
-                            id="password"
-                            className="w-full px-3 py-2 border border-slate-700 rounded-lg bg-slate-800 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:border-emerald-600 transition-colors"
-                            type={showPassword ? "text" : "password"}
-                            name="password"
-                            value={userForm.password}
-                            onChange={handleUserFormChange}
-                            placeholder="Password"
-                            required
-                          />
-                          <button
-                            type="button"
-                            className="absolute right-2 top-2 text-slate-400 text-xs"
-                            onClick={() => setShowPassword(!showPassword)}
-                          >
-                            {showPassword ? "Hide" : "Show"}
-                          </button>
-                        </div>
-                      </div>
+                      {/* password is autogenerated and sent via SMS */}
+                      <p className="text-xs text-slate-400 mb-4">
+                        A temporary password will be generated automatically and
+                        delivered to the new SWMO Head by SMS. They will be
+                        required to change it when they first log in.
+                      </p>
                       <div className="flex justify-end mt-4">
                         <Button
                           type="submit"
@@ -1517,21 +1537,52 @@ export default function TcemoDashboard() {
               {activeReportOption === "wasteCollection" && <ReportsAnalytics />}
 
               {activeReportOption === "barangayConcerns" && (
-                <BarangayConcernsAnalytics />
+                <>
+                  <div className="mb-4">
+                    <Label className="text-xs font-semibold text-slate-100">
+                      Select Barangay
+                    </Label>
+                    <select
+                      className="mt-1 block w-full rounded-md bg-slate-900/80 border border-slate-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      value={reportBarangayId}
+                      onChange={(e) => setReportBarangayId(e.target.value)}
+                    >
+                      <option value="">-- choose barangay --</option>
+                      {barangayOptions.map((b) => (
+                        <option key={b.value} value={String(b.value)}>
+                          {b.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {reportBarangayId ? (
+                    <BarangayConcernsAnalytics
+                      barangayId={Number(reportBarangayId) || undefined}
+                    />
+                  ) : (
+                    <p className="text-xs text-slate-400">
+                      Please select a barangay to view the chart.
+                    </p>
+                  )}
+                </>
               )}
             </section>
           )}
 
           {/* MANAGE ACCOUNT – card style */}
           {activeTab === "manageAccount" && (
-            <ManageAccountSection
-              form={manageAccountForm}
-              loading={manageAccountLoading}
-              error={manageAccountError}
-              success={manageAccountSuccess}
-              onChange={handleManageAccountFormChange}
-              onSubmit={handleManageAccountSubmit}
-            />
+            <div className="dashboard-section max-w-2xl mx-auto">
+              <div className="relative z-10">
+                <ManageAccountSection
+                  form={manageAccountForm}
+                  loading={manageAccountLoading}
+                  error={manageAccountError}
+                  success={manageAccountSuccess}
+                  onChange={handleManageAccountFormChange}
+                  onSubmit={handleManageAccountSubmit}
+                />
+              </div>
+            </div>
           )}
 
           {/* Confirmation Modal */}
@@ -1611,84 +1662,80 @@ function ManageAccountSection({
 }) {
   if (loading) return <TruckLoader />;
   return (
-    <section className="max-w-3xl mx-auto rounded-lg bg-slate-900 border border-slate-800 p-6">
-      <div className="relative z-10">
-        <h2 className="text-lg font-bold mb-4 text-slate-100">
-          Manage Account
-        </h2>
-        {error && (
-          <div className="mb-4 px-3 py-2 rounded-lg bg-red-500/10 text-red-300 border border-red-500/30 text-xs">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="mb-4 px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-xs">
-            {success}
-          </div>
-        )}
-        <form onSubmit={onSubmit} noValidate>
-          <InputField
-            label="First Name"
-            name="first_name"
-            type="text"
-            value={form.first_name}
-            onChange={onChange}
-            required
-          />
-          <InputField
-            label="Last Name"
-            name="last_name"
-            type="text"
-            value={form.last_name}
-            onChange={onChange}
-            required
-          />
-          <InputField
-            label="Username"
-            name="username"
-            type="text"
-            value={form.username}
-            onChange={onChange}
-            required
-          />
-          <InputField
-            label="Email"
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={onChange}
-            required
-            disabled
-          />
-          <InputField
-            label="Contact Number"
-            name="contact_number"
-            type="tel"
-            value={form.contact_number}
-            onChange={onChange}
-            required
-          />
-          <InputField
-            label="New Password"
-            name="password"
-            type="password"
-            value={form.password}
-            onChange={onChange}
-            placeholder="Leave blank to keep current password"
-          />
-          <InputField
-            label="Confirm New Password"
-            name="confirm_password"
-            type="password"
-            value={form.confirm_password}
-            onChange={onChange}
-            placeholder="Confirm your new password"
-          />
-          <div className="flex justify-end mt-6">
-            <Button type="submit">Update Account</Button>
-          </div>
-        </form>
-      </div>
-    </section>
+    <div className="max-w-5xl mx-auto rounded-lg bg-slate-900 border border-slate-800 px-6 py-6">
+      <h2 className="text-lg font-bold mb-4 text-slate-100">Manage Account</h2>
+      {error && (
+        <div className="mb-4 px-3 py-2 rounded-lg bg-red-500/10 text-red-300 border border-red-500/30 text-xs">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-4 px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-xs">
+          {success}
+        </div>
+      )}
+      <form onSubmit={onSubmit} noValidate>
+        <InputField
+          label="First Name"
+          name="first_name"
+          type="text"
+          value={form.first_name}
+          onChange={onChange}
+          required
+        />
+        <InputField
+          label="Last Name"
+          name="last_name"
+          type="text"
+          value={form.last_name}
+          onChange={onChange}
+          required
+        />
+        <InputField
+          label="Username"
+          name="username"
+          type="text"
+          value={form.username}
+          onChange={onChange}
+          required
+        />
+        <InputField
+          label="Email"
+          name="email"
+          type="email"
+          value={form.email}
+          onChange={onChange}
+          required
+          disabled
+        />
+        <InputField
+          label="Contact Number"
+          name="contact_number"
+          type="tel"
+          value={form.contact_number}
+          onChange={onChange}
+          required
+        />
+        <InputField
+          label="New Password"
+          name="password"
+          type="password"
+          value={form.password}
+          onChange={onChange}
+          placeholder="Leave blank to keep current password"
+        />
+        <InputField
+          label="Confirm New Password"
+          name="confirm_password"
+          type="password"
+          value={form.confirm_password}
+          onChange={onChange}
+          placeholder="Confirm your new password"
+        />
+        <div className="flex justify-end mt-6">
+          <Button type="submit">Update Account</Button>
+        </div>
+      </form>
+    </div>
   );
 }

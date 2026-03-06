@@ -186,12 +186,13 @@ export default function LoginClient() {
         return;
       }
 
+      // disallow login if the account has been marked inactive or archived
       if (
         userProfile.status &&
-        userProfile.status.toLowerCase() === "inactive"
+        ["inactive", "archived"].includes(userProfile.status.toLowerCase())
       ) {
         setErrorMessage(
-          "Your account has been deactivated. Please contact the system administrator.",
+          "Your account has been deactivated or archived. Please contact the system administrator.",
         );
         await supabase.auth.signOut();
         return;

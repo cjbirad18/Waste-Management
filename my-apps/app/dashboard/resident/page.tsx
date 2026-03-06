@@ -200,6 +200,9 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
   const year = now.getFullYear();
   const month = now.getMonth();
 
+  // normalize to midnight for date comparisons
+  const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
   const patternDates: Date[] = generatePatternDates(schedule.days, year, month);
 
   const weeks: Date[][] = [];
@@ -222,18 +225,23 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
 
   return (
     <div className="my-6">
-      <div className="mb-2 mt-2 flex justify-center">
+      <div className="mb-2 mt-2 flex flex-col items-center">
         <span className="font-semibold text-xl bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow">
           {format(new Date(year, month), "LLLL yyyy")}
+        </span>
+        <span className="text-xs text-slate-400 mt-1">
+          Today: {format(now, "EEEE, MMM d")}
         </span>
       </div>
 
       <div className="mt-6 flex flex-col sm:flex-row gap-6 justify-center max-w-[450px] mx-auto items-center">
         <div className="flex items-center gap-2">
-          <div className="h-5 w-5 rounded bg-emerald-600 border border-emerald-500" />
-          <span className="text-slate-200 text-sm">Scheduled</span>
+          <div className="h-5 w-5 rounded bg-gradient-to-br from-emerald-600 to-teal-700 border border-emerald-400/30" />
+          <span className="text-slate-200 text-sm">Upcoming</span>
         </div>
         <div className="flex items-center gap-2">
+          <div className="h-5 w-5 rounded bg-emerald-700/50 border border-emerald-500/30" />
+          <span className="text-slate-200 text-sm">Completed</span>
           <div className="h-5 w-5 rounded bg-red-500/30 border border-red-400" />
           <span className="text-slate-200 text-sm">Today</span>
         </div>
@@ -263,6 +271,7 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
               day.getDate() === now.getDate() &&
               day.getMonth() === now.getMonth() &&
               day.getFullYear() === now.getFullYear();
+            const isPast = isCurrentMonth && day < todayMid;
             const dayText = isCurrentMonth ? format(day, "d") : "";
 
             let cellClass =
@@ -272,6 +281,9 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
             } else if (isToday) {
               cellClass +=
                 " bg-red-500/25 text-red-300 font-bold border-red-400 shadow-md shadow-red-900/40";
+            } else if (isScheduled && isPast) {
+              cellClass +=
+                " bg-emerald-700/50 text-slate-200 border border-emerald-500/30";
             } else if (isScheduled) {
               cellClass +=
                 " bg-emerald-600 text-white font-bold border-emerald-500 shadow-md shadow-emerald-900/50";

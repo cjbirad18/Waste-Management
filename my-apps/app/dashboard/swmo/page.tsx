@@ -106,6 +106,20 @@ function SidebarItem({
   );
 }
 
+// helper to create a random temporary password.  the TA wants the system to
+// provide the password and deliver it by SMS, so we generate one on the
+// client side before calling Supabase and pass it along to the backend
+// notifier.  length and character set can be adjusted as needed.
+function generateTempPassword(length = 12) {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";
+  let pwd = "";
+  for (let i = 0; i < length; i++) {
+    pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pwd;
+}
+
 function InputField({
   label,
   name,
@@ -122,7 +136,7 @@ function InputField({
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
   placeholder?: string;
-}) {
+}): React.JSX.Element {
   return (
     <div className="mb-4 space-y-2">
       <Label htmlFor={name} className="text-xs font-medium text-slate-300">
@@ -345,6 +359,8 @@ export default function AdminDashboard() {
     email: "",
     contact_number: "",
     role: "",
+    // password field is no longer filled by the administrator – we will
+    // auto‑generate one when the form is submitted.
     password: "",
     barangay_id: "",
   });
@@ -467,7 +483,6 @@ export default function AdminDashboard() {
   ];
 
   const [counts, setCounts] = useState({
-    residents: 0,
     gcps: 0,
     barangays: 0,
     incidentReports: 0,
@@ -475,24 +490,23 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function fetchCounts() {
-      let residentCount = 0;
       let gcpCount = 0;
       let barangayCount = 0;
       let reportCount = 0;
 
-      // Residents: users WHERE role = 'Resident'
+      // GCPs: users WHERE role = 'GCP'
       try {
         const { count, error } = await supabase
           .from("users")
           .select("user_id", { count: "exact", head: true })
-          .eq("role", "Resident");
+          .eq("role", "GCP");
         if (error) {
-          console.error("Resident count fetch error:", error);
+          console.error("GCP count fetch error:", error);
         } else {
-          residentCount = count || 0;
+          gcpCount = count || 0;
         }
       } catch (err) {
-        console.error("Unexpected error fetching Resident count:", err);
+        console.error("Unexpected error fetching GCP count:", err);
       }
 
       // GCPs: users WHERE role = 'GCP'
@@ -540,7 +554,6 @@ export default function AdminDashboard() {
       }
 
       setCounts({
-        residents: residentCount,
         gcps: gcpCount,
         barangays: barangayCount,
         incidentReports: reportCount,
@@ -809,7 +822,8 @@ export default function AdminDashboard() {
         .order("first_name", { ascending: true })
         .order("last_name", { ascending: true });
       if (error) throw error;
-      setUsers(data as User[]);
+      // drop residents entirely
+      setUsers((data as User[]).filter((u) => u.role !== "Resident"));
     } catch (error) {
       setErrorUsers((error as Error).message);
     } finally {
@@ -945,12 +959,7 @@ export default function AdminDashboard() {
     }
   }, [activeTab, fetchUsers]);
 
-  const userAccountsTabs = [
-    "All Users",
-    "Residents",
-    "Staff",
-    "Admins",
-  ] as const;
+  const userAccountsTabs = ["All Users", "Staff", "Admins"] as const;
   const staffRoles = [
     "BWMC",
     "GCP",
@@ -969,7 +978,6 @@ export default function AdminDashboard() {
   const filteredUserAccounts = users.filter((user) => {
     if (userRoleFilter !== "all" && user.role !== userRoleFilter) return false;
     const role = user.role || "";
-    if (userAccountsTab === "Residents" && role !== "Resident") return false;
     if (userAccountsTab === "Staff" && !staffRoles.some((r) => r === role)) {
       return false;
     }
@@ -1407,15 +1415,12 @@ export default function AdminDashboard() {
       !userForm.username.trim() ||
       !userForm.email.trim() ||
       !userForm.contact_number.trim() ||
-      !userForm.role.trim() ||
-      !userForm.password.trim()
+      !userForm.role.trim()
     ) {
       return "All fields are required";
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userForm.email)) return "Invalid email format";
-    if (userForm.password.length < 6)
-      return "Password must be at least 6 characters";
     if (userForm.role === "BWMC" && !userForm.barangay_id)
       return "Barangay is required for BWMC role";
     // phone must start with 09 and exactly 11 digits
@@ -1437,47 +1442,57 @@ export default function AdminDashboard() {
       setFormError(validationError);
       return;
     }
-    try {
-      const { data: existingUsers, error: queryError } = await supabase
-        .from("users")
-        .select("username, email")
-        .or(`email.eq.${userForm.email},username.eq.${userForm.username}`);
-      if (queryError) throw queryError;
-      if (existingUsers && existingUsers.length > 0) {
-        setFormError("A user with that email or username already exists.");
-        return;
-      }
+    // ensure email/username not already used
+    const { data: existingUsers, error: queryError } = await supabase
+      .from("users")
+      .select("username, email")
+      .or(`email.eq.${userForm.email},username.eq.${userForm.username}`);
+    if (queryError) throw queryError;
+    if (existingUsers && existingUsers.length > 0) {
+      setFormError("A user with that email or username already exists.");
+      return;
+    }
 
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userForm.email,
-        password: userForm.password,
-      });
-      if (authError) {
-        setFormError(authError.message);
-        return;
-      }
-      if (!authData?.user) {
-        setFormError("User not found after sign up.");
-        return;
-      }
-      const userId = authData.user.id;
-      const { error: insertError } = await supabase.from("users").insert([
-        {
-          user_id: userId,
+    // create temporary password for new account
+    const tempPassword = generateTempPassword(12);
+    try {
+      // call backend so we can use service role and skip email confirmation
+      const res = await fetch("/api/admin/create-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: userForm.email,
           username: userForm.username,
           first_name: userForm.first_name,
           last_name: userForm.last_name,
-          email: userForm.email,
           contact_number: userForm.contact_number,
           role: userForm.role,
-          status: "active",
-          barangay_id: userForm.role === "BWMC" ? userForm.barangay_id : null,
-        },
-      ]);
-      if (insertError) {
-        setFormError(`Error saving user profile: ${insertError.message}`);
-        return;
+          barangay_id: userForm.barangay_id,
+          tempPassword,
+        }),
+      });
+      // read body once as text then parse
+      const text = await res.text();
+      let payload: any;
+      try {
+        payload = JSON.parse(text);
+      } catch (parseErr) {
+        throw new Error(`Server returned invalid JSON: ${text}`);
       }
+      if (!res.ok || !payload.success) {
+        // surface misconfiguration with guidance
+        if (
+          res.status === 500 &&
+          payload.error?.includes("SUPABASE_SERVICE_ROLE_KEY")
+        ) {
+          setFormError(
+            "Server misconfiguration: SUPABASE_SERVICE_ROLE_KEY missing. Add the service role key to your .env.local and restart.",
+          );
+          return;
+        }
+        throw new Error(payload.error || `Failed to create user: ${text}`);
+      }
+      const userId = payload.userId;
       // Wait for user to be available in Supabase before calling notification API
       let userFound = false;
       for (let attempt = 0; attempt < 5; attempt++) {
@@ -1508,7 +1523,7 @@ export default function AdminDashboard() {
             userId,
             role: userForm.role,
             createdBy: "SWMO Head", // or dynamic if needed
-            tempPassword: userForm.password,
+            tempPassword,
           }),
         });
         const notifData = await notifRes.json();
@@ -2507,6 +2522,9 @@ export default function AdminDashboard() {
                                         </span>
                                       </span>
                                     </th>
+                                    <th className="px-4 py-3 text-left font-medium text-xs">
+                                      Actions
+                                    </th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -2543,6 +2561,30 @@ export default function AdminDashboard() {
                                         {user.role === "BWMC"
                                           ? user.barangay_id
                                           : "-"}
+                                      </td>
+                                      <td
+                                        className={`px-4 ${userTableSize.row} ${userTableSize.font}`}
+                                      >
+                                        {[
+                                          "TCEMO Head",
+                                          "Secretary",
+                                          "BWMC",
+                                          "GCP",
+                                        ].includes(user.role) && (
+                                          <button
+                                            onClick={() =>
+                                              handleArchiveUser(
+                                                String(
+                                                  user.user_id ?? user.id ?? "",
+                                                ),
+                                                `${user.first_name} ${user.last_name}`,
+                                              )
+                                            }
+                                            className="text-rose-300 hover:text-rose-200 text-xs"
+                                          >
+                                            Archive
+                                          </button>
+                                        )}
                                       </td>
                                     </tr>
                                   ))}
@@ -2768,36 +2810,12 @@ export default function AdminDashboard() {
                       />
                     )}
 
-                    <div>
-                      <label
-                        className="block mb-2 text-xs font-medium text-slate-300"
-                        htmlFor="password"
-                      >
-                        Password
-                      </label>
-                      <div className="relative">
-                        <Input
-                          id="password"
-                          className="pr-10"
-                          type={showPassword ? "text" : "password"}
-                          name="password"
-                          value={userForm.password}
-                          onChange={handleUserFormChange}
-                          required
-                          placeholder="At least 8 characters"
-                        />
-                        <button
-                          type="button"
-                          className="absolute inset-y-0 right-3 flex items-center text-slate-400 text-xs hover:text-slate-300 transition-colors"
-                          onClick={() => setShowPassword(!showPassword)}
-                          aria-label={
-                            showPassword ? "Hide password" : "Show password"
-                          }
-                        >
-                          {showPassword ? "🙈" : "👁️"}
-                        </button>
-                      </div>
-                    </div>
+                    {/* password is autogenerated; no input required */}
+                    <p className="text-xs text-slate-400">
+                      A temporary password will be generated automatically and
+                      sent to the new user via SMS. They will be prompted to
+                      change it on first login.
+                    </p>
 
                     <div className="flex justify-end pt-2">
                       <Button type="submit">＋ Add User</Button>
@@ -2827,7 +2845,6 @@ export default function AdminDashboard() {
                           <SelectItem value="all">All Roles</SelectItem>
                           <SelectItem value="BWMC">BWMC</SelectItem>
                           <SelectItem value="GCP">GCP</SelectItem>
-                          <SelectItem value="Resident">Resident</SelectItem>
                           <SelectItem value="Secretary">Secretary</SelectItem>
                           <SelectItem value="SWMO Head">SWMO Head</SelectItem>
                           <SelectItem value="TCEMO Head">TCEMO Head</SelectItem>
@@ -3052,7 +3069,7 @@ export default function AdminDashboard() {
                           <SelectContent>
                             <SelectItem value="all">All Statuses</SelectItem>
                             <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="archived">Archived</SelectItem>
+                            <SelectItem value="archived">archived</SelectItem>
                             <SelectItem value="pending">Pending</SelectItem>
                           </SelectContent>
                         </Select>
@@ -3171,10 +3188,28 @@ export default function AdminDashboard() {
                                   </button>
                                   <button
                                     onClick={() => handleViewUser(user)}
-                                    className="text-slate-300 hover:text-slate-100"
+                                    className="text-slate-300 hover:text-slate-100 mr-4"
                                   >
                                     View
                                   </button>
+                                  {[
+                                    "TCEMO Head",
+                                    "Secretary",
+                                    "BWMC",
+                                    "GCP",
+                                  ].includes(user.role) && (
+                                    <button
+                                      onClick={() =>
+                                        handleArchiveUser(
+                                          String(user.user_id ?? ""),
+                                          `${user.first_name} ${user.last_name}`,
+                                        )
+                                      }
+                                      className="text-rose-300 hover:text-rose-200 text-xs"
+                                    >
+                                      Archive
+                                    </button>
+                                  )}
                                 </td>
                               </tr>
                             );

@@ -2050,7 +2050,7 @@ export default function BWMCdashboard() {
                                   onClick={() => handleOpenResponse(report)}
                                   className="text-blue-300 hover:text-blue-200 mr-4"
                                 >
-                                  Response
+                                  Responsed
                                 </button>
                                 <button
                                   onClick={() => handleOpenReject(report)}

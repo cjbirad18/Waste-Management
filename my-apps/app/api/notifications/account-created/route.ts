@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     // Get user details using correct column names
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("first_name, last_name, contact_number")
+      .select("first_name, last_name, contact_number, username, email")
       .eq("user_id", userId)
       .single();
 
@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
     }
 
     const userName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
+    const loginId = user.username || user.email || phone;
 
     // Role-specific messages
     const roleMessages: Record<string, string> = {
@@ -61,8 +62,11 @@ export async function POST(request: NextRequest) {
     const creator = createdBy === "SWMO Head" ? "SWMO Head" : "TCEMO Head";
 
     let message = `TTruck: Hey ${userName || "there"}! Good news, you're now part of the team as ${roleName}. ${creator} set things up for you. Go ahead and open the app to get started.`;
+    message += ` Username: ${loginId}\n`;
+    // always include email explicitly
+    message += ` Email: ${user.email}\n`;
     if (tempPassword) {
-      message += ` Your Temporary Password: ${tempPassword}. Change it right away and do not share it with anyone.\n\n`;
+      message += `Temporary Password: ${tempPassword}. Change it right away and do not share it with anyone.\n\n`;
     }
     message += ` -TrackTheTruck`;
 

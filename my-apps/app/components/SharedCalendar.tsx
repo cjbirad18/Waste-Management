@@ -29,6 +29,9 @@ export default function SharedCalendar({
   pattern,
   startTime,
 }: SharedCalendarProps) {
+  const now = new Date();
+  const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
   const validDays = pattern ? (PATTERN_MAP[pattern] ?? []) : [];
 
   const patternDates: Date[] = [];
@@ -61,15 +64,18 @@ export default function SharedCalendar({
   return (
     <div className="mb-4 relative">
       {/* Month Header with decorative elements */}
-      <div className="mb-3 flex items-center justify-center gap-3">
-        <div className="h-px w-8 bg-gradient-to-r from-transparent to-emerald-500/30" />
-        <div className="relative">
-          <span className="relative z-10 text-sm font-bold bg-gradient-to-r from-slate-100 via-emerald-200 to-slate-100 bg-clip-text text-transparent tracking-wide">
-            {format(new Date(year, month), "LLLL yyyy")}
-          </span>
-          <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+      <div className="mb-3 flex flex-col items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div className="h-px w-8 bg-gradient-to-r from-transparent to-emerald-500/30" />
+          <div className="relative">
+            <span className="relative z-10 text-sm font-bold bg-gradient-to-r from-slate-100 via-emerald-200 to-slate-100 bg-clip-text text-transparent tracking-wide">
+              {format(new Date(year, month), "LLLL yyyy")}
+            </span>
+            <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
+          </div>
+          <div className="h-px w-8 bg-gradient-to-l from-transparent to-emerald-500/30" />
         </div>
-        <div className="h-px w-8 bg-gradient-to-l from-transparent to-emerald-500/30" />
+        <span className="text-xs text-slate-400">Today: {format(now, "EEEE, MMM d")}</span>
       </div>
 
       {/* Calendar Container */}
@@ -97,12 +103,15 @@ export default function SharedCalendar({
               const isScheduled = patternDates.some(
                 (pd) => pd.toDateString() === day.toDateString(),
               );
-              const dayText = day.getMonth() === month ? format(day, "d") : "";
               const isCurrentMonth = day.getMonth() === month;
+              const dayText = isCurrentMonth ? format(day, "d") : "";
               const isSatOrSun =
                 isCurrentMonth && (day.getDay() === 6 || day.getDay() === 0);
-              const dayOfWeek = day.getDay();
-              const isWeekend = dayOfWeek === 6 || dayOfWeek === 0;
+              const isToday =
+                day.getDate() === now.getDate() &&
+                day.getMonth() === now.getMonth() &&
+                day.getFullYear() === now.getFullYear();
+              const isPast = isCurrentMonth && day < todayMid;
 
               // Dynamic classes based on state
               let cellClasses =
@@ -113,8 +122,18 @@ export default function SharedCalendar({
                 // Other month days
                 cellClasses +=
                   "text-slate-600/50 bg-transparent hover:bg-slate-800/20";
+              } else if (isToday) {
+                // current day regardless of schedule
+                cellClasses +=
+                  "bg-red-600 text-white shadow-md shadow-red-900/50 border border-red-400 font-bold ring-2 ring-red-400/50";
+                content = <span className="font-bold text-sm">{dayText}</span>;
+              } else if (isScheduled && isPast) {
+                // completed collection
+                cellClasses +=
+                  "bg-emerald-700/50 text-slate-200 border border-emerald-500/30";
+                content = <span className="font-medium text-sm">{dayText}</span>;
               } else if (isScheduled) {
-                // Scheduled days - Premium highlight
+                // upcoming scheduled
                 cellClasses +=
                   "bg-gradient-to-br from-emerald-600/90 to-teal-700/90 text-white shadow-md shadow-emerald-900/40 border border-emerald-400/30 cursor-pointer";
                 content = (
@@ -171,7 +190,15 @@ export default function SharedCalendar({
       <div className="mt-2 flex items-center justify-center gap-4 text-[10px]">
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 border border-emerald-400/30" />
-          <span className="text-slate-400">Collection Day</span>
+          <span className="text-slate-400">Upcoming</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-emerald-700/50 border border-emerald-500/30" />
+          <span className="text-slate-400">Completed</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-red-600 border border-red-400" />
+          <span className="text-slate-400">Today</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-slate-800/40 border border-emerald-500/10" />

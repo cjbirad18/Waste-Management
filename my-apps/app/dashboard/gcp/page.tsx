@@ -298,6 +298,15 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
               const isSatOrSun =
                 isCurrentMonth && (day.getDay() === 6 || day.getDay() === 0);
 
+              // use midnight for comparisons so that time of day doesn't matter
+              const todayMid = new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate(),
+              );
+              const isPast = isCurrentMonth && day < todayMid;
+              const isFuture = isCurrentMonth && day > todayMid;
+
               let cellClasses =
                 "relative h-10 rounded-lg flex flex-col items-center justify-center text-md font-medium transition-all duration-200 ";
               let content = null;
@@ -325,6 +334,13 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
                 cellClasses +=
                   "bg-red-600 text-white shadow-md shadow-red-900/50 border border-red-400 font-bold ring-2 ring-red-400/50";
                 content = <span className="font-bold text-sm">{dayText}</span>;
+              } else if (isScheduled && isPast) {
+                // Past scheduled days – mark as completed
+                cellClasses +=
+                  "bg-emerald-700/50 text-slate-200 border border-emerald-500/30";
+                content = (
+                  <span className="font-medium text-sm">{dayText}</span>
+                );
               } else if (isScheduled) {
                 // Scheduled days - Premium highlight
                 cellClasses +=
@@ -392,7 +408,11 @@ function ScheduleCalendar({ schedule }: { schedule: Schedule }) {
       <div className="mt-2 flex items-center justify-center gap-4 text-[10px]">
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 border border-emerald-400/30" />
-          <span className="text-slate-400">Collection Day</span>
+          <span className="text-slate-400">Upcoming Collection</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-emerald-700/50 border border-emerald-500/30" />
+          <span className="text-slate-400">Completed Collection</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-red-600 border border-red-400" />
