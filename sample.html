@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BWMC Dashboard - Processed Accounts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background: #0a0f1c;
+      }
+      .glass-panel {
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .gradient-text {
+        background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .card-glow {
+        box-shadow: 0 0 40px rgba(16, 185, 129, 0.1);
+      }
+      .sidebar-item {
+        transition: all 0.2s ease;
+      }
+      .sidebar-item:hover {
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .sidebar-item.active {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        box-shadow: 0 4px 20px rgba(5, 150, 105, 0.3);
+      }
+      .stat-card {
+        transition: all 0.3s ease;
+      }
+      .stat-card:hover {
+        transform: translateY(-2px);
+      }
+      .table-row {
+        transition: background 0.15s ease;
+      }
+      .table-row:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+    </style>
+  </head>
+  <body class="text-slate-300 min-h-screen flex">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-[#0d1321] border-r border-slate-800/50 flex-shrink-0">
+      <!-- Logo -->
+      <div class="p-6 border-b border-slate-800/50">
+        <div class="flex items-center gap-3">
+          <div
+            class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20"
+          >
+            <svg
+              class="w-6 h-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              ></path>
+            </svg>
+          </div>
+          <div>
+            <p
+              class="text-[10px] uppercase tracking-wider text-slate-500 font-medium"
+            >
+              Track-the-Truck
+            </p>
+            <h1 class="text-sm font-bold text-slate-100">BWMC Dashboard</h1>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="p-4 space-y-1">
+        <a
+          href="#"
+          class="sidebar-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+            ></path>
+          </svg>
+          Dashboard
+        </a>
+        <a
+          href="#"
+          class="sidebar-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
+          Pending Accounts
+        </a>
+        <a
+          href="#"
+          class="sidebar-item active flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
+          Processed Accounts
+        </a>
+        <a
+          href="#"
+          class="sidebar-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            ></path>
+          </svg>
+          View Reports
+        </a>
+        <a
+          href="#"
+          class="sidebar-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+            ></path>
+          </svg>
+          Schedules
+        </a>
+        <a
+          href="#"
+          class="sidebar-item flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            ></path>
+          </svg>
+          Generate Reports
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-auto">
+      <!-- Header -->
+      <header
+        class="sticky top-0 z-40 bg-[#0a0f1c]/80 backdrop-blur-xl border-b border-slate-800/50 px-8 py-4"
+      >
+        <div class="flex items-center justify-between">
+          <div></div>
+          <div class="flex items-center gap-4">
+            <button
+              class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors text-sm font-medium"
+            >
+              <div
+                class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold"
+              >
+                CB
+              </div>
+              <span>Chris Birad</span>
+              <svg
+                class="w-4 h-4 text-slate-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"
+                ></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <div class="p-8 max-w-7xl mx-auto space-y-6">
+        <!-- Page Header -->
+        <div class="glass-panel rounded-2xl p-6 card-glow">
+          <h2 class="text-2xl font-bold gradient-text mb-2">
+            Processed Resident Accounts
+          </h2>
+          <p class="text-slate-400 text-sm">
+            Review residents whose registrations have already been approved or
+            rejected.
+          </p>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- Approved -->
+          <div
+            class="stat-card glass-panel rounded-2xl p-5 border-l-4 border-emerald-500"
+          >
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <p
+                  class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1"
+                >
+                  Total Approved
+                </p>
+                <h3 class="text-3xl font-bold text-emerald-400">3</h3>
+                <p class="text-slate-500 text-xs mt-1">Active residents</p>
+              </div>
+              <div
+                class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center"
+              >
+                <svg
+                  class="w-5 h-5 text-emerald-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M5 13l4 4L19 7"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rejected -->
+          <div
+            class="stat-card glass-panel rounded-2xl p-5 border-l-4 border-red-500"
+          >
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <p
+                  class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1"
+                >
+                  Total Rejected
+                </p>
+                <h3 class="text-3xl font-bold text-red-400">1</h3>
+                <p class="text-slate-500 text-xs mt-1">Declined</p>
+              </div>
+              <div
+                class="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center"
+              >
+                <svg
+                  class="w-5 h-5 text-red-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Processed -->
+          <div
+            class="stat-card glass-panel rounded-2xl p-5 border-l-4 border-blue-500"
+          >
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <p
+                  class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1"
+                >
+                  Total Processed
+                </p>
+                <h3 class="text-3xl font-bold text-blue-400">4</h3>
+                <p class="text-slate-500 text-xs mt-1">Applications</p>
+              </div>
+              <div
+                class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center"
+              >
+                <svg
+                  class="w-5 h-5 text-blue-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Approval Rate -->
+          <div
+            class="stat-card glass-panel rounded-2xl p-5 border-l-4 border-purple-500"
+          >
+            <div class="flex items-start justify-between mb-4">
+              <div>
+                <p
+                  class="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1"
+                >
+                  Approval Rate
+                </p>
+                <h3 class="text-3xl font-bold text-purple-400">75%</h3>
+                <p class="text-slate-500 text-xs mt-1">Success rate</p>
+              </div>
+              <div
+                class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center"
+              >
+                <svg
+                  class="w-5 h-5 text-purple-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tables Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Approved Accounts -->
+          <div class="glass-panel rounded-2xl overflow-hidden">
+            <div
+              class="p-5 border-b border-slate-800/50 flex items-center justify-between"
+            >
+              <div class="flex items-center gap-3">
+                <div
+                  class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center"
+                >
+                  <svg
+                    class="w-4 h-4 text-emerald-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M5 13l4 4L19 7"
+                    ></path>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="font-semibold text-slate-100">
+                    Approved Accounts
+                  </h3>
+                  <p class="text-xs text-slate-500">Active registrations</p>
+                </div>
+              </div>
+              <span
+                class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20"
+                >3</span
+              >
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="bg-slate-950/30">
+                    <th
+                      class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                    >
+                      Name
+                    </th>
+                    <th
+                      class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                    >
+                      Email
+                    </th>
+                    <th
+                      class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                    >
+                      Contact
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/30">
+                  <tr class="table-row">
+                    <td class="px-5 py-4 font-medium text-slate-200">
+                      Kershua Galamitan
+                    </td>
+                    <td class="px-5 py-4 text-slate-400">kershua@gmail.com</td>
+                    <td class="px-5 py-4 text-slate-400 font-mono text-xs">
+                      09457650231
+                    </td>
+                  </tr>
+                  <tr class="table-row">
+                    <td class="px-5 py-4 font-medium text-slate-200">
+                      Christian Jay Birad
+                    </td>
+                    <td class="px-5 py-4 text-slate-400">
+                      cjbirad18@gmail.com
+                    </td>
+                    <td class="px-5 py-4 text-slate-400 font-mono text-xs">
+                      09556839375
+                    </td>
+                  </tr>
+                  <tr class="table-row">
+                    <td class="px-5 py-4 font-medium text-slate-200">
+                      kigwahon wahon
+                    </td>
+                    <td class="px-5 py-4 text-slate-400">wahon@gmail.com</td>
+                    <td class="px-5 py-4 text-slate-400 font-mono text-xs">
+                      09273631007
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Rejected Accounts -->
+          <div class="glass-panel rounded-2xl overflow-hidden">
+            <div
+              class="p-5 border-b border-slate-800/50 flex items-center justify-between"
+            >
+              <div class="flex items-center gap-3">
+                <div
+                  class="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center"
+                >
+                  <svg
+                    class="w-4 h-4 text-red-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    ></path>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="font-semibold text-slate-100">
+                    Rejected Accounts
+                  </h3>
+                  <p class="text-xs text-slate-500">Declined registrations</p>
+                </div>
+              </div>
+              <span
+                class="px-3 py-1 rounded-full bg-red-500/10 text-red-400 text-xs font-bold border border-red-500/20"
+                >1</span
+              >
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="bg-slate-950/30">
+                    <th
+                      class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                    >
+                      Name
+                    </th>
+                    <th
+                      class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                    >
+                      Email
+                    </th>
+                    <th
+                      class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider"
+                    >
+                      Contact
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/30">
+                  <tr class="table-row">
+                    <td class="px-5 py-4 font-medium text-slate-200">
+                      kigwa wahon
+                    </td>
+                    <td class="px-5 py-4 text-slate-400">kigwa@gmail.com</td>
+                    <td class="px-5 py-4 text-slate-400 font-mono text-xs">
+                      09273631007
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
