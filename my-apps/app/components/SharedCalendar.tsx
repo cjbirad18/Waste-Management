@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import {
   format,
   startOfMonth,
@@ -75,7 +74,9 @@ export default function SharedCalendar({
           </div>
           <div className="h-px w-8 bg-gradient-to-l from-transparent to-emerald-500/30" />
         </div>
-        <span className="text-xs text-slate-400">Today: {format(now, "EEEE, MMM d")}</span>
+        <span className="text-xs text-slate-400">
+          Today: {format(now, "EEEE, MMM d")}
+        </span>
       </div>
 
       {/* Calendar Container */}
@@ -131,7 +132,9 @@ export default function SharedCalendar({
                 // completed collection
                 cellClasses +=
                   "bg-emerald-700/50 text-slate-200 border border-emerald-500/30";
-                content = <span className="font-medium text-sm">{dayText}</span>;
+                content = (
+                  <span className="font-medium text-sm">{dayText}</span>
+                );
               } else if (isScheduled) {
                 // upcoming scheduled
                 cellClasses +=

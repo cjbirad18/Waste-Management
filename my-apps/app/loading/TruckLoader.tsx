@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react";
-
 const TruckLoader = () => (
   <div className="flex flex-col items-center justify-center min-h-[300px] p-8 bg-gradient-to-br from-slate-900/80 to-gray-900/80 rounded-2xl border border-green-800/50 backdrop-blur-xl shadow-2xl shadow-green-900/30">
     <div className="truck-running mb-6">

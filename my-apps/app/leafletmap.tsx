@@ -17,11 +17,9 @@ import "leaflet/dist/leaflet.css";
 import { supabase } from "@/lib/supabaseClient";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { point, polygon } from "@turf/helpers";
-import TruckLoader from "@/app/loading/TruckLoader";
 import { useMap } from "react-leaflet";
 import {
   MapPin,
-  Navigation,
   Truck,
   Clock,
   AlertCircle,
