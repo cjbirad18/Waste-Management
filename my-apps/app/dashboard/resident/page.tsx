@@ -1884,7 +1884,9 @@ export default function ResidentDashboard() {
   const [residentBarangayId, setResidentBarangayId] = useState<string>("");
 
   // Map filter states
-  const [showAllTrucks, setShowAllTrucks] = useState<boolean>(true);
+  // default to the assigned truck view; if there's no assigned truck we'll fall
+  // back to showing all vehicles in the effect below.
+  const [showAllTrucks, setShowAllTrucks] = useState<boolean>(false);
   const [assignedTruckId, setAssignedTruckId] = useState<number | null>(null);
 
   // Reports and notifications state
@@ -2051,7 +2053,12 @@ export default function ResidentDashboard() {
   }, [residentBarangayId]);
 
   useEffect(() => {
-    if (!assignedTruckId) {
+    // When the assigned truck becomes available we switch the map to focus on it.
+    // If the user is not yet assigned (or assignment is removed) we default back
+    // to showing the whole fleet.
+    if (assignedTruckId != null) {
+      setShowAllTrucks(false);
+    } else {
       setShowAllTrucks(true);
     }
   }, [assignedTruckId]);
@@ -2650,7 +2657,7 @@ export default function ResidentDashboard() {
                       <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
                         Collection Coverage Map
                       </h2>
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 z-20">
                         <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
                           <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
                           Live vehicles
@@ -2674,19 +2681,14 @@ export default function ResidentDashboard() {
                               !showAllTrucks
                                 ? "bg-blue-600 text-white shadow-lg shadow-blue-600/50"
                                 : "text-slate-400 hover:text-slate-200"
-                            } ${
-                              assignedTruckId
-                                ? ""
-                                : "opacity-50 cursor-not-allowed"
                             }`}
-                            disabled={!assignedTruckId}
                           >
                             Assigned truck
                           </button>
                         </div>
                       </div>
                     </div>
-                    <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 relative z-10">
+                    <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 relative z-0">
                       <LeafletMap
                         residentGps={gps}
                         showAllTrucks={showAllTrucks}

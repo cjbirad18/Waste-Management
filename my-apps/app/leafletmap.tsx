@@ -421,7 +421,8 @@ function LeafletMap({
       if (bestDist === null || d < bestDist) bestDist = d;
     });
 
-    setEtaMinutes(bestDist !== null ? computeEtaMinutes(bestDist, 17.5) : null);
+    // use 10 km/h as average speed (midpoint of 5–15 km/h range)
+    setEtaMinutes(bestDist !== null ? computeEtaMinutes(bestDist, 10) : null);
   }, [role, residentLocation, visibleTrucks]);
 
   // Location logic handlers
@@ -824,7 +825,7 @@ function LeafletMap({
               </div>
 
               <p className="text-[13px] text-slate-500 leading-relaxed">
-                Based on live GPS data • 15-20 km/h avg speed
+                Based on live GPS data • 5-15 km/h avg speed
               </p>
             </InfoCard>
           </div>
