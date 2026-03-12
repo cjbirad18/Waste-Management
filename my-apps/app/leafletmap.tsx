@@ -524,7 +524,15 @@ function LeafletMap({
           async () => {
             state.inside = false;
             state.leaveTimeout = null;
-            const { data } = await supabase
+
+            if (effectiveId == null) {
+              console.warn(
+                "skip leaving logic: effectiveId is null or undefined",
+              );
+              return;
+            }
+
+            const { data, error } = await supabase
               .from("collection_schedules")
               .select("schedule_id, end_time")
               .eq("barangay_id", effectiveId)
@@ -532,15 +540,27 @@ function LeafletMap({
               .order("date_created", { ascending: false })
               .limit(1)
               .maybeSingle();
+            if (error) {
+              console.error(
+                "supabase collection_schedules query failed on leave",
+                error,
+              );
+            }
 
             if (data && !data.end_time) {
-              await supabase
+              const { error: updErr } = await supabase
                 .from("collection_schedules")
                 .update({
                   end_time: new Date().toISOString(),
                   status: "completed",
                 })
                 .eq("schedule_id", data.schedule_id);
+              if (updErr) {
+                console.error(
+                  "failed to update collection_schedules after leave",
+                  updErr,
+                );
+              }
             }
           },
           20 * 60 * 1000,
@@ -561,7 +581,13 @@ function LeafletMap({
   // Truck subscription
   useEffect(() => {
     const loadTrucks = async () => {
-      const { data } = await supabase.from("truck_live_location").select("*");
+      const { data, error } = await supabase
+        .from("truck_live_location")
+        .select("*");
+      if (error) {
+        console.error("failed to load truck_live_location", error);
+        return;
+      }
       if (data) {
         setTrucks(data);
         data.forEach((row: TruckRow) => {
