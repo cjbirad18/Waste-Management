@@ -407,6 +407,15 @@ export default function LoginClient() {
               </div>
             </div>
 
+            <div className="text-right">
+              <a
+                href="/forgot-password"
+                className="text-xs font-semibold text-emerald-300 hover:text-emerald-100"
+              >
+                Forgot password?
+              </a>
+            </div>
+
             <button
               type="submit"
               className="group relative w-full rounded-2xl bg-gradient-to-r from-green-600/95 to-emerald-600/95 px-6 py-4 text-sm font-bold text-slate-100 shadow-xl shadow-green-500/30 hover:shadow-2xl hover:shadow-emerald-500/40 hover:scale-[1.02] transition-all duration-300 backdrop-blur-xl border border-green-500/30 overflow-hidden"
