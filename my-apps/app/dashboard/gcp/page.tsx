@@ -1066,6 +1066,7 @@ function GCPAssignedTasksSection() {
 
   const [wasteModalOpen, setWasteModalOpen] = useState(false);
   const [wasteWeight, setWasteWeight] = useState("");
+  const [truckCapacity, setTruckCapacity] = useState<number | null>(null);
   const [collectionDate, setCollectionDate] = useState(
     new Date().toISOString().slice(0, 10),
   );
@@ -1143,36 +1144,68 @@ function GCPAssignedTasksSection() {
     setResponseModalOpen(true);
   };
 
-  const handleOpenWasteModal = () => {
+  const handleOpenWasteModal = async () => {
     setWasteWeight("");
     setCollectionDate(new Date().toISOString().slice(0, 10));
     setWasteError(null);
     setWasteSuccess(null);
+    // Fetch truck capacity for display and check for today's record
+    try {
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !authData?.user) throw new Error("Not authenticated");
+      const { data: truck, error: truckErr } = await supabase
+        .from("garbage_trucks")
+        .select("capacity, truck_id")
+        .eq("gcp_user_id", authData.user.id)
+        .single();
+      setTruckCapacity(truck?.capacity ?? null);
+      // Check for existing record for today
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: existing, error: existingErr } = await supabase
+        .from("collection_details")
+        .select("collectiondetails_id")
+        .eq("truck_id", truck?.truck_id)
+        .eq("collection_date", today)
+        .maybeSingle();
+      if (existing) {
+        window.alert("You have already recorded waste collected for today.");
+        return;
+      }
+    } catch {
+      setTruckCapacity(null);
+    }
     setWasteModalOpen(true);
   };
 
   const handleSubmitWaste = async () => {
-    const weightValue = Number(wasteWeight);
-    if (!wasteWeight.trim() || Number.isNaN(weightValue) || weightValue <= 0) {
-      setWasteError("Please enter a valid waste weight.");
-      return;
-    }
-
     setWasteSaving(true);
     setWasteError(null);
-    setWasteSuccess(null);
-
     try {
+      const weightValue = parseFloat(wasteWeight);
+      if (isNaN(weightValue) || weightValue <= 0) {
+        setWasteError("Please enter a valid waste weight.");
+        setWasteSaving(false);
+        return;
+      }
       const { data: authData, error: authErr } = await supabase.auth.getUser();
       if (authErr || !authData?.user) throw new Error("Not authenticated");
 
       const { data: truck, error: truckErr } = await supabase
         .from("garbage_trucks")
-        .select("truck_id, truck_code")
+        .select("truck_id, truck_code, capacity")
         .eq("gcp_user_id", authData.user.id)
         .single();
       if (truckErr || !truck?.truck_id) {
         throw new Error("No truck assigned to this account.");
+      }
+
+      // Validate weight does not exceed truck capacity
+      if (truck.capacity && weightValue > truck.capacity) {
+        setWasteError(
+          `Weight exceeds truck capacity (${truck.capacity} kg). Please enter a lower value.`,
+        );
+        setWasteSaving(false);
+        return;
       }
 
       const { data: schedule, error: scheduleErr } = await supabase
@@ -1193,6 +1226,19 @@ function GCPAssignedTasksSection() {
         throw new Error("No schedule found for this account.");
       }
 
+      // Check for existing record for this truck and date
+      const { data: existing, error: existingErr } = await supabase
+        .from("collection_details")
+        .select("collectiondetails_id")
+        .eq("truck_id", truck.truck_id)
+        .eq("collection_date", collectionDate)
+        .maybeSingle();
+      if (existing) {
+        setWasteError("You can only record waste collected once per day.");
+        setWasteSaving(false);
+        return;
+      }
+
       const { error: insertError } = await supabase
         .from("collection_details")
         .insert({
@@ -1200,6 +1246,7 @@ function GCPAssignedTasksSection() {
           truck_id: truck.truck_id,
           collection_date: collectionDate,
           waste_weight: weightValue,
+          status: "Ongoing",
         });
 
       if (insertError) throw insertError;
@@ -1589,15 +1636,24 @@ function GCPAssignedTasksSection() {
 
               <div className="space-y-2">
                 <Label className="text-xs font-semibold text-slate-100">
-                  Waste weight collected (kg)
+                  Waste weight collected (tons)
                 </Label>
+                {truckCapacity !== null && (
+                  <div className="text-xs text-emerald-300 mb-1">
+                    Max truck capacity: <b>{truckCapacity} tons</b>
+                  </div>
+                )}
                 <Input
                   type="number"
                   min="0"
                   step="0.01"
                   value={wasteWeight}
                   onChange={(e) => setWasteWeight(e.target.value)}
-                  placeholder="e.g. 120.5"
+                  placeholder={
+                    truckCapacity !== null
+                      ? `Max: ${truckCapacity}`
+                      : "e.g. 120.5"
+                  }
                   className="bg-slate-900/80 text-slate-100"
                 />
               </div>

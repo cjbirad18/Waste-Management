@@ -489,34 +489,65 @@ function LeafletMap({
           state.leaveTimeout = null;
         }
         // Trigger collection start
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("collection_schedules")
-          .select("schedule_id, start_time")
+          .select("schedule_id, start_time, status, barangay_id, date_created")
           .eq("barangay_id", effectiveId)
-          .eq("status", "pending")
+          .eq("status", "Active")
           .order("date_created", { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        if (data && !data.start_time) {
-          await supabase
-            .from("collection_schedules")
-            .update({ start_time: new Date().toISOString(), status: "ongoing" })
-            .eq("schedule_id", data.schedule_id);
-
-          // Call backend API to notify residents in this barangay
-          try {
-            await fetch("/api/notifications/truck-arrival", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ barangayId: effectiveId }),
-            });
-            console.log(
-              "Triggered resident notification for barangay:",
+        if (error) {
+          // Supabase errors can be non-enumerable; log full details explicitly.
+          console.error("supabase collection_schedules query failed on enter", {
+            effectiveId,
+            statusFilter: "pending",
+            errorMessage: error?.message,
+            errorDetails: error?.details,
+            errorHint: error?.hint,
+            errorCode: error?.code,
+            raw: error,
+          });
+        } else {
+          // Add extra debug logging for data and query context
+          if (!data) {
+            console.warn("No collection_schedules found for:", {
               effectiveId,
-            );
-          } catch (err) {
-            console.error("Failed to trigger resident notification API:", err);
+              statusFilter: "pending",
+            });
+            // Optionally, fetch all schedules for this barangay for debugging
+            const { data: allSchedules, error: allErr } = await supabase
+              .from("collection_schedules")
+              .select("schedule_id, status, barangay_id, date_created")
+              .eq("barangay_id", effectiveId);
+            console.warn("All schedules for barangay:", allSchedules, allErr);
+          } else if (!data.start_time) {
+            await supabase
+              .from("collection_schedules")
+              .update({
+                start_time: new Date().toISOString(),
+                status: "Ongoing",
+              })
+              .eq("schedule_id", data.schedule_id);
+
+            // Call backend API to notify residents in this barangay
+            try {
+              await fetch("/api/notifications/truck-arrival", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ barangayId: effectiveId }),
+              });
+              console.log(
+                "Triggered resident notification for barangay:",
+                effectiveId,
+              );
+            } catch (err) {
+              console.error(
+                "Failed to trigger resident notification API:",
+                err,
+              );
+            }
           }
         }
       } else if (!isInside && state.inside && !state.leaveTimeout) {
@@ -534,9 +565,9 @@ function LeafletMap({
 
             const { data, error } = await supabase
               .from("collection_schedules")
-              .select("schedule_id, end_time")
+              .select("schedule_id, end_time, status")
               .eq("barangay_id", effectiveId)
-              .eq("status", "ongoing")
+              .eq("status", "Ongoing")
               .order("date_created", { ascending: false })
               .limit(1)
               .maybeSingle();
@@ -552,7 +583,7 @@ function LeafletMap({
                 .from("collection_schedules")
                 .update({
                   end_time: new Date().toISOString(),
-                  status: "completed",
+                  status: "Completed",
                 })
                 .eq("schedule_id", data.schedule_id);
               if (updErr) {

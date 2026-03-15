@@ -831,7 +831,7 @@ export default function AdminDashboard() {
         if (data) {
           setBarangayOptions(
             data.map((b: any) => ({
-              value: b.barangay_id,
+              value: String(b.barangay_id),
               label: b.barangay_name,
             })),
           );

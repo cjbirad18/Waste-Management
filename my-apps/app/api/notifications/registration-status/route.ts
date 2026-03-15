@@ -96,19 +96,20 @@ export async function POST(req: NextRequest) {
     );
 
     // Send SMS
-    const smsResponse = await fetch(
-      `${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-sms`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: resident.contact_number,
-          message,
-          userId: userId,
-          notificationType: "registration-status",
-        }),
-      },
-    );
+    // Call the in-app send-sms API directly so the notification works even if
+    // the external backend server isn't running.
+    const sendSmsUrl = new URL("/api/send-sms", req.url);
+
+    const smsResponse = await fetch(sendSmsUrl.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: resident.contact_number,
+        message,
+        userId: userId,
+        notificationType: "registration-status",
+      }),
+    });
 
     const smsResult = await smsResponse.json();
 

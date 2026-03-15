@@ -164,9 +164,9 @@ function ProcessedAccountsTable({
                 </td>
               </tr>
             ) : (
-              paginatedAccounts.map((user) => (
+              paginatedAccounts.map((user, idx) => (
                 <tr
-                  key={user.user_id}
+                  key={`${user.user_id ?? "user"}-${idx}`}
                   className="hover:bg-slate-900/40 transition"
                 >
                   <td className="px-6 py-4 font-medium text-slate-200">

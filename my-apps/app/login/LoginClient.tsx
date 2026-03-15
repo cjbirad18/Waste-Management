@@ -407,13 +407,13 @@ export default function LoginClient() {
               </div>
             </div>
 
-            <div className="text-right">
-              <a
+            <div className="text-right relative z-10">
+              <Link
                 href="/forgot-password"
                 className="text-xs font-semibold text-emerald-300 hover:text-emerald-100"
               >
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             <button
