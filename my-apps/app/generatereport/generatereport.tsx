@@ -444,16 +444,6 @@ export default function ReportsAnalytics({
                 >
                   🗑️ Waste Collection
                 </button>
-                <button
-                  onClick={() => setActiveReportOption("barangayConcerns")}
-                  className={`px-3.5 py-2 rounded-md font-semibold transition-colors ${
-                    activeReportOption === "barangayConcerns"
-                      ? "bg-emerald-600/80 text-white"
-                      : "text-slate-300 hover:text-white"
-                  }`}
-                >
-                  📍 Barangay Concerns
-                </button>
               </div>
 
               <div className="inline-flex rounded-lg bg-slate-950/60 border border-slate-700/60 p-1 text-sm">

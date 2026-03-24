@@ -2,8 +2,6 @@
 
 import { useState, FormEvent, ChangeEvent } from "react";
 
-const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "";
-
 export default function ForgotPasswordClient() {
   const [identifier, setIdentifier] = useState("");
   const [status, setStatus] = useState<{
@@ -18,7 +16,7 @@ export default function ForgotPasswordClient() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`${BACKEND_BASE_URL}/api/forgot-password`, {
+      const res = await fetch(`/api/forgot-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

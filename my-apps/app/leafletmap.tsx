@@ -116,6 +116,10 @@ type TruckAnimState = {
 type TruckState = {
   inside: boolean;
   leaveTimeout?: number | null;
+  currentSchedule?: {
+    schedule_id: number;
+    end_time?: string | null;
+  } | null;
 };
 
 const assignedByTruck: Record<number, number> = { 1: 4 };
@@ -472,7 +476,11 @@ function LeafletMap({
       if (!currentBarangayId) return;
 
       const isInside = currentBarangayId === effectiveId;
-      const state = (truckStates[row.truck_id] ??= { inside: false });
+      const state = (truckStates[row.truck_id] ??= {
+        inside: false,
+        leaveTimeout: null,
+        currentSchedule: null,
+      });
 
       if (role === "GCP" && gcpTruckId === row.truck_id) {
         setGcpLocationWarning(
@@ -491,7 +499,9 @@ function LeafletMap({
         // Trigger collection start
         const { data, error } = await supabase
           .from("collection_schedules")
-          .select("schedule_id, start_time, status, barangay_id, date_created")
+          .select(
+            "schedule_id, start_time, status, barangay_id, date_created, gcp_user_id, days",
+          )
           .eq("barangay_id", effectiveId)
           .eq("status", "Active")
           .order("date_created", { ascending: false })
@@ -499,10 +509,9 @@ function LeafletMap({
           .maybeSingle();
 
         if (error) {
-          // Supabase errors can be non-enumerable; log full details explicitly.
           console.error("supabase collection_schedules query failed on enter", {
             effectiveId,
-            statusFilter: "pending",
+            statusFilter: "Active",
             errorMessage: error?.message,
             errorDetails: error?.details,
             errorHint: error?.hint,
@@ -510,38 +519,110 @@ function LeafletMap({
             raw: error,
           });
         } else {
-          // Add extra debug logging for data and query context
           if (!data) {
-            console.warn("No collection_schedules found for:", {
+            console.warn("No active collection schedule found for:", {
               effectiveId,
-              statusFilter: "pending",
+              truckId: row.truck_id,
+              today: new Date().toISOString().split("T")[0],
             });
-            // Optionally, fetch all schedules for this barangay for debugging
-            const { data: allSchedules, error: allErr } = await supabase
-              .from("collection_schedules")
-              .select("schedule_id, status, barangay_id, date_created")
-              .eq("barangay_id", effectiveId);
-            console.warn("All schedules for barangay:", allSchedules, allErr);
-          } else if (!data.start_time) {
-            await supabase
-              .from("collection_schedules")
-              .update({
-                start_time: new Date().toISOString(),
-                status: "Ongoing",
-              })
-              .eq("schedule_id", data.schedule_id);
+          } else {
+            const schedule = data;
+            state.currentSchedule = schedule;
+            const today = new Date().toISOString().split("T")[0];
 
-            // Call backend API to notify residents in this barangay
+            const dayName = new Date()
+              .toLocaleDateString("en-US", { weekday: "short" })
+              .toUpperCase();
+            const daysPattern = (schedule.days || "").toUpperCase();
+            const scheduledForToday =
+              (daysPattern.includes("MWF") &&
+                ["MON", "WED", "FRI"].includes(dayName)) ||
+              (daysPattern.includes("TTH") &&
+                ["TUE", "THU"].includes(dayName)) ||
+              daysPattern === dayName;
+
+            console.log("[COLLECTION DEBUG] Decision Point:", {
+              effectiveId,
+              truckId: row.truck_id,
+              scheduleId: schedule.schedule_id,
+              scheduleDays: schedule.days,
+              scheduleStatus: schedule.status,
+              today,
+              dayName,
+              daysPattern,
+              scheduledForToday,
+            });
+
+            if (!scheduledForToday) {
+              console.log(
+                "[COLLECTION DEBUG] Skipping collection creation: Not scheduled for today.",
+                { dayName, daysPattern, scheduleDays: schedule.days },
+              );
+
+              return;
+            }
+
+            // Keep schedule status Active for recurring use. Manage per-day collection details.
+            const { data: existingDetail, error: existingDetailError } =
+              await supabase
+                .from("collection_details")
+                .select("collectiondetails_id, status")
+                .eq("schedule_id", data.schedule_id)
+                .eq("collection_date", today)
+                .maybeSingle();
+
+            if (existingDetailError) {
+              console.error(
+                "[COLLECTION DEBUG] Error checking collection_detail for today:",
+                existingDetailError,
+              );
+            } else if (!existingDetail) {
+              console.log(
+                "[COLLECTION DEBUG] Creating new collection_details record for today.",
+                {
+                  schedule_id: data.schedule_id,
+                  truck_id: row.truck_id,
+                  today,
+                },
+              );
+              await supabase.from("collection_details").insert({
+                schedule_id: data.schedule_id,
+                truck_id: row.truck_id,
+                collection_date: today,
+                status: "in_progress",
+              });
+            } else if (
+              existingDetail.status !== "in_progress" &&
+              existingDetail.status !== "completed"
+            ) {
+              console.log(
+                "[COLLECTION DEBUG] Updating existing collection_details to in_progress.",
+                { collectiondetails_id: existingDetail.collectiondetails_id },
+              );
+              await supabase
+                .from("collection_details")
+                .update({ status: "in_progress" })
+                .eq(
+                  "collectiondetails_id",
+                  existingDetail.collectiondetails_id,
+                );
+            } else {
+              console.log(
+                "[COLLECTION DEBUG] No action: collection_details already in progress or completed.",
+                {
+                  collectiondetails_id: existingDetail.collectiondetails_id,
+                  status: existingDetail.status,
+                },
+              );
+            }
+
+            // Notify residents about truck arrival
             try {
               await fetch("/api/notifications/truck-arrival", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ barangayId: effectiveId }),
               });
-              console.log(
-                "Triggered resident notification for barangay:",
-                effectiveId,
-              );
             } catch (err) {
               console.error(
                 "Failed to trigger resident notification API:",
@@ -551,44 +632,40 @@ function LeafletMap({
           }
         }
       } else if (!isInside && state.inside && !state.leaveTimeout) {
+        const scheduleForTimeout = state.currentSchedule;
+        if (!scheduleForTimeout) return;
+
         state.leaveTimeout = window.setTimeout(
           async () => {
             state.inside = false;
             state.leaveTimeout = null;
+            const today = new Date().toISOString().split("T")[0];
 
-            if (effectiveId == null) {
-              console.warn(
-                "skip leaving logic: effectiveId is null or undefined",
-              );
-              return;
-            }
+            // Always create a new collection_details record, even if one exists for today
+            console.log(
+              "[COLLECTION DEBUG] Forcing creation of new collection_details record.",
+              {
+                schedule_id: scheduleForTimeout.schedule_id,
+                truck_id: row.truck_id,
+                today,
+              },
+            );
+            await supabase.from("collection_details").insert({
+              schedule_id: scheduleForTimeout.schedule_id,
+              truck_id: row.truck_id,
+              collection_date: today,
+              status: "in_progress",
+            });
 
-            const { data, error } = await supabase
-              .from("collection_schedules")
-              .select("schedule_id, end_time, status")
-              .eq("barangay_id", effectiveId)
-              .eq("status", "Ongoing")
-              .order("date_created", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            if (error) {
-              console.error(
-                "supabase collection_schedules query failed on leave",
-                error,
-              );
-            }
-
-            if (data && !data.end_time) {
+            // keep collection_schedules status Active for recurring schedule
+            if (!scheduleForTimeout.end_time) {
               const { error: updErr } = await supabase
                 .from("collection_schedules")
-                .update({
-                  end_time: new Date().toISOString(),
-                  status: "Completed",
-                })
-                .eq("schedule_id", data.schedule_id);
+                .update({ end_time: new Date().toISOString() })
+                .eq("schedule_id", scheduleForTimeout.schedule_id);
               if (updErr) {
                 console.error(
-                  "failed to update collection_schedules after leave",
+                  "failed to update collection_schedules end_time after leave",
                   updErr,
                 );
               }

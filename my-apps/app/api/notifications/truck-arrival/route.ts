@@ -1,6 +1,7 @@
 // app/api/notifications/truck-arrival/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import { sendSMS } from "@/lib/sms";
 
 // Define types for the query result
 type UserData = {
@@ -28,12 +29,30 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Normalize barangayId type to number if possible (supabase column is numeric)
+    const barangayIdNumber = Number(barangayId);
+
     // Notify all residents in the barangay (no need for live location tracking)
-    const { data: residents, error: residentsError } = await supabase
+    const query = supabase
       .from("users")
       .select("user_id, first_name, last_name, contact_number")
-      .eq("role", "Resident")
-      .eq("barangay_id", barangayId);
+      .eq("role", "Resident");
+    if (!Number.isNaN(barangayIdNumber)) {
+      query.eq("barangay_id", barangayIdNumber);
+    } else {
+      query.eq("barangay_id", barangayId);
+    }
+
+    const { data: residents, error: residentsError, count } = await query;
+
+    console.log(
+      "truck-arrival: barangayId",
+      barangayId,
+      "count",
+      count,
+      "resolvedAs",
+      Number.isNaN(barangayIdNumber) ? "string" : "number",
+    );
 
     if (residentsError || !residents) {
       console.warn(
@@ -69,20 +88,9 @@ export async function POST(req: NextRequest) {
 
       if (recentNotif) continue;
 
-      // Send SMS
-      const smsResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-sms`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ to: phoneNumber, message }),
-        },
-      );
-
-      const smsResult = await smsResponse.json();
-
-      if (smsResult.success) {
-        // Log notification
+      // Send SMS using internal SMS helper (no internal HTTP fetch call)
+      try {
+        await sendSMS(phoneNumber, message);
         await supabase.from("sms_notifications").insert({
           user_id: resident.user_id,
           notification_type: "truck_arrival",
@@ -95,6 +103,11 @@ export async function POST(req: NextRequest) {
         notifications.push({
           user: name,
           phone: phoneNumber,
+        });
+      } catch (smsError) {
+        console.error("Failed to send truck arrival SMS", {
+          phoneNumber,
+          smsError,
         });
       }
     }

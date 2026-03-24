@@ -1,6 +1,8 @@
 // Notify BWMC when resident submits incident report
 import { NextRequest, NextResponse } from "next/server";
+
 import { supabase } from "@/lib/supabaseClient";
+import { sendSMS } from "@/lib/sms";
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,22 +25,9 @@ export async function POST(req: NextRequest) {
 
     const message = `New incident report submitted by ${reporterName}.\nLocation: ${location}.\nReport ID: #${reportId}.\nPlease review and take action.\n\n - Track the Truck`;
 
-    // Send SMS
-    const smsResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-sms`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: bwmc.contact_number,
-          message,
-        }),
-      },
-    );
-
-    const smsResult = await smsResponse.json();
-
-    if (smsResult.success) {
+    let smsResult;
+    try {
+      smsResult = await sendSMS(bwmc.contact_number, message);
       await supabase.from("sms_notifications").insert({
         user_id: bwmc.user_id,
         notification_type: "incident_report_submitted",
@@ -47,6 +36,21 @@ export async function POST(req: NextRequest) {
         sent_at: new Date().toISOString(),
         status: "sent",
       });
+    } catch (error) {
+      console.error("Failed to send SMS:", error);
+      await supabase.from("sms_notifications").insert({
+        user_id: bwmc.user_id,
+        notification_type: "incident_report_submitted",
+        message,
+        phone_number: bwmc.contact_number,
+        sent_at: new Date().toISOString(),
+        status: "failed",
+        error_message: error?.message || String(error),
+      });
+      return NextResponse.json(
+        { success: false, error: "Failed to send SMS" },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({

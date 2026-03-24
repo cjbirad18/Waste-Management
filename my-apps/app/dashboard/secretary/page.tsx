@@ -1,5 +1,27 @@
 "use client";
 
+// --- Schedule Pattern Update Handler ---
+// Call this function when saving an edit to an existing schedule's pattern
+async function handleUpdateSchedulePattern(
+  scheduleId: string,
+  newPattern: string,
+) {
+  const { error } = await supabase
+    .from("collection_schedules")
+    .update({ days: newPattern })
+    .eq("schedule_id", scheduleId);
+
+  if (error) {
+    alert("Failed to update schedule: " + error.message);
+  } else {
+    alert("Schedule updated!");
+    // Optionally, re-fetch schedules here
+  }
+}
+
+// Example usage: (You should call this from your edit/save button handler)
+// handleUpdateSchedulePattern(selectedScheduleId, selectedPattern);
+
 import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -75,6 +97,7 @@ type SecretaryActiveTab =
   | "inputSchedule"
   | "garbageTrucks"
   | "schedules"
+  | "garbageCollections"
   | "passedIncidents"
   | "gcpResponses"
   | "manageAccount";
@@ -367,25 +390,32 @@ function ScheduleFormWithCalendar({
       const { data: authUser } = await supabase.auth.getUser();
       const user_id = authUser?.user?.id;
 
-      const { data, error: insertError } = await supabase
-        .from("collection_schedules")
-        .insert([
-          {
-            barangay_id: schedule.barangay_id,
-            gcp_user_id: schedule.gcp_user_id,
-            status: "Active",
-            days: schedule.schedule_pattern,
-            start_time: schedule.start_time,
-            created_by: user_id,
-          },
-        ])
-        .select()
-        .single();
+      const createRes = await fetch("/api/collection-schedules/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          barangay_id: schedule.barangay_id,
+          gcp_user_id: schedule.gcp_user_id,
+          days: schedule.schedule_pattern,
+          start_time: schedule.start_time,
+          created_by: user_id,
+        }),
+      });
 
-      if (insertError || !data) {
+      const createData = await createRes.json();
+      if (!createRes.ok || !createData.success) {
         setError(
-          "Failed to save schedule: " + (insertError?.message ?? "Unknown"),
+          `Failed to save schedule: ${
+            createData.error || createRes.statusText || "Unknown"
+          }`,
         );
+        setSuccess(null);
+        return;
+      }
+
+      const data = createData.data;
+      if (!data) {
+        setError("Failed to save schedule: empty response from API");
         setSuccess(null);
         return;
       }
@@ -885,7 +915,7 @@ type CalendarSchedule = {
 };
 
 function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
-  const [selectedBarangay, setSelectedBarangay] = useState("");
+  const [selectedBarangay, setSelectedBarangay] = useState("ALL");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editScheduleId, setEditScheduleId] = useState<string | null>(null);
@@ -897,20 +927,14 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
   const [archivedLoading, setArchivedLoading] = useState(false);
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
 
-  useEffect(() => {
-    if (!selectedBarangay) {
-      setSchedules([]);
-      return;
-    }
-
-    async function fetchSchedules() {
-      setLoading(true);
-      setError(null);
-      try {
-        const { data, error } = await supabase
-          .from("collection_schedules")
-          .select(
-            `
+  const fetchSchedulesForBarangay = async (barangayId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      let query = supabase
+        .from("collection_schedules")
+        .select(
+          `
     schedule_id,
     barangay:barangay_id (
       barangay_name,
@@ -933,20 +957,32 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
       status
     )
   `,
-          )
-          .eq("barangay_id", selectedBarangay)
-          .neq("status", "Archived")
-          .order("date_created", { ascending: false });
-        if (error) throw error;
-        setSchedules((data as any[]) || []);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
+        )
+        .neq("status", "Archived")
+        .order("date_created", { ascending: false });
+
+      if (barangayId && barangayId !== "ALL") {
+        query = query.eq("barangay_id", barangayId);
       }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setSchedules((data as any[]) || []);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedBarangay || selectedBarangay === "ALL") {
+      // Show all schedules (no barangay filtering)
+      fetchSchedulesForBarangay("ALL");
+      return;
     }
 
-    fetchSchedules();
+    fetchSchedulesForBarangay(selectedBarangay);
 
     const channel = supabase
       .channel("secretary-schedules-sidebar-realtime")
@@ -954,14 +990,14 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
         "postgres_changes",
         { event: "*", schema: "public", table: "collection_schedules" },
         () => {
-          fetchSchedules();
+          fetchSchedulesForBarangay(selectedBarangay);
         },
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "collection_details" },
         () => {
-          fetchSchedules();
+          fetchSchedulesForBarangay(selectedBarangay);
         },
       )
       .subscribe();
@@ -1088,14 +1124,64 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
   const handleSaveEdit = async (schedule: any) => {
     if (isSavingSchedule) return; // Prevent multiple clicks
 
+    console.debug("handleSaveEdit schedule:", schedule);
+
     setIsSavingSchedule(true);
     try {
-      const { error } = await supabase
-        .from("collection_schedules")
-        .update({ days: editPattern, start_time: editStartTime })
-        .eq("schedule_id", schedule.schedule_id);
+      const scheduleId = schedule?.schedule_id;
+      console.debug("handleSaveEdit schedule_id:", scheduleId);
+      if (!scheduleId) {
+        throw new Error("Cannot update schedule: missing schedule_id");
+      }
 
-      if (error) throw error;
+      const { data: existing, error: fetchBeforeError } = await supabase
+        .from("collection_schedules")
+        .select("schedule_id, days, start_time, status")
+        .eq("schedule_id", scheduleId)
+        .maybeSingle();
+
+      if (fetchBeforeError) {
+        console.error("Cannot fetch schedule before update:", fetchBeforeError);
+        throw new Error(
+          "Cannot verify schedule before update: " + fetchBeforeError.message,
+        );
+      }
+
+      if (!existing) {
+        throw new Error(
+          `Schedule not found for schedule_id: ${scheduleId}. It may be deleted or out of scope.`,
+        );
+      }
+
+      console.debug("Schedule exists before update:", existing);
+
+      const updateRes = await fetch("/api/collection-schedules/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          scheduleId,
+          days: editPattern,
+          start_time: editStartTime,
+        }),
+      });
+
+      const updateResult = await updateRes.json();
+
+      if (!updateResult.success) {
+        throw new Error(
+          updateResult.error || "Failed to update schedule from server API",
+        );
+      }
+
+      const updatedSchedule = updateResult.data;
+
+      if (!updatedSchedule) {
+        throw new Error(
+          "Schedule update API returned success but no updated schedule data.",
+        );
+      }
 
       // Notify residents and GCP of schedule update
       const notificationRes = await fetch(
@@ -1139,24 +1225,76 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
         );
       }
 
+      // Update local schedule state immediately to avoid stale UI
       setSchedules((s) =>
         s.map((sc: any) =>
           sc.schedule_id === schedule.schedule_id
-            ? { ...sc, days: editPattern, start_time: editStartTime }
+            ? {
+                ...sc,
+                days: updatedSchedule?.days,
+                start_time: updatedSchedule?.start_time,
+              }
             : sc,
         ),
       );
+
+      // Verify persisted data from DB and refetch if needed
+      const { data: fetchedSchedule, error: fetchError } = await supabase
+        .from("collection_schedules")
+        .select("days,start_time")
+        .eq("schedule_id", schedule.schedule_id)
+        .single();
+
+      if (fetchError) {
+        console.error("Post-update verify fetch error:", fetchError);
+      } else {
+        console.log("Post-update schedule fetched:", fetchedSchedule);
+        if (fetchedSchedule) {
+          setSchedules((s) =>
+            s.map((sc: any) =>
+              sc.schedule_id === schedule.schedule_id
+                ? {
+                    ...sc,
+                    days: fetchedSchedule.days,
+                    start_time: fetchedSchedule.start_time,
+                  }
+                : sc,
+            ),
+          );
+        }
+      }
+
+      const targetBarangayId =
+        schedule.barangay?.barangay_id || schedule.barangay_id || "";
+
+      if (targetBarangayId) {
+        await fetchSchedulesAfterEdit(targetBarangayId);
+      } else {
+        console.warn(
+          "Could not determine barangay id after schedule update for schedule_id:",
+          schedule.schedule_id,
+        );
+      }
+
       setEditScheduleId(null);
     } catch (err) {
-      console.error("Error updating schedule:", err);
-      alert(
-        "Failed to update schedule: " +
-          (err instanceof Error ? err.message : String(err)),
-      );
+      const normalizedError =
+        err instanceof Error
+          ? err
+          : new Error(
+              err && typeof err === "object"
+                ? JSON.stringify(err)
+                : String(err),
+            );
+      console.error("Error updating schedule:", normalizedError);
+      alert("Failed to update schedule: " + normalizedError.message);
     } finally {
       setIsSavingSchedule(false);
     }
   };
+
+  // Helper to force re-fetch schedules for a given barangay after edit
+  const fetchSchedulesAfterEdit = fetchSchedulesForBarangay;
 
   function renderCalendar(schedule: CalendarSchedule) {
     const now = new Date();
@@ -1201,8 +1339,8 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
                      appearance-none pr-8"
               value={selectedBarangay}
               onChange={(e) => setSelectedBarangay(e.target.value)}
-              required
             >
+              <option value="ALL">All Barangays</option>
               <option value="">Select Barangay</option>
               {barangays.map((b) => (
                 <option key={b.barangay_id} value={b.barangay_id}>
@@ -3383,6 +3521,890 @@ function SecretaryGcpResponsesSection() {
   );
 }
 
+function SecretaryGarbageCollectionsSection() {
+  const [view, setView] = useState<"create" | "view" | "notifications">("view");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [trucks, setTrucks] = useState<any[]>([]);
+  const [gcps, setGcps] = useState<any[]>([]);
+  const [collections, setCollections] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [filterBarangay, setFilterBarangay] = useState<string>("");
+  const [filterDate, setFilterDate] = useState<string>("");
+  const [notifPage, setNotifPage] = useState(1);
+  const notifItemsPerPage = 10;
+
+  const [form, setForm] = useState({
+    schedule_id: "",
+    truck_id: "",
+    gcp_user_id: "",
+    collection_date: new Date().toISOString().slice(0, 10),
+  });
+
+  useEffect(() => {
+    if (view === "notifications") setNotifPage(1);
+  }, [view]);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadAllData = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUserId = authData?.user?.id;
+
+      const notificationQuery = supabase
+        .from("sms_notifications")
+        .select(
+          "id, user_id, notification_type, message, phone_number, status, sent_at, created_at",
+        )
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+      if (currentUserId) {
+        notificationQuery.eq("user_id", currentUserId);
+      }
+
+      const [scheduleResp, truckResp, gcpResp, collectionResp, smsResp] =
+        await Promise.all([
+          supabase
+            .from("collection_schedules")
+            .select(
+              `schedule_id, days, start_time, barangay:barangay_id ( barangay_id, barangay_name ), gcp_user:gcp_user_id ( user_id, first_name, last_name )`,
+            )
+            .order("date_created", { ascending: false }),
+          supabase
+            .from("garbage_trucks")
+            .select("truck_id, plate_number, truck_code"),
+          supabase
+            .from("users")
+            .select("user_id, first_name, last_name")
+            .eq("role", "GCP"),
+          supabase
+            .from("collection_details")
+            .select(
+              `collectiondetails_id, collection_date, status, truck:truck_id ( truck_id, plate_number, truck_code ), schedule:schedule_id ( schedule_id, days, start_time, barangay:barangay_id ( barangay_id, barangay_name ), gcp_user:gcp_user_id ( user_id, first_name, last_name ) ), gcp_assignment:gcp_assignment ( gcp_assignment_id, created_at, user:user_id ( user_id, first_name, last_name ) )`,
+            )
+            .order("collection_date", { ascending: false }),
+          notificationQuery,
+        ]);
+
+      if (scheduleResp.error) throw scheduleResp.error;
+      if (truckResp.error) throw truckResp.error;
+      if (gcpResp.error) throw gcpResp.error;
+      if (collectionResp.error) throw collectionResp.error;
+      if (smsResp.error) throw smsResp.error;
+
+      setSchedules(scheduleResp.data || []);
+      setTrucks(truckResp.data || []);
+      setGcps(gcpResp.data || []);
+      setCollections(collectionResp.data || []);
+      setNotifications(smsResp.data || []);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAllData();
+
+    let lastRealtimeUpdate = 0;
+    const realtimeCooldown = 8 * 1000; // 8 seconds
+
+    const maybeRefresh = () => {
+      const now = Date.now();
+      if (now - lastRealtimeUpdate >= realtimeCooldown) {
+        lastRealtimeUpdate = now;
+        loadAllData();
+      }
+    };
+
+    const channel = supabase
+      .channel("secretary-collections-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "collection_details" },
+        maybeRefresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "gcp_assignment" },
+        maybeRefresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "sms_notifications" },
+        maybeRefresh,
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [view]);
+
+  const handleFormChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setSubmitError(null);
+    setSubmitSuccess(null);
+  };
+
+  const handleCreateCollection = async (e: FormEvent) => {
+    e.preventDefault();
+    setSubmitError(null);
+    setSubmitSuccess(null);
+
+    if (!form.schedule_id || !form.truck_id || !form.gcp_user_id) {
+      setSubmitError("Schedule, truck, and GCP are required.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { data: detail, error: detailError } = await supabase
+        .from("collection_details")
+        .insert([
+          {
+            schedule_id: form.schedule_id,
+            truck_id: form.truck_id,
+            collection_date: form.collection_date,
+            status: "scheduled",
+          },
+        ])
+        .select()
+        .single();
+
+      if (detailError || !detail)
+        throw detailError || new Error("Failed to create collection");
+
+      const { error: assignError } = await supabase
+        .from("gcp_assignment")
+        .insert([
+          {
+            collectiondetails_id: detail.collectiondetails_id,
+            user_id: form.gcp_user_id,
+          },
+        ]);
+      if (assignError) throw assignError;
+
+      const { data: gcpUser, error: gcpUserError } = await supabase
+        .from("users")
+        .select("contact_number, first_name")
+        .eq("user_id", form.gcp_user_id)
+        .single();
+
+      if (!gcpUserError && gcpUser?.contact_number) {
+        const message = `Hi ${gcpUser.first_name}, you have a new collection assignment. Please check your dashboard.`;
+        await supabase.from("sms_notifications").insert({
+          user_id: form.gcp_user_id,
+          notification_type: "assignment",
+          message,
+          phone_number: gcpUser.contact_number,
+          status: "pending",
+          sent_at: new Date().toISOString(),
+        });
+      }
+
+      setSubmitSuccess("Garbage collection created and assigned successfully.");
+      setForm((prev) => ({
+        ...prev,
+        schedule_id: "",
+        truck_id: "",
+        gcp_user_id: "",
+        collection_date: new Date().toISOString().slice(0, 10),
+      }));
+      loadAllData();
+    } catch (err) {
+      setSubmitError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const [backupGcpSelection, setBackupGcpSelection] = useState<
+    Record<string, string>
+  >({});
+
+  const assignBackupGcp = async (
+    collectionDetailsId: string,
+    gcpUserId: string,
+  ) => {
+    if (!collectionDetailsId || !gcpUserId) {
+      alert("Please select a GCP to assign as backup.");
+      return;
+    }
+
+    try {
+      const { data: existingAssignment, error: existingError } = await supabase
+        .from("gcp_assignment")
+        .select("gcp_assignment_id")
+        .eq("collectiondetails_id", collectionDetailsId)
+        .single();
+
+      if (existingError && existingError.code !== "PGRST116") {
+        throw existingError;
+      }
+
+      if (existingAssignment && existingAssignment.gcp_assignment_id) {
+        const { error: updateError } = await supabase
+          .from("gcp_assignment")
+          .update({ user_id: gcpUserId, is_backup: true })
+          .eq("gcp_assignment_id", existingAssignment.gcp_assignment_id);
+
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from("gcp_assignment")
+          .insert([
+            {
+              collectiondetails_id: collectionDetailsId,
+              user_id: gcpUserId,
+              is_backup: true,
+            },
+          ]);
+
+        if (insertError) throw insertError;
+      }
+
+      alert("Backup GCP assigned successfully.");
+
+      // Notify backup GCP via SMS notifications table if contact is available
+      const { data: backupUser, error: backupUserError } = await supabase
+        .from("users")
+        .select("contact_number, first_name, last_name")
+        .eq("user_id", gcpUserId)
+        .single();
+
+      if (!backupUserError && backupUser?.contact_number) {
+        const message = `Hi ${backupUser.first_name} ${backupUser.last_name}, you have been assigned as backup GCP for a missed collection. Please respond and head to the assigned barangay.`;
+        await supabase.from("sms_notifications").insert({
+          user_id: gcpUserId,
+          notification_type: "backup_assignment",
+          message,
+          phone_number: backupUser.contact_number,
+          status: "pending",
+          sent_at: new Date().toISOString(),
+        });
+      }
+
+      setBackupGcpSelection((prev) => ({ ...prev, [collectionDetailsId]: "" }));
+      loadAllData();
+    } catch (err) {
+      console.error("Failed to assign backup GCP", err);
+      alert("Failed to assign backup GCP: " + (err as Error).message);
+    }
+  };
+
+  const updateStatus = async (collectionId: string, status: string) => {
+    try {
+      if (collectionId.startsWith("schedule-")) {
+        // Derived schedule entry (no actual collection_details row yet)
+        const scheduleId = collectionId.replace("schedule-", "");
+
+        const { data: newCollection, error: insertError } = await supabase
+          .from("collection_details")
+          .insert([
+            {
+              schedule_id: scheduleId,
+              collection_date: new Date().toISOString().slice(0, 10),
+              status,
+            },
+          ])
+          .select()
+          .single();
+
+        if (insertError || !newCollection) {
+          throw insertError || new Error("Failed to create collection detail");
+        }
+
+        // Continue to keep dataset in sync after insertion
+        loadAllData();
+        return;
+      }
+
+      await supabase
+        .from("collection_details")
+        .update({ status })
+        .eq("collectiondetails_id", collectionId);
+
+      loadAllData();
+    } catch (err) {
+      console.error("Failed to update collection status", err);
+    }
+  };
+
+  const renderView = () => {
+    if (loading) return <TruckLoader />;
+    if (error)
+      return <div className="text-red-500">Failed to load: {error}</div>;
+
+    if (view === "create") {
+      return (
+        <form
+          onSubmit={handleCreateCollection}
+          className="space-y-6 bg-slate-900/60 border border-slate-800/50 rounded-2xl p-6"
+        >
+          <div className="flex flex-col gap-4 md:flex-row md:items-end">
+            <div className="flex-1 space-y-1.5">
+              <label
+                htmlFor="schedule_id"
+                className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider"
+              >
+                Schedule
+              </label>
+              <select
+                id="schedule_id"
+                name="schedule_id"
+                value={form.schedule_id}
+                onChange={handleFormChange}
+                className="w-full rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+              >
+                <option value="" className="bg-slate-900">
+                  Select schedule
+                </option>
+                {schedules.map((s) => (
+                  <option
+                    key={s.schedule_id}
+                    value={s.schedule_id}
+                    className="bg-slate-900"
+                  >
+                    {s.barangay?.barangay_name} • {s.days} @ {s.start_time}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex-1 space-y-1.5">
+              <label
+                htmlFor="truck_id"
+                className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider"
+              >
+                Truck
+              </label>
+              <select
+                id="truck_id"
+                name="truck_id"
+                value={form.truck_id}
+                onChange={handleFormChange}
+                className="w-full rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+              >
+                <option value="" className="bg-slate-900">
+                  Select truck
+                </option>
+                {trucks.map((t) => (
+                  <option
+                    key={t.truck_id}
+                    value={t.truck_id}
+                    className="bg-slate-900"
+                  >
+                    {t.truck_code} ({t.plate_number})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex-1 space-y-1.5">
+              <label
+                htmlFor="gcp_user_id"
+                className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider"
+              >
+                Assigned GCP
+              </label>
+              <select
+                id="gcp_user_id"
+                name="gcp_user_id"
+                value={form.gcp_user_id}
+                onChange={handleFormChange}
+                className="w-full rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+              >
+                <option value="" className="bg-slate-900">
+                  Select GCP
+                </option>
+                {gcps.map((g) => (
+                  <option
+                    key={g.user_id}
+                    value={g.user_id}
+                    className="bg-slate-900"
+                  >
+                    {g.first_name} {g.last_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label
+                htmlFor="collection_date"
+                className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider"
+              >
+                Collection Date
+              </label>
+              <input
+                type="date"
+                id="collection_date"
+                name="collection_date"
+                value={form.collection_date}
+                onChange={handleFormChange}
+                className="w-full rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+              />
+            </div>
+          </div>
+
+          {submitError && (
+            <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+              {submitError}
+            </div>
+          )}
+          {submitSuccess && (
+            <div className="text-sm text-emerald-200 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+              {submitSuccess}
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold text-white rounded-lg shadow-lg shadow-emerald-900/30 transition-all duration-200"
+              disabled={submitting}
+            >
+              {submitting ? "Saving..." : "Create Collection"}
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+            </button>
+          </div>
+        </form>
+      );
+    }
+
+    const sortedNotifications = [...notifications].sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return dateB - dateA; // newest first
+    });
+
+    const notifTotalPages = Math.max(
+      1,
+      Math.ceil(sortedNotifications.length / notifItemsPerPage),
+    );
+    const notifSafePage = Math.min(notifPage, notifTotalPages);
+    const paginatedNotifications = sortedNotifications.slice(
+      (notifSafePage - 1) * notifItemsPerPage,
+      notifSafePage * notifItemsPerPage,
+    );
+
+    if (view === "notifications") {
+      return (
+        <div className="rounded-2xl border border-slate-800/50 bg-slate-900/60 overflow-hidden">
+          <div className="px-6 py-5 border-b border-slate-800/50">
+            <h3 className="text-xl font-bold text-slate-100">Notifications</h3>
+            <p className="text-sm text-slate-400 mt-1">
+              Recent SMS notifications sent to GCPs and users.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-900/80 border-b border-slate-800/50">
+                <tr>
+                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                    When
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Type
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Recipient
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Status
+                  </th>
+                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Message
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/40">
+                {sortedNotifications.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="text-center py-10 text-slate-500"
+                    >
+                      No notifications yet.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedNotifications.map((n) => (
+                    <tr
+                      key={n.id}
+                      className="hover:bg-slate-800/40 transition-colors"
+                    >
+                      <td className="px-5 py-3 text-slate-300 whitespace-nowrap">
+                        {n.created_at
+                          ? new Date(n.created_at).toLocaleString()
+                          : "-"}
+                      </td>
+                      <td className="px-5 py-3 text-slate-200">
+                        {n.notification_type}
+                      </td>
+                      <td className="px-5 py-3 text-slate-200">
+                        {n.phone_number || n.user_id}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            n.status === "sent"
+                              ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                              : n.status === "failed"
+                                ? "bg-red-500/15 text-red-300 border border-red-500/30"
+                                : "bg-slate-500/15 text-slate-400 border border-slate-500/30"
+                          }`}
+                        >
+                          {n.status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-slate-300 max-w-[400px] truncate">
+                        {n.message}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {notifications.length > notifItemsPerPage && (
+            <div className="flex items-center justify-between px-5 py-4 border-t border-slate-800/50 bg-slate-900/60">
+              <span className="text-xs text-slate-500">
+                Showing {(notifSafePage - 1) * notifItemsPerPage + 1} to{" "}
+                {Math.min(
+                  notifSafePage * notifItemsPerPage,
+                  notifications.length,
+                )}{" "}
+                of {notifications.length} notifications
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setNotifPage((p) => Math.max(1, p - 1))}
+                  disabled={notifSafePage === 1}
+                  className="px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-emerald-300 hover:bg-slate-800/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                <span className="text-xs text-slate-400">
+                  {notifSafePage} / {notifTotalPages}
+                </span>
+                <button
+                  onClick={() =>
+                    setNotifPage((p) => Math.min(notifTotalPages, p + 1))
+                  }
+                  disabled={notifSafePage === notifTotalPages}
+                  className="px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-emerald-300 hover:bg-slate-800/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // view === "view"
+    const scheduleDerivedCollections = schedules
+      .filter(
+        (s) =>
+          !collections.some((c) => c.schedule?.schedule_id === s.schedule_id),
+      )
+      .map((s) => ({
+        collectiondetails_id: `schedule-${s.schedule_id}`,
+        collection_date: s.date_created || null,
+        // For schedule records without matching collection details, keep as scheduled.
+        // 'Missed' should only be set when the truck actually failed to execute after route start.
+        status: "scheduled",
+        truck: { truck_code: "-" },
+        schedule: s,
+        gcp_assignment: s.gcp_user ? { user: s.gcp_user } : null,
+      }));
+
+    const allCollections = [...collections, ...scheduleDerivedCollections];
+
+    const barangayOptions = Array.from(
+      new Set(
+        allCollections
+          .map((c) => c.schedule?.barangay?.barangay_name)
+          .filter((name: string | undefined): name is string => Boolean(name)),
+      ),
+    );
+
+    const filteredCollections = allCollections
+      .filter((c) => {
+        if (
+          filterBarangay &&
+          c.schedule?.barangay?.barangay_name !== filterBarangay
+        ) {
+          return false;
+        }
+        if (filterDate) {
+          if (!c.collection_date) return false;
+          const normalizedDate = new Date(c.collection_date)
+            .toISOString()
+            .slice(0, 10);
+          if (normalizedDate !== filterDate) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const dateA = a.collection_date
+          ? new Date(a.collection_date).getTime()
+          : 0;
+        const dateB = b.collection_date
+          ? new Date(b.collection_date).getTime()
+          : 0;
+        return dateB - dateA;
+      });
+
+    return (
+      <div className="rounded-2xl border border-slate-800/50 bg-slate-900/60 overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-800/50">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xl font-bold text-slate-100">Collections</h3>
+              <p className="text-sm text-slate-400 mt-1">
+                Review and manage scheduled garbage collections.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor="barangayFilter"
+                  className="text-sm font-semibold text-slate-300"
+                >
+                  Filter by Barangay:
+                </label>
+                <select
+                  id="barangayFilter"
+                  value={filterBarangay}
+                  onChange={(e) => setFilterBarangay(e.target.value)}
+                  className="rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2 text-sm text-slate-200"
+                >
+                  <option value="">All Barangays</option>
+                  {barangayOptions.map((name) => (
+                    <option key={name} value={name} className="bg-slate-900">
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor="collectionDateFilter"
+                  className="text-sm font-semibold text-slate-300"
+                >
+                  Filter by Date:
+                </label>
+                <input
+                  id="collectionDateFilter"
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2 text-sm text-slate-200"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-900/80 border-b border-slate-800/50">
+              <tr>
+                <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Date
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Barangay
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Truck
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Assigned GCP
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Status
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/40">
+              {filteredCollections.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-10 text-slate-500">
+                    No collections found.
+                  </td>
+                </tr>
+              ) : (
+                filteredCollections.map((c) => (
+                  <tr
+                    key={c.collectiondetails_id}
+                    className="hover:bg-slate-800/40 transition-colors"
+                  >
+                    <td className="px-5 py-3 text-slate-300 whitespace-nowrap">
+                      {c.collection_date
+                        ? new Date(c.collection_date).toLocaleDateString()
+                        : "-"}
+                    </td>
+                    <td className="px-5 py-3 text-slate-200">
+                      {c.schedule?.barangay?.barangay_name || "-"}
+                    </td>
+                    <td className="px-5 py-3 text-slate-200">
+                      {c.truck?.truck_code}
+                    </td>
+                    <td className="px-5 py-3 text-slate-200">
+                      {c.gcp_assignment?.user
+                        ? `${c.gcp_assignment.user.first_name} ${c.gcp_assignment.user.last_name}`
+                        : c.schedule?.gcp_user
+                          ? `${c.schedule.gcp_user.first_name} ${c.schedule.gcp_user.last_name}`
+                          : "-"}
+                    </td>
+                    <td className="px-5 py-3">
+                      <span
+                        className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          c.status === "Missed" || c.status === "missed"
+                            ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                            : c.status === "scheduled" || c.status === "pending"
+                              ? "bg-slate-500/15 text-slate-400 border border-slate-500/30"
+                              : c.status === "in_progress" ||
+                                  c.status === "Ongoing" ||
+                                  c.status === "ongoing"
+                                ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                                : c.status === "Delayed" ||
+                                    c.status === "delayed"
+                                  ? "bg-red-500/15 text-red-300 border border-red-500/30"
+                                  : c.status === "Done" || c.status === "done"
+                                    ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                                    : "bg-slate-500/15 text-slate-400 border border-slate-500/30"
+                        }`}
+                      >
+                        {c.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-slate-200">
+                      <div className="text-xs text-slate-400 mb-1">
+                        Backup:
+                        {c.gcp_assignment?.user
+                          ? ` ${c.gcp_assignment.user.first_name} ${c.gcp_assignment.user.last_name}`
+                          : " -"}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="rounded-lg bg-slate-800/50 border border-slate-700/50 px-2 py-1 text-xs"
+                          value={
+                            backupGcpSelection[c.collectiondetails_id] || ""
+                          }
+                          onChange={(e) =>
+                            setBackupGcpSelection((prev) => ({
+                              ...prev,
+                              [c.collectiondetails_id]: e.target.value,
+                            }))
+                          }
+                          disabled={
+                            c.status !== "Delayed" && c.status !== "delayed"
+                          }
+                        >
+                          <option value="">Select Backup GCP</option>
+                          {gcps.map((g) => (
+                            <option key={g.user_id} value={g.user_id}>
+                              {g.first_name} {g.last_name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            assignBackupGcp(
+                              c.collectiondetails_id,
+                              backupGcpSelection[c.collectiondetails_id] || "",
+                            )
+                          }
+                          disabled={
+                            c.status !== "Delayed" && c.status !== "delayed"
+                          }
+                          className="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Assign
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <section className="max-w-6xl mx-auto space-y-6 p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {(
+            [
+              { key: "view", label: "View", icon: "📋" },
+              { key: "notifications", label: "Notifications", icon: "🔔" },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setView(tab.key)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-150 ${
+                view === tab.key
+                  ? "bg-emerald-600 text-white"
+                  : "bg-slate-800/60 text-slate-300 hover:bg-slate-800/80"
+              }`}
+            >
+              <span className="mr-2">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="text-sm text-slate-400">
+          Showing: <span className="text-slate-200 font-semibold">{view}</span>
+        </div>
+      </div>
+
+      {renderView()}
+    </section>
+  );
+}
+
 type GarbageTrucksSectionProps = {
   gcps: { user_id: string; first_name: string; last_name: string }[];
 };
@@ -4056,6 +5078,7 @@ export default function SecretaryDashboard() {
   const [counts, setCounts] = useState({
     trucks: 0,
     schedules: 0,
+    garbageCollections: 0,
     gcpResponses: 0,
   });
 
@@ -4063,6 +5086,7 @@ export default function SecretaryDashboard() {
     async function fetchCounts() {
       let truckCount = 0;
       let scheduleCount = 0;
+      let garbageCollectionCount = 0;
       let gcpResponseCount = 0;
 
       // Trucks: count from garbage_trucks table
@@ -4107,9 +5131,27 @@ export default function SecretaryDashboard() {
         console.error("Unexpected error fetching Schedule count:", err);
       }
 
+      // Garbage Collections: count from collection_details table
+      try {
+        const { count, error } = await supabase
+          .from("collection_details")
+          .select("collectiondetails_id", { count: "exact", head: true });
+        if (error) {
+          console.error("Garbage collection count fetch error:", error);
+        } else {
+          garbageCollectionCount = count || 0;
+        }
+      } catch (err) {
+        console.error(
+          "Unexpected error fetching garbage collection count:",
+          err,
+        );
+      }
+
       setCounts({
         trucks: truckCount,
         schedules: scheduleCount,
+        garbageCollections: garbageCollectionCount,
         gcpResponses: gcpResponseCount,
       });
     }
@@ -4158,6 +5200,15 @@ export default function SecretaryDashboard() {
       trend: "Active",
       trendClass: "text-emerald-400",
       count: counts.schedules,
+    },
+    {
+      label: "Garbage Collections",
+      icon: "🗑️",
+      iconBg: "bg-rose-500/15",
+      iconColor: "text-rose-300",
+      trend: "Active",
+      trendClass: "text-slate-500",
+      count: counts.garbageCollections,
     },
     {
       label: "GCP Responses",
@@ -4373,95 +5424,38 @@ export default function SecretaryDashboard() {
     const user_id = authUser?.user?.id;
 
     try {
-      // 1. Create collection_schedules row
-      const { data: scheduleRow, error: scheduleError } = await supabase
-        .from("collection_schedules")
-        .insert([
-          {
-            barangay_id: scheduleData.barangay_id,
-            days: scheduleData.schedule_pattern,
-            start_time: scheduleData.start_time,
-            gcp_user_id: scheduleData.gcp_user_id,
-            created_by: user_id,
-          },
-        ])
-        .select()
-        .single();
+      // 1. Create collection_schedules row through secure backend endpoint (service role) to avoid RLS block
+      const createResponse = await fetch("/api/collection-schedules/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          barangay_id: scheduleData.barangay_id,
+          days: scheduleData.schedule_pattern,
+          start_time: scheduleData.start_time,
+          gcp_user_id: scheduleData.gcp_user_id,
+          created_by: user_id,
+        }),
+      });
 
-      if (scheduleError || !scheduleRow) throw scheduleError;
+      const result = await createResponse.json();
+      if (!createResponse.ok || !result.success) {
+        throw new Error(
+          result.error || "Failed to create schedule via backend API",
+        );
+      }
+      const scheduleRow = result.data;
 
-      // 2. Create collection_details row
-      const { data: detail, error: detailError } = await supabase
-        .from("collection_details")
-        .insert([
-          {
-            schedule_id: scheduleRow.schedule_id,
-            truck_id: scheduleData.truck_code,
-            status: "scheduled",
-          },
-        ])
-        .select()
-        .single();
-      if (detailError || !detail) throw detailError;
-
-      // 2.1 Update the assigned truck to set its gcp_user_id
+      // 2. Update the assigned truck's driver (planning stage)
       await supabase
         .from("garbage_trucks")
         .update({ gcp_user_id: scheduleData.gcp_user_id })
         .eq("truck_code", scheduleData.truck_code);
 
-      // 3. Assign the GCP in gcp_assignment
-      const { error: assignError } = await supabase
-        .from("gcp_assignment")
-        .insert([
-          {
-            collectiondetails_id: detail.collectiondetails_id,
-            user_id: scheduleData.gcp_user_id,
-          },
-        ]);
-      if (assignError) throw assignError;
-
-      // 4. Send SMS notification to assigned GCP
-      // Fetch GCP user info for phone number
-      const { data: gcpUser, error: gcpUserError } = await supabase
-        .from("users")
-        .select("contact_number,first_name")
-        .eq("user_id", scheduleData.gcp_user_id)
-        .single();
-      if (gcpUserError) {
-        console.error(
-          "Failed to fetch GCP user for SMS notification:",
-          gcpUserError,
-        );
-      }
-      if (gcpUser && gcpUser.contact_number) {
-        const message = `Hi ${gcpUser.first_name}, you have been assigned as GCP and have a new schedule. Please check your dashboard for details.`;
-        const { error: smsError } = await supabase
-          .from("sms_notifications")
-          .insert({
-            user_id: scheduleData.gcp_user_id,
-            notification_type: "assignment",
-            message,
-            phone_number: gcpUser.contact_number,
-            status: "pending",
-            sent_at: new Date().toISOString(),
-          });
-        if (smsError) {
-          console.error("Failed to insert SMS notification:", smsError);
-        } else {
-          console.log(
-            "SMS notification inserted for GCP:",
-            gcpUser.contact_number,
-          );
-        }
-      } else {
-        console.warn(
-          "No contact number found for GCP user:",
-          scheduleData.gcp_user_id,
-        );
-      }
-
-      setScheduleSuccess("Schedule successfully created");
+      setScheduleSuccess(
+        "Schedule successfully created. Activate it from Garbage Collections when ready.",
+      );
       setSchedule({
         barangay_id: "",
         truck_code: "",
@@ -4506,23 +5500,7 @@ export default function SecretaryDashboard() {
       ),
       tab: "dashboard",
     },
-    {
-      label: "Create Schedules",
-      icon: (
-        <svg
-          viewBox="0 0 20 20"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          className="w-5 h-5"
-        >
-          <rect x="4" y="4" width="12" height="12" rx="2" />
-          <line x1="6" y1="8" x2="14" y2="8" />
-          <line x1="6" y1="12" x2="14" y2="12" />
-        </svg>
-      ),
-      tab: "inputSchedule",
-    },
+
     {
       label: "Garbage Trucks",
       icon: (
@@ -4539,6 +5517,22 @@ export default function SecretaryDashboard() {
         </svg>
       ),
       tab: "garbageTrucks",
+    },
+    {
+      label: "Garbage Collections",
+      icon: (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="w-5 h-5"
+        >
+          <path d="M4 4h12v12H4z" />
+          <path d="M7 8h6M7 12h6" />
+        </svg>
+      ),
+      tab: "garbageCollections",
     },
     {
       label: "View Schedules",
@@ -4739,6 +5733,11 @@ export default function SecretaryDashboard() {
               { label: "Create Schedules", icon: "📝", tab: "inputSchedule" },
               { label: "Garbage Trucks", icon: "🚚", tab: "garbageTrucks" },
               { label: "View Schedules", icon: "📅", tab: "schedules" },
+              {
+                label: "Garbage Collections",
+                icon: "🗑️",
+                tab: "garbageCollections",
+              },
               { label: "Passed Incidents", icon: "🚨", tab: "passedIncidents" },
               { label: "GCP Responses", icon: "💬", tab: "gcpResponses" },
             ].map((item) => (
@@ -4888,6 +5887,16 @@ export default function SecretaryDashboard() {
                   </h2>
                 </div>
                 <SchedulesSidebarItem barangays={barangays} />
+              </div>
+            </div>
+          )}
+
+          {/* Garbage Collections */}
+          {activeTab === "garbageCollections" && (
+            <div className="dashboard-section overflow-hidden">
+              <div className="dashboard-section-glow" />
+              <div className="relative z-10">
+                <SecretaryGarbageCollectionsSection />
               </div>
             </div>
           )}

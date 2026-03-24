@@ -1,6 +1,7 @@
 // Notify GCP and Residents when schedule is updated/archived
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import { sendSMS } from "@/lib/sms";
 
 type UserData = {
   first_name: string;
@@ -146,33 +147,27 @@ export async function POST(req: NextRequest) {
     // Send to all recipients
     for (const recipient of recipients) {
       console.log(`Sending SMS to ${recipient.name} (${recipient.phone})...`);
-      const smsResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-sms`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ to: recipient.phone, message }),
-        },
-      );
-
-      const smsResult = await smsResponse.json();
-      console.log(`SMS response for ${recipient.phone}:`, smsResult);
-
-      if (smsResult.success) {
-        await supabase.from("sms_notifications").insert({
-          user_id: recipient.userId,
-          notification_type: "schedule_update",
-          message,
-          phone_number: recipient.phone,
-          sent_at: new Date().toISOString(),
-          status: "sent",
-        });
-        notifications.push(recipient.name);
-      } else {
-        console.error(
-          `Failed to send SMS to ${recipient.phone}:`,
-          smsResult.error,
-        );
+      try {
+        const smsResult = await sendSMS(recipient.phone, message);
+        console.log(`SMS response for ${recipient.phone}:`, smsResult);
+        if (smsResult.status === "success") {
+          await supabase.from("sms_notifications").insert({
+            user_id: recipient.userId,
+            notification_type: "schedule_update",
+            message,
+            phone_number: recipient.phone,
+            sent_at: new Date().toISOString(),
+            status: "sent",
+          });
+          notifications.push(recipient.name);
+        } else {
+          console.error(
+            `Failed to send SMS to ${recipient.phone}:`,
+            smsResult.message || smsResult.error,
+          );
+        }
+      } catch (err) {
+        console.error(`Failed to send SMS to ${recipient.phone}:`, err);
       }
     }
 

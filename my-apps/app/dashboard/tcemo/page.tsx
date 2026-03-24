@@ -28,6 +28,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const LeafletMap = dynamic(() => import("../../leafletmap"), { ssr: false });
 
@@ -172,7 +179,255 @@ export default function TcemoDashboard() {
     | "manageAccount"
     | "generateReports"
     | "schedules"
+    | "incidentReports"
   >("dashboard");
+
+  // Incident Reports State (copied from SWMO Head dashboard)
+  const [incidentReports, setIncidentReports] = useState<any[]>([]);
+  const [selectedBarangay, setSelectedBarangay] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("date_desc");
+  const [loadingReports, setLoadingReports] = useState(false);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+  const [selectedReport, setSelectedReport] = useState<any | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportStatusFilter, setReportStatusFilter] = useState<string>("All");
+  const [reportSearch, setReportSearch] = useState("");
+  const [reportPage, setReportPage] = useState(1);
+  const [showReportFilters, setShowReportFilters] = useState(false);
+  const [showCreateReportModal, setShowCreateReportModal] = useState(false);
+  const [createReportLoading, setCreateReportLoading] = useState(false);
+  const [createReportError, setCreateReportError] = useState<string | null>(
+    null,
+  );
+  const [createReportForm, setCreateReportForm] = useState({
+    description: "",
+    location: "",
+    landmark: "",
+    barangay_id: "",
+    current_status: "Submitted",
+  });
+  const [historyModal, setHistoryModal] = useState<{
+    title: string;
+    entries: { time: string; status: string; remarks: string }[];
+    message?: string;
+  } | null>(null);
+
+  const incidentStatusTabs = [
+    "All",
+    "Submitted",
+    "Validated",
+    "Rejected",
+    "Resolved",
+  ];
+  const incidentStatusOptions = [
+    "Submitted",
+    "Validated",
+    "Rejected",
+    "Resolved",
+    "Under Review",
+    "Scheduled",
+    "Action Ongoing",
+  ];
+  const reportsPerPage = 5;
+
+  const fetchIncidentReports = useCallback(async () => {
+    setLoadingReports(true);
+    setReportsError(null);
+    try {
+      let query = supabase.from("community_reports").select(
+        `
+          *,
+          barangay:barangay_id (
+            barangay_name
+          )
+        `,
+      );
+
+      if (selectedBarangay !== "all") {
+        query = query.eq("barangay_id", selectedBarangay);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      let sortedData = data || [];
+      switch (sortBy) {
+        case "date_desc":
+          sortedData.sort(
+            (a, b) =>
+              new Date(b.date_submitted).getTime() -
+              new Date(a.date_submitted).getTime(),
+          );
+          break;
+        case "date_asc":
+          sortedData.sort(
+            (a, b) =>
+              new Date(a.date_submitted).getTime() -
+              new Date(b.date_submitted).getTime(),
+          );
+          break;
+        case "status":
+          sortedData.sort((a, b) =>
+            a.current_status.localeCompare(b.current_status),
+          );
+          break;
+        case "barangay":
+          sortedData.sort((a, b) =>
+            (a.barangay?.barangay_name || "").localeCompare(
+              b.barangay?.barangay_name || "",
+            ),
+          );
+          break;
+        default:
+          break;
+      }
+
+      setIncidentReports(sortedData);
+    } catch (error) {
+      setReportsError((error as Error).message);
+    } finally {
+      setLoadingReports(false);
+    }
+  }, [selectedBarangay, sortBy]);
+
+  const handleViewHistory = async (report: any) => {
+    const reportId = report.report_id;
+    const reportTitle = report.location || report.description || "Report";
+
+    const { data, error } = await supabase
+      .from("report_status_history")
+      .select("status, remarks, timestamp")
+      .eq("report_id", reportId)
+      .order("timestamp", { ascending: false })
+      .limit(5);
+
+    if (error) {
+      setHistoryModal({
+        title: reportTitle,
+        entries: [],
+        message: "Unable to load history.",
+      });
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setHistoryModal({
+        title: reportTitle,
+        entries: [],
+        message: "No history records found.",
+      });
+      return;
+    }
+
+    const idRegex =
+      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+    const mentionedIds = Array.from(
+      new Set(
+        data
+          .map((row: any) => row.remarks || "")
+          .flatMap((text: string) => text.match(idRegex) || [])
+          .map((value: string) => value.toLowerCase()),
+      ),
+    );
+
+    let userNameById = new Map<string, string>();
+    if (mentionedIds.length > 0) {
+      const { data: userRows } = await supabase
+        .from("users")
+        .select("user_id, first_name, last_name, username")
+        .in("user_id", mentionedIds);
+
+      (userRows || []).forEach((user: any) => {
+        const name = `${user.first_name ?? ""} ${user.last_name ?? ""}`
+          .trim()
+          .replace(/\s+/g, " ");
+        const displayName = name || user.username || user.user_id;
+        userNameById.set(String(user.user_id).toLowerCase(), displayName);
+      });
+    }
+
+    const entries = data.map((row: any) => {
+      const time = new Date(row.timestamp).toLocaleString();
+      const remarkText = row.remarks
+        ? row.remarks.replace(idRegex, (match: string) => {
+            const replacement = userNameById.get(match.toLowerCase());
+            return replacement || match;
+          })
+        : "";
+      return {
+        time,
+        status: row.status || "Unknown",
+        remarks: remarkText,
+      };
+    });
+
+    setHistoryModal({
+      title: reportTitle,
+      entries,
+    });
+  };
+
+  useEffect(() => {
+    fetchIncidentReports();
+
+    const channel = supabase
+      .channel("tcemo-incident-reports-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "community_reports" },
+        () => fetchIncidentReports(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchIncidentReports]);
+
+  const normalizedSearch = reportSearch.trim().toLowerCase();
+  const filteredIncidentReports = incidentReports.filter((report) => {
+    const status = report.current_status || "";
+    if (reportStatusFilter !== "All" && status !== reportStatusFilter) {
+      return false;
+    }
+
+    if (!normalizedSearch) return true;
+
+    const haystack = [
+      report.report_id,
+      report.description,
+      report.location,
+      report.landmark,
+      report.barangay?.barangay_name,
+      report.current_status,
+    ]
+      .filter(Boolean)
+      .map((value) => String(value).toLowerCase())
+      .join(" ");
+
+    return haystack.includes(normalizedSearch);
+  });
+
+  const totalReportPages = Math.max(
+    1,
+    Math.ceil(filteredIncidentReports.length / reportsPerPage),
+  );
+  const currentReportPage = Math.min(reportPage, totalReportPages);
+  const reportStartIndex = (currentReportPage - 1) * reportsPerPage;
+  const pagedIncidentReports = filteredIncidentReports.slice(
+    reportStartIndex,
+    reportStartIndex + reportsPerPage,
+  );
+
+  const visibleReportPages = (() => {
+    const start = Math.max(1, currentReportPage - 1);
+    const end = Math.min(totalReportPages, start + 2);
+    return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+  })();
+
+  useEffect(() => {
+    setReportPage(1);
+  }, [reportSearch, reportStatusFilter, selectedBarangay, sortBy]);
 
   useEffect(() => {
     async function fetchDisplayName() {
@@ -988,7 +1243,7 @@ export default function TcemoDashboard() {
             {[
               { label: "Dashboard", icon: "📊", tab: "dashboard" },
               { label: "Manage Users", icon: "👥", tab: "manageUsers" },
-              { label: "Schedules", icon: "📅", tab: "schedules" },
+              { label: "Incident Reports", icon: "🚩", tab: "incidentReports" },
               { label: "Generate Report", icon: "📈", tab: "generateReports" },
             ].map((item) => (
               <button
@@ -1000,9 +1255,9 @@ export default function TcemoDashboard() {
                       | "manageUsers"
                       | "schedules"
                       | "generateReports"
-                      | "manageAccount",
+                      | "manageAccount"
+                      | "incidentReports",
                   );
-
                   if (item.tab !== "dashboard") setSidebarOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
@@ -1101,6 +1356,428 @@ export default function TcemoDashboard() {
                 </section>
               </section>
             </>
+          )}
+          {/* INCIDENT REPORTS */}
+          {activeTab === "incidentReports" && (
+            <div className="space-y-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <h2 className="text-2xl font-bold text-slate-100">
+                  Community Reports
+                </h2>
+              </div>
+
+              <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 shadow-xl shadow-black/40">
+                <div className="p-5 md:p-6 space-y-4">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex flex-wrap gap-2">
+                      {incidentStatusTabs.map((tab) => (
+                        <button
+                          key={tab}
+                          type="button"
+                          onClick={() => setReportStatusFilter(tab)}
+                          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+                            reportStatusFilter === tab
+                              ? "bg-emerald-500/15 text-emerald-200 border border-emerald-500/30"
+                              : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                          }`}
+                        >
+                          {tab}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="text"
+                        value={reportSearch}
+                        onChange={(e) => setReportSearch(e.target.value)}
+                        placeholder="Search reports..."
+                        className="w-full md:w-64"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowReportFilters(!showReportFilters)}
+                        className="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700"
+                        aria-label="Toggle filters"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  </div>
+
+                  {showReportFilters && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-slate-400">
+                          Barangay
+                        </Label>
+                        <Select
+                          value={selectedBarangay}
+                          onValueChange={(value: string) =>
+                            setSelectedBarangay(value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Barangays</SelectItem>
+                            {barangayOptions.map((barangay) => (
+                              <SelectItem
+                                key={barangay.value}
+                                value={barangay.value}
+                              >
+                                {barangay.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-slate-400">
+                          Sort By
+                        </Label>
+                        <Select
+                          value={sortBy}
+                          onValueChange={(value: string) => setSortBy(value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="date_desc">
+                              Date (Newest First)
+                            </SelectItem>
+                            <SelectItem value="date_asc">
+                              Date (Oldest First)
+                            </SelectItem>
+                            <SelectItem value="status">Status</SelectItem>
+                            <SelectItem value="barangay">Barangay</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+
+                  {reportsError && (
+                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                      {reportsError}
+                    </div>
+                  )}
+
+                  {loadingReports && <TruckLoader />}
+
+                  {!loadingReports && filteredIncidentReports.length === 0 && (
+                    <div className="rounded-lg border border-dashed border-slate-800 px-4 py-8 text-center text-sm text-slate-400">
+                      No reports match the selected filters.
+                    </div>
+                  )}
+
+                  {!loadingReports && filteredIncidentReports.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-slate-800">
+                        <thead className="bg-slate-950/60">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                              Report ID
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                              Type
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                              Location
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                              Status
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                              Date
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800 bg-slate-900/40">
+                          {pagedIncidentReports.map((report) => (
+                            <tr key={report.report_id}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-100">
+                                RP-{report.report_id}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
+                                {report.description || "Untitled"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
+                                {report.location}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
+                                {report.current_status}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
+                                {report.date_submitted
+                                  ? new Date(
+                                      report.date_submitted,
+                                    ).toLocaleString()
+                                  : "N/A"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedReport(report);
+                                      setShowReportModal(true);
+                                    }}
+                                  >
+                                    View
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleViewHistory(report)}
+                                  >
+                                    History
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {totalReportPages > 1 && (
+                    <div className="flex justify-center items-center gap-3 mt-4">
+                      <Button
+                        disabled={currentReportPage === 1}
+                        onClick={() => setReportPage(currentReportPage - 1)}
+                        variant="outline"
+                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-xs text-slate-300">
+                        Page {currentReportPage} of {totalReportPages} (
+                        {filteredIncidentReports.length} total)
+                      </span>
+                      <Button
+                        disabled={currentReportPage === totalReportPages}
+                        onClick={() => setReportPage(currentReportPage + 1)}
+                        variant="outline"
+                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* History Modal */}
+          {historyModal && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+              onClick={() => setHistoryModal(null)}
+            >
+              <div
+                className="relative w-full max-w-3xl max-h-[75vh] overflow-y-auto rounded-lg border border-slate-800 bg-slate-900 p-6 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-slate-800 gap-3">
+                  <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                    <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-blue-600/20 border border-blue-600/30 flex-shrink-0">
+                      <span className="text-lg sm:text-2xl">🕘</span>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-base sm:text-lg font-bold text-slate-100 truncate">
+                        History: {historyModal.title}
+                      </h3>
+                      <p className="text-xs text-slate-400 truncate">
+                        Most recent updates first
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setHistoryModal(null)}
+                    className="rounded-lg bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700 transition-colors flex-shrink-0 text-sm"
+                  >
+                    ✖️
+                  </button>
+                </div>
+
+                {historyModal.entries.length === 0 ? (
+                  <div className="rounded-lg border border-slate-800/70 bg-slate-900/80 p-6 text-sm text-slate-300">
+                    {historyModal.message || "No history records found."}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {historyModal.entries.map((entry, index) => (
+                      <div
+                        key={index}
+                        className="rounded-lg border border-slate-800/70 bg-slate-900/80 p-4"
+                      >
+                        <div className="flex items-center justify-between text-xs text-slate-400">
+                          <span>{entry.status}</span>
+                          <span>{entry.time}</span>
+                        </div>
+                        <p className="mt-2 text-sm text-slate-200 whitespace-pre-wrap">
+                          {entry.remarks || "No remarks."}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex justify-end border-t border-slate-800 px-5 py-4">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryModal(null)}
+                    className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Report Details Modal */}
+          {showReportModal && selectedReport && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+              onClick={() => setShowReportModal(false)}
+            >
+              <div
+                className="relative w-full max-w-3xl max-h-[75vh] overflow-y-auto rounded-lg border border-slate-800 bg-slate-900 p-6 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-slate-800 gap-3">
+                  <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                    <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-red-600/20 border border-red-600/30 flex-shrink-0">
+                      <span className="text-lg sm:text-2xl">🚨</span>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-base sm:text-lg font-bold text-slate-100 truncate">
+                        Incident Report Details
+                      </h3>
+                      <p className="text-xs text-slate-400 truncate">
+                        ID: #{String(selectedReport.report_id).slice(0, 12)}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowReportModal(false)}
+                    className="rounded-lg bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700 transition-colors flex-shrink-0 text-sm"
+                  >
+                    ✖️
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                      <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
+                        Status
+                      </p>
+                      <span
+                        className={`inline-flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium ${
+                          selectedReport.current_status === "Resolved"
+                            ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                            : selectedReport.current_status === "Ongoing"
+                              ? "bg-blue-500/10 text-blue-300 border border-blue-500/30"
+                              : "bg-amber-500/10 text-amber-300 border border-amber-500/30"
+                        }`}
+                      >
+                        {selectedReport.current_status || "Pending"}
+                      </span>
+                    </div>
+
+                    <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                      <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
+                        Barangay
+                      </p>
+                      <p className="text-xs text-slate-200">
+                        {selectedReport.barangay?.barangay_name || "Unknown"}
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                      <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
+                        Location
+                      </p>
+                      <p className="text-xs text-slate-200">
+                        {selectedReport.location || "N/A"}
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                      <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
+                        Date Submitted
+                      </p>
+                      <p className="text-xs text-slate-200">
+                        {new Date(
+                          selectedReport.date_submitted,
+                        ).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {selectedReport.landmark && (
+                    <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                      <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
+                        Landmark
+                      </p>
+                      <p className="text-xs text-slate-200">
+                        {selectedReport.landmark}
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedReport.description && (
+                    <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                      <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
+                        Description
+                      </p>
+                      <p className="text-xs text-slate-200 whitespace-pre-wrap">
+                        {selectedReport.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedReport.image_url && (
+                    <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                      <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
+                        Attached Image
+                      </p>
+                      <img
+                        src={selectedReport.image_url}
+                        alt="Report evidence"
+                        className="w-full rounded-lg border border-slate-700"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end border-t border-slate-800 px-5 py-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowReportModal(false)}
+                    className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
           {/* USER ADMIN – Add SWMO Head + list, styled */}
           {activeTab === "manageUsers" && (
@@ -1275,181 +1952,6 @@ export default function TcemoDashboard() {
                   )}
                 </div>
               </div>
-            </section>
-          )}
-
-          {/* SCHEDULES TAB */}
-          {activeTab === "schedules" && (
-            <section className="space-y-6">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
-                    Schedules
-                  </p>
-                  <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
-                    Barangay Collection Schedules
-                  </h1>
-                </div>
-                <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  Live
-                </span>
-              </div>
-
-              {/* Filters */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="w-full sm:w-64">
-                  <Label className="text-xs font-semibold uppercase tracking-wide text-emerald-300 mb-1">
-                    Filter by Barangay
-                  </Label>
-                  <select
-                    value={schedulesBarangayFilter}
-                    onChange={(e) => {
-                      setSchedulesBarangayFilter(e.target.value);
-                      setSchedulesPage(1);
-                    }}
-                    className="block w-full rounded-lg bg-slate-900/80 border border-emerald-700/60 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500 appearance-none"
-                  >
-                    <option value="all">All Barangays</option>
-                    {schedulesBarangays.map((b) => (
-                      <option key={b.barangay_id} value={b.barangay_id}>
-                        {b.barangay_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="w-full sm:w-64">
-                  <Label className="text-xs font-semibold uppercase tracking-wide text-emerald-300 mb-1">
-                    Search
-                  </Label>
-                  <Input
-                    placeholder="Search barangay, day, or GCP..."
-                    value={schedulesSearch}
-                    onChange={(e) => {
-                      setSchedulesSearch(e.target.value);
-                      setSchedulesPage(1);
-                    }}
-                    className="bg-slate-900/80 border-emerald-700/60 text-slate-100 placeholder:text-slate-500 focus:ring-emerald-500/70"
-                  />
-                </div>
-              </div>
-
-              {/* Table */}
-              {loadingSchedules ? (
-                <TruckLoader />
-              ) : schedulesError ? (
-                <div className="rounded-2xl border border-red-700/70 bg-red-900/40 p-4 text-sm text-red-100">
-                  Error: {schedulesError}
-                </div>
-              ) : filteredSchedules.length === 0 ? (
-                <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-8 text-center">
-                  <p className="text-slate-400 text-sm">No schedules found.</p>
-                </div>
-              ) : (
-                <>
-                  <div className="overflow-x-auto rounded-2xl border border-slate-800/70 bg-slate-900/80 shadow-xl shadow-black/40">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-slate-800 text-slate-200 sticky top-0 z-10">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Barangay
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Schedule Days
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider hidden md:table-cell">
-                            Start Time
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider hidden lg:table-cell">
-                            Assigned GCP
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider hidden sm:table-cell">
-                            Collections
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paginatedSchedules.map((s: any) => (
-                          <tr
-                            key={s.schedule_id}
-                            className="border-t border-slate-800 hover:bg-slate-800/60 transition-colors"
-                          >
-                            <td className="px-4 py-3">
-                              <span className="font-medium text-slate-100">
-                                {s.barangay?.barangay_name || "N/A"}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 text-xs font-medium">
-                                📅 {s.days || "N/A"}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 hidden md:table-cell text-slate-300">
-                              {s.start_time
-                                ? s.start_time.length > 5
-                                  ? s.start_time.slice(0, 5)
-                                  : s.start_time
-                                : "N/A"}
-                            </td>
-                            <td className="px-4 py-3 hidden lg:table-cell text-slate-300">
-                              {s.gcp_user
-                                ? `${s.gcp_user.first_name} ${s.gcp_user.last_name}`
-                                : "Unassigned"}
-                            </td>
-                            <td className="px-4 py-3">
-                              <Badge
-                                className={
-                                  (s.status || "").toLowerCase() === "active"
-                                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                                    : "bg-slate-700/40 text-slate-400 border-slate-600/40"
-                                }
-                              >
-                                {s.status || "N/A"}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-3 hidden sm:table-cell">
-                              <span className="text-slate-300">
-                                {Array.isArray(s.collection_details)
-                                  ? s.collection_details.length
-                                  : 0}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Pagination */}
-                  {schedulesTotalPages > 1 && (
-                    <div className="flex justify-center items-center gap-3 mt-4">
-                      <Button
-                        disabled={schedulesPage === 1}
-                        onClick={() => setSchedulesPage(schedulesPage - 1)}
-                        variant="outline"
-                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
-                      >
-                        Previous
-                      </Button>
-                      <span className="text-xs text-slate-300">
-                        Page {schedulesPage} of {schedulesTotalPages} (
-                        {filteredSchedules.length} total)
-                      </span>
-                      <Button
-                        disabled={schedulesPage === schedulesTotalPages}
-                        onClick={() => setSchedulesPage(schedulesPage + 1)}
-                        variant="outline"
-                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
             </section>
           )}
 
