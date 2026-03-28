@@ -468,6 +468,16 @@ function isCollectionPastStartTime(startTime: string | null): boolean {
   return now.getTime() - scheduled.getTime() > 15 * 60 * 1000;
 }
 
+function isCollectionMissed(startTime: string | null): boolean {
+  if (!startTime) return false;
+  const now = new Date();
+  const [h, m] = startTime.split(":").map(Number);
+  const scheduled = new Date();
+  scheduled.setHours(h, m, 0, 0);
+  // Consider missed if 60+ minutes past start time
+  return now.getTime() - scheduled.getTime() > 60 * 60 * 1000;
+}
+
 function formatTime12(time: string | null): string {
   if (!time) return "N/A";
   const [h, m] = time.split(":").map(Number);
@@ -480,14 +490,26 @@ function formatTime12(time: string | null): string {
 function CollectionDelayMonitor({
   schedules,
   manualOpenSchedule,
+  manualMissedSchedule,
   onManualHandled,
+  onManualMissedHandled,
 }: {
   schedules: Schedule[];
   manualOpenSchedule?: Schedule | null;
+  manualMissedSchedule?: Schedule | null;
   onManualHandled?: () => void;
+  onManualMissedHandled?: () => void;
 }) {
   const [delayModalOpen, setDelayModalOpen] = useState(false);
+  const [missedModalOpen, setMissedModalOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  const [delayPending, setDelayPending] = useState(false);
+  const [missedPending, setMissedPending] = useState(false);
+
+  const STORAGE_KEY_DELAY_PENDING = "gcp_delay_pending";
+  const STORAGE_KEY_MISSED_PENDING = "gcp_missed_pending";
+  const STORAGE_KEY_DONE_PENDING = "gcp_done_pending";
+
   const [delayReason, setDelayReason] = useState("");
   const [customReason, setCustomReason] = useState("");
   const [submittedReason, setSubmittedReason] = useState<string | null>(null);
@@ -499,63 +521,309 @@ function CollectionDelayMonitor({
   const [delaySubmitted, setDelaySubmitted] = useState(false);
   const [delayedSchedule, setDelayedSchedule] = useState<Schedule | null>(null);
 
+  const [missedReason, setMissedReason] = useState("");
+  const [missedNotes, setMissedNotes] = useState("");
+  const [missedSaving, setMissedSaving] = useState(false);
+  const [missedError, setMissedError] = useState<string | null>(null);
+  const [missedSuccess, setMissedSuccess] = useState<string | null>(null);
+  const [missedSubmitted, setMissedSubmitted] = useState(false);
+  const [missedSchedule, setMissedSchedule] = useState<Schedule | null>(null);
+  const [missedSuppressedUntil, setMissedSuppressedUntil] = useState<
+    number | null
+  >(null);
+  const MISSED_SUPPRESSION_KEY = "gcp_missed_suppressed";
+
+  const [doneModalOpen, setDoneModalOpen] = useState(false);
+  const [donePending, setDonePending] = useState(false);
+  const [doneSubmitted, setDoneSubmitted] = useState(false);
+  const [doneSchedule, setDoneSchedule] = useState<Schedule | null>(null);
+  const [doneDate, setDoneDate] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
+  const [doneWeight, setDoneWeight] = useState("");
+  const [doneSaving, setDoneSaving] = useState(false);
+  const [doneError, setDoneError] = useState<string | null>(null);
+  const [doneSuccess, setDoneSuccess] = useState<string | null>(null);
+
+  const [gcpUserId, setGcpUserId] = useState<string | null>(null);
+  const getStorageKey = (base: string) =>
+    gcpUserId ? `${base}_${gcpUserId}` : base;
+
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasAutoShown = useRef(false);
+  const initialCheckDone = useRef(false);
 
   // Detect delayed schedules
-  const checkForDelays = useCallback(() => {
+  const checkForDelays = useCallback(async () => {
     if (delaySubmitted) return; // Already submitted a reason today
+    if (!gcpUserId) return;
 
-    for (const schedule of schedules) {
-      if (
-        isTodayScheduled(schedule.days) &&
-        isCollectionPastStartTime(schedule.start_time)
-      ) {
-        setDelayedSchedule(schedule);
-        if (!minimized) {
-          setDelayModalOpen(true);
-        }
-        return;
-      }
+    const today = new Date().toISOString().slice(0, 10);
+    const scheduleIds = schedules.map((s) => s.schedule_id);
+
+    if (!scheduleIds.length) return;
+
+    const { data: details, error } = await supabase
+      .from("collection_details")
+      .select("schedule_id, status")
+      .in("schedule_id", scheduleIds)
+      .eq("collection_date", today);
+
+    if (error || !details?.length) {
+      setDelayedSchedule(null);
+      setDelayPending(false);
+      localStorage.setItem(getStorageKey(STORAGE_KEY_DELAY_PENDING), "false");
+      setDelayModalOpen(false);
+      return;
     }
-  }, [schedules, delaySubmitted, minimized]);
+
+    const delayedScheduleId = details.find(
+      (d) => d.status === "Delayed",
+    )?.schedule_id;
+
+    if (!delayedScheduleId) {
+      setDelayedSchedule(null);
+      setDelayPending(false);
+      localStorage.setItem(getStorageKey(STORAGE_KEY_DELAY_PENDING), "false");
+      setDelayModalOpen(false);
+      return;
+    }
+
+    const foundSchedule = schedules.find(
+      (s) => s.schedule_id === delayedScheduleId,
+    );
+    if (!foundSchedule) {
+      setDelayedSchedule(null);
+      setDelayPending(false);
+      localStorage.setItem(getStorageKey(STORAGE_KEY_DELAY_PENDING), "false");
+      setDelayModalOpen(false);
+      return;
+    }
+
+    setDelayedSchedule(foundSchedule);
+    if (!minimized) {
+      setDelayPending(true);
+      localStorage.setItem(getStorageKey(STORAGE_KEY_DELAY_PENDING), "true");
+      setDelayModalOpen(true);
+    }
+  }, [schedules, delaySubmitted, minimized, gcpUserId]);
+
+  // Detect missed schedules
+  const checkForMisses = useCallback(async () => {
+    if (missedSubmitted) return;
+    if (!gcpUserId) return;
+
+    const now = Date.now();
+    if (missedSuppressedUntil && now < missedSuppressedUntil) return;
+    if (missedSuppressedUntil && now >= missedSuppressedUntil) {
+      setMissedSuppressedUntil(null);
+      localStorage.removeItem(getStorageKey(MISSED_SUPPRESSION_KEY));
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const scheduleIds = schedules.map((s) => s.schedule_id);
+    if (!scheduleIds.length) return;
+
+    const { data: details, error } = await supabase
+      .from("collection_details")
+      .select("schedule_id, status")
+      .in("schedule_id", scheduleIds)
+      .eq("collection_date", today);
+
+    if (error || !details?.length) {
+      setMissedSchedule(null);
+      setMissedPending(false);
+      localStorage.setItem(getStorageKey(STORAGE_KEY_MISSED_PENDING), "false");
+      setMissedModalOpen(false);
+      return;
+    }
+
+    const missedSchedule = details.find((d) => d.status === "Missed");
+    if (!missedSchedule) {
+      setMissedSchedule(null);
+      setMissedPending(false);
+      localStorage.setItem(getStorageKey(STORAGE_KEY_MISSED_PENDING), "false");
+      setMissedModalOpen(false);
+      return;
+    }
+
+    const foundSchedule = schedules.find(
+      (s) => s.schedule_id === missedSchedule.schedule_id,
+    );
+    if (!foundSchedule) {
+      setMissedSchedule(null);
+      setMissedPending(false);
+      localStorage.setItem(getStorageKey(STORAGE_KEY_MISSED_PENDING), "false");
+      setMissedModalOpen(false);
+      return;
+    }
+
+    setMissedSchedule(foundSchedule);
+    setMissedPending(true);
+    localStorage.setItem(getStorageKey(STORAGE_KEY_MISSED_PENDING), "true");
+    setMissedModalOpen(true);
+  }, [schedules, missedSubmitted, gcpUserId, missedSuppressedUntil]);
+
+  // Detect completed (Done) schedules
+  const checkForDone = useCallback(async () => {
+    if (doneSubmitted) return;
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (!gcpUserId || !schedules.length) return;
+
+    const scheduleIds = schedules.map((s) => s.schedule_id);
+    const { data: doneRows, error: doneErr } = await supabase
+      .from("collection_details")
+      .select("schedule_id")
+      .in("schedule_id", scheduleIds)
+      .eq("collection_date", today)
+      .eq("status", "Done")
+      .limit(1)
+      .maybeSingle();
+
+    if (doneErr || !doneRows?.schedule_id) {
+      setDoneSchedule(null);
+      setDonePending(false);
+      localStorage.setItem(getStorageKey(STORAGE_KEY_DONE_PENDING), "false");
+      setDoneModalOpen(false);
+      return;
+    }
+
+    const foundSchedule = schedules.find(
+      (s) => s.schedule_id === doneRows.schedule_id,
+    );
+    if (!foundSchedule) {
+      setDoneSchedule(null);
+      setDonePending(false);
+      localStorage.setItem(getStorageKey(STORAGE_KEY_DONE_PENDING), "false");
+      setDoneModalOpen(false);
+      return;
+    }
+
+    setDoneSchedule(foundSchedule);
+    setDonePending(true);
+    localStorage.setItem(getStorageKey(STORAGE_KEY_DONE_PENDING), "true");
+    setDoneModalOpen(true);
+  }, [schedules, doneSubmitted, gcpUserId]);
 
   // Initial check + 10-minute re-popup interval
   useEffect(() => {
-    // Check once on mount / schedules change (with small delay for data to load)
+    async function initialize() {
+      if (typeof window === "undefined") return;
+
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      const userId = !authErr && authData?.user ? authData.user.id : null;
+      setGcpUserId(userId);
+
+      if (!userId) return;
+
+      // cleanup older global keys when we switch users, to avoid cross-user leakage
+      window.localStorage.removeItem(STORAGE_KEY_DELAY_PENDING);
+      window.localStorage.removeItem(STORAGE_KEY_MISSED_PENDING);
+      window.localStorage.removeItem(STORAGE_KEY_DONE_PENDING);
+
+      const pendingDelay = window.localStorage.getItem(
+        getStorageKey(STORAGE_KEY_DELAY_PENDING),
+      );
+      const pendingMissed = window.localStorage.getItem(
+        getStorageKey(STORAGE_KEY_MISSED_PENDING),
+      );
+      const pendingDone = window.localStorage.getItem(
+        getStorageKey(STORAGE_KEY_DONE_PENDING),
+      );
+
+      // immediately re-check after user is known
+      if (userId) {
+        await checkForMisses();
+        await checkForDelays();
+        await checkForDone();
+      }
+
+      setDelayPending(pendingDelay === "true");
+      setMissedPending(pendingMissed === "true");
+      setDonePending(pendingDone === "true");
+
+      if (pendingDelay === "true" && !delaySubmitted) {
+        setDelayModalOpen(true);
+      }
+      if (pendingMissed === "true" && !missedSubmitted) {
+        setMissedModalOpen(true);
+      }
+      if (pendingDone === "true" && !doneSubmitted) {
+        setDoneModalOpen(true);
+      }
+
+      initialCheckDone.current = true;
+    }
+
+    initialize();
+
     const timeout = setTimeout(() => {
-      if (!hasAutoShown.current && !delaySubmitted) {
+      if (
+        !hasAutoShown.current &&
+        !delaySubmitted &&
+        !missedSubmitted &&
+        !doneSubmitted
+      ) {
+        checkForMisses();
         checkForDelays();
+        checkForDone();
         hasAutoShown.current = true;
       }
     }, 3000);
 
-    // Set up 10-minute interval to re-show if not submitted
     intervalRef.current = setInterval(
       () => {
-        if (!delaySubmitted) {
-          // Force re-open even if minimized
-          for (const schedule of schedules) {
-            if (
-              isTodayScheduled(schedule.days) &&
-              isCollectionPastStartTime(schedule.start_time)
-            ) {
-              setDelayedSchedule(schedule);
-              setMinimized(false);
-              setDelayModalOpen(true);
-              return;
-            }
-          }
+        if (!delaySubmitted && !missedSubmitted && !doneSubmitted) {
+          checkForMisses();
+          checkForDelays();
+          checkForDone();
         }
       },
       10 * 60 * 1000,
-    ); // 10 minutes
+    );
+
+    const reopenInterval = setInterval(
+      () => {
+        if (!delaySubmitted && delayPending && !delayModalOpen) {
+          setDelayModalOpen(true);
+        }
+        if (!missedSubmitted && !missedModalOpen) {
+          const now = Date.now();
+          if (!missedSuppressedUntil || now >= missedSuppressedUntil) {
+            if (missedPending) {
+              setMissedModalOpen(true);
+            }
+          }
+        }
+        if (!doneSubmitted && donePending && !doneModalOpen) {
+          setDoneModalOpen(true);
+        }
+      },
+      2 * 60 * 1000,
+    );
 
     return () => {
       clearTimeout(timeout);
       if (intervalRef.current) clearInterval(intervalRef.current);
+      clearInterval(reopenInterval);
     };
-  }, [schedules, delaySubmitted, checkForDelays]);
+  }, [
+    schedules,
+    delaySubmitted,
+    missedSubmitted,
+    doneSubmitted,
+    delayPending,
+    missedPending,
+    donePending,
+    delayModalOpen,
+    missedModalOpen,
+    doneModalOpen,
+    checkForDelays,
+    checkForMisses,
+    checkForDone,
+  ]);
 
   // Clear interval once submitted
   useEffect(() => {
@@ -565,7 +833,7 @@ function CollectionDelayMonitor({
     }
   }, [delaySubmitted]);
 
-  // Manual open from parent (Report Delay button on card)
+  // Manual open from parent (Report Delay / Missed button on card)
   useEffect(() => {
     if (manualOpenSchedule) {
       setDelayedSchedule(manualOpenSchedule);
@@ -573,7 +841,18 @@ function CollectionDelayMonitor({
       setDelayModalOpen(true);
       onManualHandled?.();
     }
-  }, [manualOpenSchedule, onManualHandled]);
+    if (manualMissedSchedule) {
+      setMissedSchedule(manualMissedSchedule);
+      setMinimized(false);
+      setMissedModalOpen(true);
+      onManualMissedHandled?.();
+    }
+  }, [
+    manualOpenSchedule,
+    manualMissedSchedule,
+    onManualHandled,
+    onManualMissedHandled,
+  ]);
 
   const handleMinimize = () => {
     setMinimized(true);
@@ -683,6 +962,8 @@ function CollectionDelayMonitor({
 
       setDelaySuccess("Delay reason submitted successfully.");
       setDelaySubmitted(true);
+      setDelayPending(false);
+      localStorage.setItem(getStorageKey(STORAGE_KEY_DELAY_PENDING), "false");
       setTimeout(() => {
         setDelayModalOpen(false);
         setDelaySuccess(null);
@@ -691,6 +972,162 @@ function CollectionDelayMonitor({
       setDelayError(err.message || "Failed to submit delay reason.");
     } finally {
       setDelaySaving(false);
+    }
+  };
+
+  const handleSubmitMissed = async () => {
+    if (!missedReason.trim()) {
+      setMissedError("Please provide a reason for missed collection.");
+      return;
+    }
+
+    setMissedSaving(true);
+    setMissedError(null);
+    setMissedSuccess(null);
+
+    try {
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !authData?.user) throw new Error("Not authenticated");
+
+      const today = new Date().toISOString().slice(0, 10);
+      if (!missedSchedule)
+        throw new Error("No schedule selected for missed report");
+
+      const combinedReason = `${missedReason.trim()}${missedNotes.trim() ? ` | Notes: ${missedNotes.trim()}` : ""}`;
+
+      const { data: existing } = await supabase
+        .from("collection_details")
+        .select("collectiondetails_id")
+        .eq("schedule_id", missedSchedule.schedule_id)
+        .eq("collection_date", today)
+        .maybeSingle();
+
+      if (existing?.collectiondetails_id) {
+        await supabase
+          .from("collection_details")
+          .update({
+            delay_reason: combinedReason,
+            status: "Missed",
+          })
+          .eq("collectiondetails_id", existing.collectiondetails_id);
+      } else {
+        const { data: truck } = await supabase
+          .from("garbage_trucks")
+          .select("truck_id")
+          .eq("gcp_user_id", authData.user.id)
+          .single();
+
+        await supabase.from("collection_details").insert({
+          schedule_id: missedSchedule.schedule_id,
+          truck_id: truck?.truck_id || null,
+          collection_date: today,
+          delay_reason: combinedReason,
+          status: "Missed",
+        });
+      }
+
+      try {
+        await fetch("/api/notifications/collection-missed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scheduleId: missedSchedule.schedule_id,
+            barangayId: missedSchedule.barangay?.barangay_id,
+            barangayName: missedSchedule.barangay?.barangay_name,
+          }),
+        });
+      } catch (notifyErr) {
+        console.error(
+          "Failed to send missed collection notifications:",
+          notifyErr,
+        );
+      }
+
+      setMissedSuccess("Missed collection reported successfully.");
+      setMissedSubmitted(true);
+      setMissedPending(false);
+      localStorage.setItem(getStorageKey(STORAGE_KEY_MISSED_PENDING), "false");
+      setTimeout(() => {
+        setMissedModalOpen(false);
+        setMissedSuccess(null);
+      }, 2000);
+    } catch (err: any) {
+      setMissedError(
+        err.message || "Failed to submit missed collection report.",
+      );
+    } finally {
+      setMissedSaving(false);
+    }
+  };
+
+  const handleSubmitDone = async () => {
+    if (!doneDate) {
+      setDoneError("Please provide the completion date.");
+      return;
+    }
+    const weight = Number(doneWeight);
+    if (!doneWeight || Number.isNaN(weight) || weight <= 0) {
+      setDoneError("Please provide a valid waste weight.");
+      return;
+    }
+
+    setDoneSaving(true);
+    setDoneError(null);
+    setDoneSuccess(null);
+
+    try {
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !authData?.user) throw new Error("Not authenticated");
+
+      const today = new Date().toISOString().slice(0, 10);
+      if (!doneSchedule)
+        throw new Error("No schedule selected for done report");
+
+      const { data: existing } = await supabase
+        .from("collection_details")
+        .select("collectiondetails_id")
+        .eq("schedule_id", doneSchedule.schedule_id)
+        .eq("collection_date", today)
+        .maybeSingle();
+
+      if (existing?.collectiondetails_id) {
+        await supabase
+          .from("collection_details")
+          .update({
+            status: "Done",
+            completion_time: `${doneDate}T00:00:00Z`,
+            waste_weight: weight,
+          })
+          .eq("collectiondetails_id", existing.collectiondetails_id);
+      } else {
+        const { data: truck } = await supabase
+          .from("garbage_trucks")
+          .select("truck_id")
+          .eq("gcp_user_id", authData.user.id)
+          .single();
+
+        await supabase.from("collection_details").insert({
+          schedule_id: doneSchedule.schedule_id,
+          truck_id: truck?.truck_id || null,
+          collection_date: today,
+          status: "Done",
+          completion_time: `${doneDate}T00:00:00Z`,
+          waste_weight: weight,
+        });
+      }
+
+      setDoneSuccess("Done collection reported successfully.");
+      setDoneSubmitted(true);
+      setDonePending(false);
+      localStorage.setItem(getStorageKey(STORAGE_KEY_DONE_PENDING), "false");
+      setTimeout(() => {
+        setDoneModalOpen(false);
+        setDoneSuccess(null);
+      }, 2000);
+    } catch (err: any) {
+      setDoneError(err.message || "Failed to submit done collection report.");
+    } finally {
+      setDoneSaving(false);
     }
   };
 
@@ -726,15 +1163,49 @@ function CollectionDelayMonitor({
         </div>
       )}
 
+      {/* Missed Submitted badge */}
+      {missedSubmitted && missedSchedule && (
+        <div className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-xs text-red-200 flex items-center gap-2">
+          <span>🛑</span>
+          <span>
+            Missed collection reported for{" "}
+            <strong>{missedSchedule.barangay?.barangay_name || "N/A"}</strong>.
+          </span>
+        </div>
+      )}
+
+      {/* Done Submitted badge */}
+      {doneSubmitted && doneSchedule && (
+        <div className="mb-4 rounded-xl border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-xs text-blue-200 flex items-center gap-2">
+          <span>✅</span>
+          <span>
+            Done collection reported for{" "}
+            <strong>{doneSchedule.barangay?.barangay_name || "N/A"}</strong>.
+          </span>
+        </div>
+      )}
+
       {/* Delay Modal */}
       <Dialog
         open={delayModalOpen}
         onOpenChange={(open: boolean) => {
           if (!open && !delaySubmitted) {
-            // Minimize instead of closing
-            handleMinimize();
+            // Allow close, but mark pending so it can reopen later
+            setDelayModalOpen(false);
+            setDelayPending(true);
+            localStorage.setItem(
+              getStorageKey(STORAGE_KEY_DELAY_PENDING),
+              "true",
+            );
           } else {
             setDelayModalOpen(open);
+            if (open) {
+              setDelayPending(true);
+              localStorage.setItem(
+                getStorageKey(STORAGE_KEY_DELAY_PENDING),
+                "true",
+              );
+            }
           }
         }}
       >
@@ -875,11 +1346,18 @@ function CollectionDelayMonitor({
             <Button
               type="button"
               variant="ghost"
-              onClick={handleMinimize}
+              onClick={() => {
+                setDelayModalOpen(false);
+                setDelayPending(true);
+                localStorage.setItem(
+                  getStorageKey(STORAGE_KEY_DELAY_PENDING),
+                  "true",
+                );
+              }}
               disabled={delaySaving}
               className="text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 text-sm"
             >
-              Minimize
+              Close
             </Button>
             <Button
               type="button"
@@ -911,16 +1389,366 @@ function CollectionDelayMonitor({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Missed Modal */}
+      <Dialog
+        open={missedModalOpen}
+        onOpenChange={(open: boolean) => {
+          if (!open && !missedSubmitted) {
+            // Allow close, but suppress for 2 minutes before reopening.
+            const suppressUntil = Date.now() + 2 * 60 * 1000;
+            setMissedModalOpen(false);
+            setMissedPending(false);
+            setMissedSuppressedUntil(suppressUntil);
+            localStorage.setItem(
+              getStorageKey(MISSED_SUPPRESSION_KEY),
+              suppressUntil.toString(),
+            );
+            localStorage.setItem(
+              getStorageKey(STORAGE_KEY_MISSED_PENDING),
+              "false",
+            );
+          } else {
+            setMissedModalOpen(open);
+            if (open) {
+              setMissedPending(true);
+              setMissedSuppressedUntil(null);
+              localStorage.removeItem(getStorageKey(MISSED_SUPPRESSION_KEY));
+              localStorage.setItem(
+                getStorageKey(STORAGE_KEY_MISSED_PENDING),
+                "true",
+              );
+            }
+          }
+        }}
+      >
+        <DialogContent className="max-w-md bg-slate-900 border border-rose-500/30 rounded-2xl shadow-2xl p-0 overflow-hidden">
+          <div className="bg-gradient-to-r from-rose-600/20 to-pink-600/20 border-b border-rose-500/20 p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center shrink-0">
+                <span className="text-2xl">🛑</span>
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold text-slate-100">
+                  Missed Collection Report
+                </DialogTitle>
+                <p className="text-xs text-rose-400/70 font-medium uppercase tracking-wider mt-1">
+                  Missed Collection Notification
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg">
+              <p className="text-sm text-rose-200/90">
+                Your collection for{" "}
+                <strong className="text-rose-100">
+                  {missedSchedule?.barangay?.barangay_name || "N/A"}
+                </strong>{" "}
+                scheduled at{" "}
+                <strong className="text-rose-100">
+                  {formatTime12(missedSchedule?.start_time || null)}
+                </strong>{" "}
+                is now marked as <strong>Missed</strong>.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-5 space-y-5">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-rose-400/80 uppercase tracking-wider">
+                Reason for missed collection{" "}
+                <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                type="text"
+                value={missedReason}
+                onChange={(e) => setMissedReason(e.target.value)}
+                className="rounded-lg bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-rose-500/50 focus:ring-1 focus:ring-rose-500/30"
+                placeholder="Type your reason here..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-rose-400/80 uppercase tracking-wider">
+                Additional notes (optional)
+              </Label>
+              <Textarea
+                value={missedNotes}
+                onChange={(e) => setMissedNotes(e.target.value)}
+                className="min-h-[80px] rounded-lg bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-rose-500/50 focus:ring-1 focus:ring-rose-500/30"
+                placeholder="Add comments for end users or operations"
+              />
+            </div>
+
+            {missedError && (
+              <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-200">
+                <span>❗</span>
+                <span>{missedError}</span>
+              </div>
+            )}
+
+            {missedSuccess && (
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-emerald-200">
+                <span>✅</span>
+                <span>{missedSuccess}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-slate-800/30 border-t border-slate-700/50 px-5 py-4 flex items-center justify-between gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setMissedModalOpen(false);
+                setMissedPending(true);
+                localStorage.setItem(
+                  getStorageKey(STORAGE_KEY_MISSED_PENDING),
+                  "true",
+                );
+              }}
+              disabled={missedSaving}
+              className="text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 text-sm"
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmitMissed}
+              disabled={missedSaving}
+              className="bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg shadow-lg shadow-rose-900/30 transition-all duration-200 hover:shadow-rose-500/25 disabled:opacity-50"
+            >
+              {missedSaving ? (
+                <span className="flex items-center gap-2">Submitting...</span>
+              ) : (
+                "Submit Missed Report"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Done Modal */}
+      <Dialog
+        open={doneModalOpen}
+        onOpenChange={(open: boolean) => {
+          if (!open && !doneSubmitted) {
+            setDoneModalOpen(false);
+            setDonePending(true);
+            localStorage.setItem(
+              getStorageKey(STORAGE_KEY_DONE_PENDING),
+              "true",
+            );
+          } else {
+            setDoneModalOpen(open);
+            if (open) {
+              setDonePending(true);
+              localStorage.setItem(
+                getStorageKey(STORAGE_KEY_DONE_PENDING),
+                "true",
+              );
+            }
+          }
+        }}
+      >
+        <DialogContent className="max-w-md bg-slate-900 border border-blue-500/30 rounded-2xl shadow-2xl p-0 overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-600/20 to-sky-600/20 border-b border-blue-500/20 p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shrink-0">
+                <span className="text-2xl">✅</span>
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold text-slate-100">
+                  Done Collection Report
+                </DialogTitle>
+                <p className="text-xs text-blue-400/70 font-medium uppercase tracking-wider mt-1">
+                  Done Collection Notification
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <p className="text-sm text-blue-200/90">
+                Your collection for{" "}
+                <strong className="text-blue-100">
+                  {doneSchedule?.barangay?.barangay_name || "N/A"}
+                </strong>{" "}
+                scheduled at{" "}
+                <strong className="text-blue-100">
+                  {formatTime12(doneSchedule?.start_time || null)}
+                </strong>{" "}
+                is now marked as <strong>Done</strong>.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-5 space-y-5">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-blue-400/80 uppercase tracking-wider">
+                Collection date <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                type="date"
+                value={doneDate}
+                onChange={(e) => setDoneDate(e.target.value)}
+                className="rounded-lg bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-blue-400/80 uppercase tracking-wider">
+                Waste weight (kg) <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                type="number"
+                value={doneWeight}
+                onChange={(e) => setDoneWeight(e.target.value)}
+                className="rounded-lg bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30"
+                placeholder="Enter waste weight"
+              />
+            </div>
+
+            {doneError && (
+              <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-200">
+                <span>❗</span>
+                <span>{doneError}</span>
+              </div>
+            )}
+            {doneSuccess && (
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-emerald-200">
+                <span>✅</span>
+                <span>{doneSuccess}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-slate-800/30 border-t border-slate-700/50 px-5 py-4 flex items-center justify-between gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setDoneModalOpen(false);
+                setDonePending(true);
+                localStorage.setItem(
+                  getStorageKey(STORAGE_KEY_DONE_PENDING),
+                  "true",
+                );
+              }}
+              disabled={doneSaving}
+              className="text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 text-sm"
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmitDone}
+              disabled={doneSaving}
+              className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg shadow-lg shadow-blue-900/30 transition-all duration-200 hover:shadow-blue-500/25 disabled:opacity-50"
+            >
+              {doneSaving ? "Submitting..." : "Submit Done Report"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
 
 // Schedules Viewer for GCP
+function GCPCollectionMonitor() {
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [collectionStatusBySchedule, setCollectionStatusBySchedule] = useState<
+    Record<string, string>
+  >({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function fetchSchedules() {
+      setLoading(true);
+      try {
+        const { data: authData, error: authErr } =
+          await supabase.auth.getUser();
+        if (authErr || !authData?.user) throw new Error("Not authenticated");
+        const userId = authData.user.id;
+
+        const { data, error: scheduleErr } = await supabase
+          .from("collection_schedules")
+          .select(
+            `schedule_id, barangay:barangay_id (barangay_name, barangay_id), days, start_time, end_time, status`,
+          )
+          .eq("gcp_user_id", userId);
+
+        if (scheduleErr) throw scheduleErr;
+
+        if (isMounted) {
+          const normalized = (data ?? []).map((row: any) => ({
+            ...row,
+            barangay:
+              row?.barangay && Array.isArray(row.barangay)
+                ? row.barangay[0] || null
+                : row?.barangay || null,
+          }));
+          setSchedules(normalized as Schedule[]);
+
+          const scheduleIds = (normalized as Schedule[]).map(
+            (schedule) => schedule.schedule_id,
+          );
+
+          if (scheduleIds.length) {
+            const { data: details } = await supabase
+              .from("collection_details")
+              .select("schedule_id, status, gcp_user_id")
+              .in("schedule_id", scheduleIds)
+              .eq("collection_date", new Date().toISOString().slice(0, 10));
+
+            if (details) {
+              const statusMap: Record<string, string> = {};
+              details.forEach((d: any) => {
+                if (d.status && d.schedule_id) {
+                  statusMap[d.schedule_id] = d.status;
+                }
+              });
+              setCollectionStatusBySchedule(statusMap);
+            }
+          }
+        }
+      } catch (err: any) {
+        if (isMounted) setError(err.message);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    fetchSchedules();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return (
+    <>
+      <CollectionDelayMonitor schedules={schedules} />
+      {loading && <div className="sr-only">Loading schedule monitor</div>}
+      {error && (
+        <div className="sr-only">Collection monitor error: {error}</div>
+      )}
+    </>
+  );
+}
+
 function GCPScheduleSection() {
   const [mainLoading, setMainLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [collectionStatusBySchedule, setCollectionStatusBySchedule] = useState<
+    Record<string, string>
+  >({});
   const [manualDelaySchedule, setManualDelaySchedule] =
+    useState<Schedule | null>(null);
+  const [manualMissedSchedule, setManualMissedSchedule] =
     useState<Schedule | null>(null);
 
   useEffect(() => {
@@ -952,8 +1780,36 @@ function GCPScheduleSection() {
         if (error) throw error;
 
         // normalize first, then cast
-        const rows = (data ?? []) as unknown as Schedule[];
-        setSchedules(rows);
+        const normalized = (data ?? []).map((row: any) => ({
+          ...row,
+          barangay:
+            row?.barangay && Array.isArray(row.barangay)
+              ? row.barangay[0] || null
+              : row?.barangay || null,
+        }));
+        setSchedules(normalized as Schedule[]);
+
+        if (normalized.length) {
+          const scheduleIds = (normalized as Schedule[]).map(
+            (schedule) => schedule.schedule_id,
+          );
+
+          const today = new Date().toISOString().slice(0, 10);
+          const { data: details, error: detailErr } = await supabase
+            .from("collection_details")
+            .select("schedule_id, status")
+            .in("schedule_id", scheduleIds)
+            .eq("collection_date", today)
+            .eq("gcp_user_id", userId);
+
+          if (!detailErr && details) {
+            const statusMap = (details as any[]).reduce(
+              (acc, row) => ({ ...acc, [row.schedule_id]: row.status }),
+              {} as Record<string, string>,
+            );
+            setCollectionStatusBySchedule(statusMap);
+          }
+        }
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -996,7 +1852,9 @@ function GCPScheduleSection() {
           <CollectionDelayMonitor
             schedules={schedules}
             manualOpenSchedule={manualDelaySchedule}
+            manualMissedSchedule={manualMissedSchedule}
             onManualHandled={() => setManualDelaySchedule(null)}
+            onManualMissedHandled={() => setManualMissedSchedule(null)}
           />
         )}
 
@@ -1017,14 +1875,31 @@ function GCPScheduleSection() {
                   Barangay: {schedule.barangay?.barangay_name || "N/A"}
                 </h3>
                 {isTodayScheduled(schedule.days) && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setManualDelaySchedule(schedule)}
-                    className="h-auto text-xs px-3 py-1.5 border-amber-600/50 text-amber-400 hover:bg-amber-600/20 hover:text-amber-300"
-                  >
-                    ⚠️ Report Delay
-                  </Button>
+                  <div className="flex gap-2">
+                    {collectionStatusBySchedule[schedule.schedule_id] ===
+                    "Delayed" ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setManualDelaySchedule(schedule)}
+                        className="h-auto text-xs px-3 py-1.5 border-amber-600/50 text-amber-400 hover:bg-amber-600/20 hover:text-amber-300"
+                      >
+                        ⚠️ Report Delay
+                      </Button>
+                    ) : null}
+
+                    {collectionStatusBySchedule[schedule.schedule_id] ===
+                    "Missed" ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setManualMissedSchedule(schedule)}
+                        className="h-auto text-xs px-3 py-1.5 border-red-600/50 text-red-400 hover:bg-red-600/20 hover:text-red-300"
+                      >
+                        🛑 Report Missed
+                      </Button>
+                    ) : null}
+                  </div>
                 )}
               </div>
               <div className="text-slate-200 text-sm mb-1">
@@ -2203,6 +3078,8 @@ export default function GCPDashboard() {
               </section>
             </>
           )}
+
+          <GCPCollectionMonitor />
 
           {activeTab === "viewSchedule" && <GCPScheduleSection />}
 

@@ -731,6 +731,48 @@
         "coordinates": [123.8598940863248, 9.686311675394066]
       },
       "id": 15
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Sanitary Landfill",
+        "type": "landfill"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [123.9616, 9.6266]
+      },
+      "id": "landfill-1"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "NAME": "Albur Sanitary Landfill",
+        "PROVINCE": "Bohol",
+        "REGION": "Central Visayas (Region VII)",
+        "type": "landfill"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [123.959, 9.6295],
+            [123.9608, 9.63],
+            [123.963, 9.6298],
+            [123.965, 9.6285],
+            [123.9665, 9.627],
+            [123.9668, 9.6252],
+            [123.9655, 9.6238],
+            [123.9635, 9.623],
+            [123.9612, 9.6232],
+            [123.9595, 9.624],
+            [123.9582, 9.6255],
+            [123.958, 9.6272],
+            [123.959, 9.6295]
+          ]
+        ]
+      },
+      "id": "landfill-2"
     }
   ]
 }

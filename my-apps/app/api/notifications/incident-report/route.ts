@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
         sent_at: new Date().toISOString(),
         status: "sent",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to send SMS:", error);
       await supabase.from("sms_notifications").insert({
         user_id: bwmc.user_id,
@@ -45,7 +45,10 @@ export async function POST(req: NextRequest) {
         phone_number: bwmc.contact_number,
         sent_at: new Date().toISOString(),
         status: "failed",
-        error_message: error?.message || String(error),
+        error_message:
+          (error && typeof error === "object" && "message" in error
+            ? (error as { message?: string }).message
+            : undefined) || String(error),
       });
       return NextResponse.json(
         { success: false, error: "Failed to send SMS" },

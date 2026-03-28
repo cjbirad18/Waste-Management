@@ -1801,6 +1801,11 @@ export default function ResidentDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState("");
+  const [historyModal, setHistoryModal] = useState<{
+    title: string;
+    entries: { time: string; status: string; remarks: string }[];
+    message?: string;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState<ResidentActiveTab>("dashboard");
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [displayName, setDisplayName] = useState("User");
@@ -2129,6 +2134,44 @@ export default function ResidentDashboard() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const handleViewHistory = async (report: any) => {
+    const reportId = report.report_id;
+    const reportTitle = report.location || report.description || "Report";
+
+    const { data, error } = await supabase
+      .from("report_status_history")
+      .select("status, remarks, timestamp")
+      .eq("report_id", reportId)
+      .order("timestamp", { ascending: false })
+      .limit(10);
+
+    if (error) {
+      setHistoryModal({
+        title: reportTitle,
+        entries: [],
+        message: "Unable to load history.",
+      });
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setHistoryModal({
+        title: reportTitle,
+        entries: [],
+        message: "No history records found.",
+      });
+      return;
+    }
+
+    const entries = data.map((row: any) => ({
+      time: row.timestamp ? new Date(row.timestamp).toLocaleString() : "N/A",
+      status: row.status || "Unknown",
+      remarks: row.remarks || "",
+    }));
+
+    setHistoryModal({ title: reportTitle, entries });
+  };
 
   // Fetch delayed collections for resident's barangay
   useEffect(() => {
@@ -2994,8 +3037,8 @@ export default function ResidentDashboard() {
                                       View
                                     </button>
                                     <button
+                                      onClick={() => handleViewHistory(report)}
                                       className="text-slate-400 hover:underline"
-                                      // TODO: Implement history modal if needed
                                     >
                                       History
                                     </button>
@@ -3067,6 +3110,80 @@ export default function ResidentDashboard() {
                               Close
                             </button>
                           </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {historyModal && (
+                    <div
+                      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                      onClick={() => setHistoryModal(null)}
+                      onKeyDown={(e) =>
+                        e.key === "Escape" && setHistoryModal(null)
+                      }
+                      tabIndex={-1}
+                      role="presentation"
+                    >
+                      <div
+                        className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-slate-800 shadow-xl"
+                        onClick={(e) => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="history-modal-title"
+                      >
+                        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+                          <div>
+                            <h3
+                              className="text-lg font-semibold text-slate-100"
+                              id="history-modal-title"
+                            >
+                              Report History
+                            </h3>
+                            <p className="text-xs text-slate-400 mt-1">
+                              Location: {historyModal.title}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setHistoryModal(null)}
+                            className="text-slate-400 hover:text-slate-200"
+                            aria-label="Close history"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div className="px-5 py-4 space-y-3 max-h-[50vh] overflow-y-auto">
+                          {historyModal.entries.length === 0 ? (
+                            <div className="rounded-lg border border-dashed border-slate-800 px-4 py-6 text-sm text-slate-400">
+                              {historyModal.message ||
+                                "No history records found."}
+                            </div>
+                          ) : (
+                            historyModal.entries.map((entry, index) => (
+                              <div
+                                key={`${entry.time}-${index}`}
+                                className="rounded-xl border border-slate-800 bg-slate-950/60 p-4"
+                              >
+                                <div className="flex items-center justify-between mb-1 text-xs text-slate-400">
+                                  <span>{entry.time}</span>
+                                  <span>{entry.status}</span>
+                                </div>
+                                <p className="text-sm text-slate-200 whitespace-pre-wrap">
+                                  {entry.remarks || "No remarks provided."}
+                                </p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        <div className="flex justify-end border-t border-slate-800 px-5 py-4">
+                          <button
+                            type="button"
+                            onClick={() => setHistoryModal(null)}
+                            className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200"
+                          >
+                            Close
+                          </button>
                         </div>
                       </div>
                     </div>

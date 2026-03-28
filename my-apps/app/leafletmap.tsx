@@ -44,11 +44,11 @@ const createBarangayIcon = () =>
 
 const createTruckIcon = (isActive: boolean) =>
   L.divIcon({
-    className: "custom-truck-icon",
+    className: "custom-truck-icon leaflet-interactive",
     html: `
-    <div style="width:80px;height:80px;position:relative;display:flex;align-items:center;justify-content:center;">
-      <div class="bg-emerald-500/30 rounded-full animate-ping ${isActive ? "block" : "hidden"}" style="position:absolute;inset:0;"></div>
-      <img src="/truck.png" alt="Truck" style="width:70px;height:70px;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.4));position:relative;" />
+    <div style="width:80px;height:80px;position:relative;display:flex;align-items:center;justify-content:center;pointer-events:auto;">
+      <div class="truck-ping-overlay ${isActive ? "block" : "hidden"}" style="position:absolute;inset:0;pointer-events:none;"></div>
+      <img src="/truck.png" alt="Truck" style="width:70px;height:70px;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.4));position:relative;pointer-events:none;" />
     </div>
   `,
     iconSize: [90, 90],
@@ -238,9 +238,19 @@ function LeafletMap({
   const [geojson, setGeojson] = useState<GeoJSONType | null>(null);
   const [trucks, setTrucks] = useState<TruckRow[]>([]);
   const animStatesRef = useRef<Record<number, TruckAnimState>>({});
+  const markersRef = useRef<Record<number, L.Marker | null>>({});
+  const trucksRef = useRef<TruckRow[]>([]);
   const frameRef = useRef<number | null>(null);
 
+  useEffect(() => {
+    trucksRef.current = trucks;
+  }, [trucks]);
+
   const [nameToId, setNameToId] = useState<Record<string, number>>({});
+  const [idToName, setIdToName] = useState<Record<number, string>>({});
+  const [truckAssignment, setTruckAssignment] = useState<
+    Record<number, number>
+  >({});
   const [theme, setTheme] = useState<"day" | "night">("night");
   const [etaMinutes, setEtaMinutes] = useState<number | null>(null);
 
@@ -250,12 +260,17 @@ function LeafletMap({
   const [gcpAssignedBarangayId, setGcpAssignedBarangayId] = useState<
     number | null
   >(null);
+  const [landfillCenter, setLandfillCenter] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [gcpAssignedBarangayName, setGcpAssignedBarangayName] = useState<
     string | null
   >(null);
   const [gcpLocationWarning, setGcpLocationWarning] = useState<string | null>(
     null,
   );
+  const [selectedTruckId, setSelectedTruckId] = useState<number | null>(null);
   const [residentLocation, setResidentLocation] = useState<{
     lat: number;
     lng: number;
@@ -279,12 +294,68 @@ function LeafletMap({
         const geoData = await geoRes.json();
         setGeojson(geoData);
 
+        const landfillFeature = (geoData.features || []).find(
+          (f: any) =>
+            f.properties?.type === "landfill" && f.geometry?.type === "Polygon",
+        );
+        if (
+          landfillFeature &&
+          Array.isArray(landfillFeature.geometry.coordinates)
+        ) {
+          const outerRing = landfillFeature.geometry.coordinates[0] || [];
+          if (outerRing.length > 0) {
+            const { lat, lng } = outerRing.reduce(
+              (acc: { lat: number; lng: number; count: number }, pt: any) => {
+                if (!Array.isArray(pt) || pt.length < 2) return acc;
+                return {
+                  lat: acc.lat + pt[1],
+                  lng: acc.lng + pt[0],
+                  count: acc.count + 1,
+                };
+              },
+              { lat: 0, lng: 0, count: 0 },
+            );
+            if (landfillFeature.geometry.coordinates[0].length > 0) {
+              setLandfillCenter({
+                lat: lat / landfillFeature.geometry.coordinates[0].length,
+                lng: lng / landfillFeature.geometry.coordinates[0].length,
+              });
+            }
+          }
+        }
+
         if (!barangayRes.error && barangayRes.data) {
           const map: Record<string, number> = {};
-          barangayRes.data.forEach(
-            (b: any) => (map[b.barangay_name] = b.barangay_id),
-          );
+          const reverseMap: Record<number, string> = {};
+          barangayRes.data.forEach((b: any) => {
+            map[b.barangay_name] = b.barangay_id;
+            reverseMap[Number(b.barangay_id)] = b.barangay_name;
+          });
           setNameToId(map);
+          setIdToName(reverseMap);
+        }
+
+        // Enrich own truck assignment info from active collection details with linked schedules
+        try {
+          const today = new Date().toISOString().split("T")[0];
+          const { data: detailData, error: detailError } = await supabase
+            .from("collection_details")
+            .select("truck_id, status, collection_schedules( barangay_id )")
+            .eq("collection_date", today)
+            .in("status", ["in_progress", "active"]);
+
+          if (!detailError && Array.isArray(detailData)) {
+            const assignment: Record<number, number> = {};
+            detailData.forEach((row: any) => {
+              const truckId = Number(row.truck_id);
+              const barangayId = row.collection_schedules?.barangay_id;
+              if (truckId && barangayId)
+                assignment[truckId] = Number(barangayId);
+            });
+            setTruckAssignment(assignment);
+          }
+        } catch (e) {
+          console.warn("Failed to load truck assignment mapping", e);
         }
       } catch (error) {
         console.error("Failed to load map data:", error);
@@ -566,11 +637,12 @@ function LeafletMap({
             const { data: existingDetail, error: existingDetailError } =
               await supabase
                 .from("collection_details")
-                .select("collectiondetails_id, status")
+                .select("collectiondetails_id, status, departure_time")
                 .eq("schedule_id", data.schedule_id)
                 .eq("collection_date", today)
                 .maybeSingle();
 
+            const nowIso = new Date().toISOString();
             if (existingDetailError) {
               console.error(
                 "[COLLECTION DEBUG] Error checking collection_detail for today:",
@@ -590,6 +662,7 @@ function LeafletMap({
                 truck_id: row.truck_id,
                 collection_date: today,
                 status: "in_progress",
+                departure_time: nowIso,
               });
             } else if (
               existingDetail.status !== "in_progress" &&
@@ -599,9 +672,13 @@ function LeafletMap({
                 "[COLLECTION DEBUG] Updating existing collection_details to in_progress.",
                 { collectiondetails_id: existingDetail.collectiondetails_id },
               );
+              const updatePayload: any = { status: "in_progress" };
+              if (!existingDetail.departure_time) {
+                updatePayload.departure_time = nowIso;
+              }
               await supabase
                 .from("collection_details")
-                .update({ status: "in_progress" })
+                .update(updatePayload)
                 .eq(
                   "collectiondetails_id",
                   existingDetail.collectiondetails_id,
@@ -760,64 +837,62 @@ function LeafletMap({
     };
   }, [handleTruckLocationLogic]);
 
-  // Animation loop
-  // Animation loop
+  // Animation loop (imperative marker updates to preserve click interactions)
   useEffect(() => {
     const animate = () => {
       const now = performance.now();
       const cutoff = Date.now() - 5 * 60 * 1000;
-      let hasChanges = false;
-
-      // Only run animation if there are active animations
-      const activeAnimations = Object.keys(animStatesRef.current).length;
-      if (activeAnimations === 0 && trucks.length === 0) {
-        frameRef.current = requestAnimationFrame(animate);
-        return;
-      }
 
       setTrucks((prev) => {
-        const next = prev
-          .filter((t) => {
-            const last = lastSeenAt[t.truck_id];
-            return last == null || last >= cutoff;
-          })
-          .map((t) => {
-            const s = animStatesRef.current[t.truck_id];
-            if (!s || t.latitude == null || t.longitude == null) return t;
-
-            const { from, to, startTime, duration } = s;
-
-            // Animation complete - clean up and set final position
-            if (duration <= 0 || now >= startTime + duration) {
-              delete animStatesRef.current[t.truck_id];
-              if (t.latitude === to[0] && t.longitude === to[1]) return t;
-              hasChanges = true;
-              return { ...t, latitude: to[0], longitude: to[1] };
-            }
-
-            const p = Math.min((now - startTime) / duration, 1);
-            const easeP = 1 - Math.pow(1 - p, 3);
-
-            const newLat = from[0] + (to[0] - from[0]) * easeP;
-            const newLng = from[1] + (to[1] - from[1]) * easeP;
-
-            // Skip tiny changes to prevent excessive re-renders
-            const latDiff = Math.abs(t.latitude - newLat);
-            const lngDiff = Math.abs(t.longitude - newLng);
-            if (latDiff < 0.00001 && lngDiff < 0.00001) return t;
-
-            hasChanges = true;
-            return {
-              ...t,
-              latitude: newLat,
-              longitude: newLng,
-            };
-          });
-
-        // Return prev reference if no changes (React will skip re-render)
-        if (!hasChanges) return prev;
-        return next;
+        const filtered = prev.filter((t) => {
+          const last = lastSeenAt[t.truck_id];
+          return last == null || last >= cutoff;
+        });
+        return filtered.length === prev.length ? prev : filtered;
       });
+
+      const positionUpdates: Record<
+        number,
+        { latitude: number; longitude: number }
+      > = {};
+
+      for (const t of trucksRef.current) {
+        const s = animStatesRef.current[t.truck_id];
+        if (!s || t.latitude == null || t.longitude == null) continue;
+
+        const { from, to, startTime, duration } = s;
+
+        const marker = markersRef.current[t.truck_id];
+
+        if (duration <= 0 || now >= startTime + duration) {
+          delete animStatesRef.current[t.truck_id];
+          if (marker) {
+            marker.setLatLng([to[0], to[1]]);
+          }
+          positionUpdates[t.truck_id] = { latitude: to[0], longitude: to[1] };
+          continue;
+        }
+
+        const p = Math.min((now - startTime) / duration, 1);
+        const easeP = 1 - Math.pow(1 - p, 3);
+
+        const newLat = from[0] + (to[0] - from[0]) * easeP;
+        const newLng = from[1] + (to[1] - from[1]) * easeP;
+
+        if (marker) {
+          marker.setLatLng([newLat, newLng]);
+        }
+      }
+
+      if (Object.keys(positionUpdates).length > 0) {
+        setTrucks((prev) =>
+          prev.map((t) =>
+            positionUpdates[t.truck_id]
+              ? { ...t, ...positionUpdates[t.truck_id] }
+              : t,
+          ),
+        );
+      }
 
       frameRef.current = requestAnimationFrame(animate);
     };
@@ -840,9 +915,13 @@ function LeafletMap({
   }, []);
 
   const currentCenter: [number, number] =
-    residentGps?.lat != null && residentGps?.lng != null
-      ? [residentGps.lat, residentGps.lng]
-      : mapCenter;
+    role === "GCP" && landfillCenter
+      ? [landfillCenter.lat, landfillCenter.lng]
+      : residentGps?.lat != null && residentGps?.lng != null
+        ? [residentGps.lat, residentGps.lng]
+        : landfillCenter
+          ? [landfillCenter.lat, landfillCenter.lng]
+          : mapCenter;
 
   if (isLoading) {
     return (
@@ -1020,7 +1099,22 @@ function LeafletMap({
                 style={(feature?: Feature) => {
                   if (!feature || feature.geometry.type !== "Polygon")
                     return {};
-                  const name = (feature.properties as any)?.NAME_3;
+
+                  const props = feature.properties as any;
+                  const name = props.NAME_3 || props.NAME;
+                  const isLandfill = props.type === "landfill";
+
+                  if (isLandfill) {
+                    return {
+                      color: "#16a34a", // green border
+                      weight: 3,
+                      opacity: 0.9,
+                      fillColor: "#86efac", // light green fill
+                      fillOpacity: 0.35,
+                      dashArray: "5, 5",
+                    };
+                  }
+
                   return {
                     color: theme === "day" ? "#475569" : "#64748b",
                     weight: 2,
@@ -1064,6 +1158,25 @@ function LeafletMap({
               />
             )}
 
+            {/* Landfill center marker */}
+            {landfillCenter && (
+              <Marker
+                position={[landfillCenter.lat, landfillCenter.lng]}
+                icon={L.icon({
+                  iconUrl: markerIcon as unknown as string,
+                  shadowUrl: markerShadow as unknown as string,
+                  iconSize: [30, 45],
+                  iconAnchor: [15, 45],
+                })}
+              >
+                <Popup className="custom-popup">
+                  <div className="text-sm text-slate-800">
+                    <strong>Landfill Center</strong>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+
             {/* Trucks */}
             {visibleTrucks.map((t, idx) => {
               if (t.latitude == null || t.longitude == null) {
@@ -1075,6 +1188,24 @@ function LeafletMap({
                 t.updated_at &&
                 Date.now() - new Date(t.updated_at).getTime() < 60000,
               );
+
+              const assignedBarangayId =
+                truckAssignment[t.truck_id] ||
+                assignedByTruck[t.truck_id] ||
+                (role === "GCP" && gcpTruckId === t.truck_id
+                  ? (gcpAssignedBarangayId ?? undefined)
+                  : undefined);
+
+              const assignedBarangayName =
+                role === "GCP" && gcpTruckId === t.truck_id
+                  ? gcpAssignedBarangayName ||
+                    (assignedBarangayId
+                      ? (idToName[assignedBarangayId] ?? "Unknown")
+                      : "Unassigned")
+                  : assignedBarangayId
+                    ? (idToName[assignedBarangayId] ?? "Unknown")
+                    : "Unassigned";
+
               console.log(`Rendering truck marker`, {
                 idx,
                 truck_id: t.truck_id,
@@ -1088,6 +1219,26 @@ function LeafletMap({
                   key={t.id ?? `truck-${t.truck_id}`}
                   position={pos}
                   icon={createTruckIcon(isRecent)}
+                  interactive={true}
+                  zIndexOffset={999}
+                  eventHandlers={{
+                    click: (e) => {
+                      setSelectedTruckId(t.truck_id);
+                      if (
+                        e.target &&
+                        typeof e.target.openPopup === "function"
+                      ) {
+                        e.target.openPopup();
+                      }
+                    },
+                  }}
+                  ref={(marker) => {
+                    if (marker) {
+                      markersRef.current[t.truck_id] = marker;
+                    } else {
+                      delete markersRef.current[t.truck_id];
+                    }
+                  }}
                 >
                   <Popup className="custom-popup">
                     <div className="p-2 min-w-[150px]">
@@ -1099,6 +1250,9 @@ function LeafletMap({
                           <h4 className="font-semibold text-slate-900">
                             Truck {t.truck_id}
                           </h4>
+                          <div className="text-xs text-slate-500 mb-1">
+                            Assigned: {assignedBarangayName}
+                          </div>
                           <StatusBadge
                             variant={isRecent ? "success" : "warning"}
                           >
@@ -1169,6 +1323,17 @@ function LeafletMap({
           color: #1e293b;
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
+        .leaflet-div-icon.leaflet-interactive,
+        .leaflet-marker-icon.leaflet-interactive,
+        .custom-truck-icon.leaflet-interactive {
+          pointer-events: auto !important;
+        }
+        .custom-truck-icon {
+          pointer-events: auto !important;
+        }
+        .truck-ping-overlay {
+          pointer-events: none !important;
+        }
         .custom-popup .leaflet-popup-content-wrapper {
           background: rgba(255, 255, 255, 0.98);
           backdrop-filter: blur(12px);
@@ -1178,6 +1343,14 @@ function LeafletMap({
         .custom-popup .leaflet-popup-tip {
           background: rgba(255, 255, 255, 0.98);
         }
+        .custom-truck-icon {
+          pointer-events: auto;
+        }
+
+        .truck-ping-overlay {
+          pointer-events: none;
+        }
+
         .leaflet-container {
           font-family: inherit;
         }

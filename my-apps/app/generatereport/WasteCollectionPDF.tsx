@@ -145,6 +145,21 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#6b7280",
   },
+  chartAxis: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  chartBar: {
+    height: 10,
+    backgroundColor: "#059669",
+    borderRadius: 4,
+  },
+  chartBarLabel: {
+    fontSize: 10,
+    color: "#065f46",
+    marginLeft: 8,
+  },
 });
 
 // PDF Document Component
@@ -216,6 +231,127 @@ export const WasteCollectionDocument = ({
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Number of Collections:</Text>
             <Text style={styles.summaryValue}>{wasteData.length}</Text>
+          </View>
+        </View>
+
+        {/* Collection Efficiency Histogram */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            Collection Efficiency Histogram
+          </Text>
+          <View style={styles.chartPlaceholder}>
+            <Text style={styles.chartText}>Efficiency distribution</Text>
+            {performanceData.length === 0 ? (
+              <Text style={styles.chartText}>No efficiency data available</Text>
+            ) : (
+              (() => {
+                const buckets = [
+                  { label: "0-20%", min: 0, max: 20 },
+                  { label: "21-40%", min: 21, max: 40 },
+                  { label: "41-60%", min: 41, max: 60 },
+                  { label: "61-80%", min: 61, max: 80 },
+                  { label: "81-100%", min: 81, max: 100 },
+                ];
+
+                const counts = buckets.map(
+                  (bucket) =>
+                    performanceData.filter(
+                      (item) =>
+                        item.efficiency >= bucket.min &&
+                        item.efficiency <= bucket.max,
+                    ).length,
+                );
+                const maxCount = Math.max(...counts, 1);
+
+                return buckets.map((bucket, index) => {
+                  const width = (counts[index] / maxCount) * 360;
+                  return (
+                    <View key={bucket.label} style={{ marginTop: 6 }}>
+                      <View style={styles.chartAxis}>
+                        <Text
+                          style={[
+                            styles.tableCell,
+                            { fontSize: 10, width: 55 },
+                          ]}
+                        >
+                          {bucket.label}
+                        </Text>
+                        <View style={[styles.chartBar, { width }]} />
+                        <Text style={styles.chartBarLabel}>
+                          {counts[index]}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                });
+              })()
+            )}
+          </View>
+        </View>
+
+        {/* Waste Collection Histogram */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Waste Collection Histogram</Text>
+          <View style={styles.chartPlaceholder}>
+            <Text style={styles.chartText}>Collected tons distribution</Text>
+            {wasteData.length === 0 ? (
+              <Text style={styles.chartText}>No waste data available</Text>
+            ) : (
+              (() => {
+                const maxWaste = Math.max(
+                  ...wasteData.map((item) => item.tons),
+                  0,
+                );
+                const step = Math.max(Math.ceil(maxWaste) / 5, 1);
+                const buckets = Array.from({ length: 5 }, (_, i) => {
+                  const min = i * step;
+                  const max =
+                    i === 4 ? Number.POSITIVE_INFINITY : (i + 1) * step;
+                  return {
+                    label: `${min.toFixed(0)}-${
+                      i === 4 ? Math.ceil(maxWaste) : (i + 1) * step
+                    }`,
+                    min,
+                    max,
+                  };
+                });
+
+                const counts = buckets.map(
+                  (bucket) =>
+                    wasteData.filter(
+                      (item) =>
+                        item.tons >= bucket.min &&
+                        (bucket.max === Number.POSITIVE_INFINITY
+                          ? true
+                          : item.tons < bucket.max),
+                    ).length,
+                );
+
+                const maxCount = Math.max(...counts, 1);
+
+                return buckets.map((bucket, index) => {
+                  const width = (counts[index] / maxCount) * 360;
+                  return (
+                    <View key={bucket.label} style={{ marginTop: 6 }}>
+                      <View style={styles.chartAxis}>
+                        <Text
+                          style={[
+                            styles.tableCell,
+                            { fontSize: 10, width: 55 },
+                          ]}
+                        >
+                          {bucket.label}
+                        </Text>
+                        <View style={[styles.chartBar, { width }]} />
+                        <Text style={styles.chartBarLabel}>
+                          {counts[index]}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                });
+              })()
+            )}
           </View>
         </View>
 

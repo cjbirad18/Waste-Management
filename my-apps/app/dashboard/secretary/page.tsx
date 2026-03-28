@@ -3531,6 +3531,14 @@ function SecretaryGarbageCollectionsSection() {
   const [gcps, setGcps] = useState<any[]>([]);
   const [collections, setCollections] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
+
+  const [collectionEfficiency, setCollectionEfficiency] = useState({
+    scheduled: 0,
+    done: 0,
+    completionRate: 0,
+    totalWaste: 0,
+    averageWaste: 0,
+  });
   const [filterBarangay, setFilterBarangay] = useState<string>("");
   const [filterDate, setFilterDate] = useState<string>("");
   const [notifPage, setNotifPage] = useState(1);
@@ -3600,11 +3608,59 @@ function SecretaryGarbageCollectionsSection() {
       if (collectionResp.error) throw collectionResp.error;
       if (smsResp.error) throw smsResp.error;
 
+      const truckMap = new Map(
+        (truckResp.data || []).map((t: any) => [t.truck_id, t]),
+      );
+      const normalizedCollections = (collectionResp.data || []).map(
+        (c: any) => {
+          const rawAssignment = c.gcp_assignment;
+          const normalizedAssignment = Array.isArray(rawAssignment)
+            ? rawAssignment[0] || null
+            : rawAssignment || null;
+
+          const backupGcp = normalizedAssignment?.user || null;
+
+          return {
+            ...c,
+            truck: c.truck || truckMap.get(c.truck_id) || null,
+            collection_date:
+              c.collection_date || new Date().toISOString().slice(0, 10),
+            gcp_assignment: normalizedAssignment,
+            backup_gcp_id: backupGcp?.user_id || "",
+            backup_gcp_name:
+              backupGcp?.first_name && backupGcp?.last_name
+                ? `${backupGcp.first_name} ${backupGcp.last_name}`
+                : "",
+          };
+        },
+      );
+
+      const scheduledCount = (scheduleResp.data || []).length;
+      const doneCollections = normalizedCollections.filter(
+        (c: any) => c.status === "Done" || c.status === "done",
+      );
+      const totalDone = doneCollections.length;
+      const totalWaste = doneCollections.reduce(
+        (sum: number, c: any) => sum + (Number(c.waste_weight) || 0),
+        0,
+      );
+      const avgWastePerDone = totalDone ? totalWaste / totalDone : 0;
+      const completionRate = scheduledCount
+        ? Number(((totalDone / scheduledCount) * 100).toFixed(2))
+        : 0;
+
       setSchedules(scheduleResp.data || []);
       setTrucks(truckResp.data || []);
       setGcps(gcpResp.data || []);
-      setCollections(collectionResp.data || []);
+      setCollections(normalizedCollections);
       setNotifications(smsResp.data || []);
+      setCollectionEfficiency({
+        scheduled: scheduledCount,
+        done: totalDone,
+        completionRate,
+        totalWaste: Number(totalWaste.toFixed(2)),
+        averageWaste: Number(avgWastePerDone.toFixed(2)),
+      });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -3785,8 +3841,34 @@ function SecretaryGarbageCollectionsSection() {
         .eq("user_id", gcpUserId)
         .single();
 
+      // Fetch barangay name from related collection_details -> collection_schedules
+      let barangayName = "the assigned barangay";
+      const { data: colDetail, error: colDetailError } = await supabase
+        .from("collection_details")
+        .select(
+          "schedule:schedule_id ( barangay:barangay_id ( barangay_name ) )",
+        )
+        .eq("collectiondetails_id", collectionDetailsId)
+        .single();
+      if (!colDetailError && colDetail && colDetail.schedule) {
+        const schedule = Array.isArray(colDetail.schedule)
+          ? colDetail.schedule[0]
+          : colDetail.schedule;
+        const barangay = schedule?.barangay
+          ? Array.isArray(schedule.barangay)
+            ? schedule.barangay[0]
+            : schedule.barangay
+          : null;
+        const name = barangay?.barangay_name;
+        if (name) {
+          barangayName = name;
+        }
+      }
+
       if (!backupUserError && backupUser?.contact_number) {
-        const message = `Hi ${backupUser.first_name} ${backupUser.last_name}, you have been assigned as backup GCP for a missed collection. Please respond and head to the assigned barangay.`;
+        const message = `Hi ${backupUser.first_name} ${backupUser.last_name}, you have been assigned as backup GCP for a missed collection in ${barangayName}. Please respond and head to the assigned barangay.\n\n Track the Truck`;
+
+        // Save notification record first for history and auditing.
         await supabase.from("sms_notifications").insert({
           user_id: gcpUserId,
           notification_type: "backup_assignment",
@@ -3795,6 +3877,37 @@ function SecretaryGarbageCollectionsSection() {
           status: "pending",
           sent_at: new Date().toISOString(),
         });
+
+        // Trigger immediate send via API route
+        try {
+          const smsResponse = await fetch("/api/send-sms", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: backupUser.contact_number,
+              message,
+              userId: gcpUserId,
+              notificationType: "backup_assignment",
+            }),
+          });
+
+          const sendResult = await smsResponse.json();
+          if (!smsResponse.ok) {
+            console.error("Backup assign SMS API error:", sendResult);
+            alert("Backup SMS send failed: " + (sendResult.error || "unknown"));
+          } else {
+            console.log(
+              `Backup assignment SMS sent to ${backupUser.first_name} ${backupUser.last_name} (user_id=${gcpUserId})`,
+            );
+          }
+        } catch (e) {
+          console.error("Backup assignment sendSms fetch error:", e);
+          alert("Backup SMS call failed: " + (e as Error).message);
+        }
+      } else {
+        console.log(
+          `Backup assignment SMS not sent: missing contact for gcp_user_id=${gcpUserId}`,
+        );
       }
 
       setBackupGcpSelection((prev) => ({ ...prev, [collectionDetailsId]: "" }));
@@ -4140,11 +4253,12 @@ function SecretaryGarbageCollectionsSection() {
       )
       .map((s) => ({
         collectiondetails_id: `schedule-${s.schedule_id}`,
-        collection_date: s.date_created || null,
+        collection_date:
+          s.date_created?.slice(0, 10) || new Date().toISOString().slice(0, 10),
         // For schedule records without matching collection details, keep as scheduled.
         // 'Missed' should only be set when the truck actually failed to execute after route start.
         status: "scheduled",
-        truck: { truck_code: "-" },
+        truck: { truck_code: "Unassigned", plate_number: "-" },
         schedule: s,
         gcp_assignment: s.gcp_user ? { user: s.gcp_user } : null,
       }));
@@ -4169,9 +4283,7 @@ function SecretaryGarbageCollectionsSection() {
         }
         if (filterDate) {
           if (!c.collection_date) return false;
-          const normalizedDate = new Date(c.collection_date)
-            .toISOString()
-            .slice(0, 10);
+          const normalizedDate = c.collection_date.slice(0, 10);
           if (normalizedDate !== filterDate) return false;
         }
         return true;
@@ -4195,6 +4307,13 @@ function SecretaryGarbageCollectionsSection() {
               <p className="text-sm text-slate-400 mt-1">
                 Review and manage scheduled garbage collections.
               </p>
+            </div>
+            <div className="bg-slate-800/70 rounded-lg p-3 text-xs text-slate-200 flex gap-4">
+              <span>Scheduled: {collectionEfficiency.scheduled}</span>
+              <span>Done: {collectionEfficiency.done}</span>
+              <span>Completion: {collectionEfficiency.completionRate}%</span>
+              <span>Total Waste: {collectionEfficiency.totalWaste} t</span>
+              <span>Avg Waste/Done: {collectionEfficiency.averageWaste} t</span>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
@@ -4282,7 +4401,9 @@ function SecretaryGarbageCollectionsSection() {
                       {c.schedule?.barangay?.barangay_name || "-"}
                     </td>
                     <td className="px-5 py-3 text-slate-200">
-                      {c.truck?.truck_code}
+                      {c.truck?.plate_number ||
+                        c.truck?.truck_code ||
+                        "Unassigned"}
                     </td>
                     <td className="px-5 py-3 text-slate-200">
                       {c.gcp_assignment?.user
@@ -4316,15 +4437,18 @@ function SecretaryGarbageCollectionsSection() {
                     <td className="px-5 py-3 text-slate-200">
                       <div className="text-xs text-slate-400 mb-1">
                         Backup:
-                        {c.gcp_assignment?.user
-                          ? ` ${c.gcp_assignment.user.first_name} ${c.gcp_assignment.user.last_name}`
-                          : " -"}
+                        {c.backup_gcp_name ||
+                          (c.gcp_assignment?.user
+                            ? ` ${c.gcp_assignment.user.first_name} ${c.gcp_assignment.user.last_name}`
+                            : " -")}
                       </div>
                       <div className="flex items-center gap-2">
                         <select
                           className="rounded-lg bg-slate-800/50 border border-slate-700/50 px-2 py-1 text-xs"
                           value={
-                            backupGcpSelection[c.collectiondetails_id] || ""
+                            backupGcpSelection[c.collectiondetails_id] ||
+                            c.backup_gcp_id ||
+                            ""
                           }
                           onChange={(e) =>
                             setBackupGcpSelection((prev) => ({
@@ -4333,7 +4457,8 @@ function SecretaryGarbageCollectionsSection() {
                             }))
                           }
                           disabled={
-                            c.status !== "Delayed" && c.status !== "delayed"
+                            (c.status !== "Missed" && c.status !== "missed") ||
+                            Boolean(c.gcp_assignment?.user)
                           }
                         >
                           <option value="">Select Backup GCP</option>
@@ -4352,7 +4477,8 @@ function SecretaryGarbageCollectionsSection() {
                             )
                           }
                           disabled={
-                            c.status !== "Delayed" && c.status !== "delayed"
+                            (c.status !== "Missed" && c.status !== "missed") ||
+                            Boolean(c.gcp_assignment?.user)
                           }
                           className="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
@@ -5131,11 +5257,13 @@ export default function SecretaryDashboard() {
         console.error("Unexpected error fetching Schedule count:", err);
       }
 
-      // Garbage Collections: count from collection_details table
+      // Garbage Collections: count from collection_details table for today only
       try {
+        const today = new Date().toISOString().slice(0, 10);
         const { count, error } = await supabase
           .from("collection_details")
-          .select("collectiondetails_id", { count: "exact", head: true });
+          .select("collectiondetails_id", { count: "exact", head: true })
+          .eq("collection_date", today);
         if (error) {
           console.error("Garbage collection count fetch error:", error);
         } else {
@@ -5775,7 +5903,7 @@ export default function SecretaryDashboard() {
                     : "max-h-0 opacity-0 mb-0"
                 }`}
               >
-                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                   {summaryCards.map((card, idx) => (
                     <div
                       key={idx}

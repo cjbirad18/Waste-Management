@@ -21,7 +21,15 @@ type ReportsAnalyticsProps = {
 };
 
 type WasteCollectionPoint = { month: string; tons: number };
-type PerformancePoint = { month: string; efficiency: number };
+type PerformancePoint = {
+  month: string;
+  efficiency: number;
+  scheduled: number;
+  done: number;
+  missed: number;
+  delayed: number;
+  totalWaste: number;
+};
 
 type ConcernStatsPoint = {
   month: string;
@@ -52,7 +60,7 @@ export default function ReportsAnalytics({
   );
 
   const [selectedMonth, setSelectedMonth] = useState<number>(
-    new Date().getMonth(),
+    -1, // -1 shows all months by default
   );
 
   const [wasteCollectionData, setWasteCollectionData] = useState<
@@ -67,6 +75,16 @@ export default function ReportsAnalytics({
 
   const [loadingReportData, setLoadingReportData] = useState(true);
   const [errorReportData, setErrorReportData] = useState<string | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshTick((prev) => prev + 1);
+      setLastRefreshedAt(new Date().toISOString());
+    }, 10000); // refresh every 10 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   // Load waste collection analytics
   useEffect(() => {
@@ -113,7 +131,13 @@ export default function ReportsAnalytics({
 
         const byPeriod: Record<
           string,
-          { tons: number; collected: number; total: number }
+          {
+            tons: number;
+            done: number;
+            missed: number;
+            delayed: number;
+            total: number;
+          }
         > = {};
 
         for (const row of data ?? []) {
@@ -124,22 +148,37 @@ export default function ReportsAnalytics({
           if (Number.isNaN(d.getTime())) continue;
 
           // Filter by selected month if in monthly view
-          if (timePeriod === "monthly" && d.getMonth() !== selectedMonth) {
+          if (
+            timePeriod === "monthly" &&
+            selectedMonth >= 0 &&
+            d.getMonth() !== selectedMonth
+          ) {
             continue;
           }
 
           const periodKey = getDateKey(d);
 
           if (!byPeriod[periodKey]) {
-            byPeriod[periodKey] = { tons: 0, collected: 0, total: 0 };
+            byPeriod[periodKey] = {
+              tons: 0,
+              done: 0,
+              missed: 0,
+              delayed: 0,
+              total: 0,
+            };
           }
 
           const weight = Number(row.waste_weight) || 0;
           byPeriod[periodKey].tons += weight;
 
+          const status = (row.status ?? "").toString().trim().toLowerCase();
           byPeriod[periodKey].total += 1;
-          if (row.status === "Done") {
-            byPeriod[periodKey].collected += 1;
+          if (status === "done") {
+            byPeriod[periodKey].done += 1;
+          } else if (status === "missed") {
+            byPeriod[periodKey].missed += 1;
+          } else if (status === "delayed") {
+            byPeriod[periodKey].delayed += 1;
           }
         }
 
@@ -151,11 +190,16 @@ export default function ReportsAnalytics({
         }));
 
         const perfData: PerformancePoint[] = periodKeys.map((key) => {
-          const { collected, total } = byPeriod[key];
-          const eff = total === 0 ? 0 : (collected / total) * 100;
+          const { done, missed, delayed, total, tons } = byPeriod[key];
+          const eff = total === 0 ? 0 : (done / total) * 100;
           return {
             month: key,
             efficiency: Number(eff.toFixed(1)),
+            scheduled: total,
+            done,
+            missed,
+            delayed,
+            totalWaste: Number(tons.toFixed(2)),
           };
         });
 
@@ -170,7 +214,7 @@ export default function ReportsAnalytics({
     };
 
     loadReportsAnalytics();
-  }, [activeReportOption, barangayId, timePeriod, selectedMonth]);
+  }, [activeReportOption, barangayId, timePeriod, selectedMonth, refreshTick]);
 
   // Load barangay concerns analytics
   useEffect(() => {
@@ -228,7 +272,11 @@ export default function ReportsAnalytics({
           if (Number.isNaN(d.getTime())) continue;
 
           // Filter by selected month if in monthly view
-          if (timePeriod === "monthly" && d.getMonth() !== selectedMonth) {
+          if (
+            timePeriod === "monthly" &&
+            selectedMonth >= 0 &&
+            d.getMonth() !== selectedMonth
+          ) {
             continue;
           }
 
@@ -280,7 +328,7 @@ export default function ReportsAnalytics({
     };
 
     loadBarangayConcerns();
-  }, [activeReportOption, barangayId, timePeriod, selectedMonth]);
+  }, [activeReportOption, barangayId, timePeriod, selectedMonth, refreshTick]);
 
   // Calculate waste collection stats
   const totalWaste = wasteCollectionData.reduce(
@@ -487,6 +535,7 @@ export default function ReportsAnalytics({
                   onChange={(e) => setSelectedMonth(Number(e.target.value))}
                   className="px-3.5 py-2 text-sm font-semibold rounded-lg bg-slate-950/60 border border-slate-700/60 text-slate-200 transition-colors focus:outline-none focus:border-emerald-500/80 cursor-pointer"
                 >
+                  <option value={-1}>All Months</option>
                   <option value="0">January</option>
                   <option value="1">February</option>
                   <option value="2">March</option>
@@ -578,66 +627,77 @@ export default function ReportsAnalytics({
 
                   <div className="p-5">
                     <div className="h-72 bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={wasteCollectionData}
-                          margin={{ top: 10, right: 20, bottom: 40, left: 40 }}
-                        >
-                          <defs>
-                            <linearGradient
-                              id="wasteGrad"
-                              x1="0"
-                              y1="0"
-                              x2="0"
-                              y2="1"
-                            >
-                              <stop
-                                offset="0"
-                                stopColor="#10b981"
-                                stopOpacity={0.9}
-                              />
-                              <stop
-                                offset="1"
-                                stopColor="#059669"
-                                stopOpacity={0.6}
-                              />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#334155"
-                            opacity={0.2}
-                          />
-                          <XAxis
-                            dataKey="month"
-                            stroke="#64748b"
-                            tick={{ fill: "#94a3b8", fontSize: 11 }}
-                            axisLine={{ stroke: "#334155" }}
-                          />
-                          <YAxis
-                            stroke="#64748b"
-                            tick={{ fill: "#94a3b8", fontSize: 11 }}
-                            axisLine={{ stroke: "#334155" }}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "#0f172a",
-                              borderColor: "#10b981",
-                              borderRadius: "8px",
-                              color: "#e2e8f0",
-                              fontSize: "12px",
-                              boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+                      {wasteCollectionData.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+                          No waste data for selected period.
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={wasteCollectionData}
+                            margin={{
+                              top: 10,
+                              right: 20,
+                              bottom: 40,
+                              left: 40,
                             }}
-                            cursor={{ fill: "rgba(16, 185, 129, 0.1)" }}
-                          />
-                          <Bar
-                            dataKey="tons"
-                            fill="url(#wasteGrad)"
-                            radius={[6, 6, 0, 0]}
-                            name="Waste (tons)"
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
+                          >
+                            <defs>
+                              <linearGradient
+                                id="wasteGrad"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="0"
+                                  stopColor="#10b981"
+                                  stopOpacity={0.9}
+                                />
+                                <stop
+                                  offset="1"
+                                  stopColor="#059669"
+                                  stopOpacity={0.6}
+                                />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#334155"
+                              opacity={0.2}
+                            />
+                            <XAxis
+                              dataKey="month"
+                              stroke="#64748b"
+                              tick={{ fill: "#94a3b8", fontSize: 11 }}
+                              axisLine={{ stroke: "#334155" }}
+                            />
+                            <YAxis
+                              stroke="#64748b"
+                              tick={{ fill: "#94a3b8", fontSize: 11 }}
+                              axisLine={{ stroke: "#334155" }}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "#0f172a",
+                                borderColor: "#10b981",
+                                borderRadius: "8px",
+                                color: "#e2e8f0",
+                                fontSize: "12px",
+                                boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+                              }}
+                              cursor={{ fill: "rgba(16, 185, 129, 0.1)" }}
+                            />
+                            <Bar
+                              dataKey="tons"
+                              fill="url(#wasteGrad)"
+                              radius={[6, 6, 0, 0]}
+                              name="Waste (tons)"
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -646,6 +706,80 @@ export default function ReportsAnalytics({
                 <div className="bg-slate-900/60 border border-slate-700/50 rounded-2xl shadow-xl backdrop-blur-xl overflow-hidden">
                   <div className="bg-gradient-to-r from-cyan-600/20 to-blue-600/20 border-b border-slate-700/50 p-5">
                     <div className="flex items-center gap-3">
+                      <div className="ml-auto grid w-full grid-cols-1 gap-2 text-xs text-slate-100 sm:grid-cols-2 xl:grid-cols-3">
+                        {[
+                          {
+                            label: "Scheduled",
+                            value: performanceData.reduce(
+                              (sum, p) => sum + p.scheduled,
+                              0,
+                            ),
+                            style:
+                              "bg-cyan-500/10 text-cyan-200 border-cyan-500/30",
+                          },
+                          {
+                            label: "Done",
+                            value: performanceData.reduce(
+                              (sum, p) => sum + p.done,
+                              0,
+                            ),
+                            style:
+                              "bg-emerald-500/10 text-emerald-200 border-emerald-500/30",
+                          },
+                          {
+                            label: "Missed",
+                            value: performanceData.reduce(
+                              (sum, p) => sum + p.missed,
+                              0,
+                            ),
+                            style:
+                              "bg-rose-500/10 text-rose-200 border-rose-500/30",
+                          },
+                          {
+                            label: "Delayed",
+                            value: performanceData.reduce(
+                              (sum, p) => sum + p.delayed,
+                              0,
+                            ),
+                            style:
+                              "bg-amber-500/10 text-amber-200 border-amber-500/30",
+                          },
+                          {
+                            label: "Total Waste (t)",
+                            value: performanceData
+                              .reduce((sum, p) => sum + p.totalWaste, 0)
+                              .toFixed(2),
+                            style:
+                              "bg-sky-500/10 text-sky-200 border-sky-500/30",
+                          },
+                          {
+                            label: "Avg Efficiency",
+                            value:
+                              performanceData.length > 0
+                                ? (
+                                    performanceData.reduce(
+                                      (sum, p) => sum + p.efficiency,
+                                      0,
+                                    ) / performanceData.length
+                                  ).toFixed(1) + "%"
+                                : "0%",
+                            style:
+                              "bg-violet-500/10 text-violet-200 border-violet-500/30",
+                          },
+                        ].map((item) => (
+                          <div
+                            key={item.label}
+                            className={`rounded-lg border px-2 py-1.5 ${item.style}`}
+                          >
+                            <div className="text-[10px] tracking-wide uppercase text-slate-300">
+                              {item.label}
+                            </div>
+                            <div className="mt-0.5 text-sm font-bold text-white">
+                              {item.value}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                       <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center">
                         <svg
                           className="w-5 h-5 text-cyan-400"
@@ -674,67 +808,101 @@ export default function ReportsAnalytics({
 
                   <div className="p-5">
                     <div className="h-72 bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={performanceData}
-                          margin={{ top: 10, right: 20, bottom: 40, left: 40 }}
-                        >
-                          <defs>
-                            <linearGradient
-                              id="effGrad"
-                              x1="0"
-                              y1="0"
-                              x2="0"
-                              y2="1"
-                            >
-                              <stop
-                                offset="0"
-                                stopColor="#06b6d4"
-                                stopOpacity={0.9}
-                              />
-                              <stop
-                                offset="1"
-                                stopColor="#0891b2"
-                                stopOpacity={0.6}
-                              />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#334155"
-                            opacity={0.2}
-                          />
-                          <XAxis
-                            dataKey="month"
-                            stroke="#64748b"
-                            tick={{ fill: "#94a3b8", fontSize: 11 }}
-                            axisLine={{ stroke: "#334155" }}
-                          />
-                          <YAxis
-                            stroke="#64748b"
-                            tick={{ fill: "#94a3b8", fontSize: 11 }}
-                            domain={[0, 100]}
-                            axisLine={{ stroke: "#334155" }}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "#0f172a",
-                              borderColor: "#06b6d4",
-                              borderRadius: "8px",
-                              color: "#e2e8f0",
-                              fontSize: "12px",
-                              boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+                      {performanceData.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+                          No efficiency data for selected period.
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={performanceData}
+                            margin={{
+                              top: 10,
+                              right: 20,
+                              bottom: 40,
+                              left: 40,
                             }}
-                            cursor={{ fill: "rgba(6, 182, 212, 0.1)" }}
-                          />
-                          <Bar
-                            dataKey="efficiency"
-                            fill="url(#effGrad)"
-                            radius={[6, 6, 0, 0]}
-                            name="Efficiency (%)"
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
+                          >
+                            <defs>
+                              <linearGradient
+                                id="effGrad"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="0"
+                                  stopColor="#06b6d4"
+                                  stopOpacity={0.9}
+                                />
+                                <stop
+                                  offset="1"
+                                  stopColor="#0891b2"
+                                  stopOpacity={0.6}
+                                />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#334155"
+                              opacity={0.2}
+                            />
+                            <XAxis
+                              dataKey="month"
+                              stroke="#64748b"
+                              tick={{ fill: "#94a3b8", fontSize: 11 }}
+                              axisLine={{ stroke: "#334155" }}
+                            />
+                            <YAxis
+                              yAxisId="left"
+                              stroke="#64748b"
+                              tick={{ fill: "#94a3b8", fontSize: 11 }}
+                              axisLine={{ stroke: "#334155" }}
+                            />
+                            <YAxis
+                              yAxisId="right"
+                              orientation="right"
+                              stroke="#38bdf8"
+                              tick={{ fill: "#38bdf8", fontSize: 11 }}
+                              domain={[0, 100]}
+                              axisLine={{ stroke: "#334155" }}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "#0f172a",
+                                borderColor: "#06b6d4",
+                                borderRadius: "8px",
+                                color: "#e2e8f0",
+                                fontSize: "12px",
+                                boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+                              }}
+                              cursor={{ fill: "rgba(6, 182, 212, 0.1)" }}
+                            />
+                            <Bar
+                              dataKey="scheduled"
+                              yAxisId="left"
+                              fill="#38bdf8"
+                              radius={[6, 6, 0, 0]}
+                              name="Scheduled"
+                            />
+                            <Bar
+                              dataKey="done"
+                              yAxisId="left"
+                              fill="#34d399"
+                              radius={[6, 6, 0, 0]}
+                              name="Done"
+                            />
+                            <Bar
+                              dataKey="efficiency"
+                              yAxisId="right"
+                              fill="url(#effGrad)"
+                              radius={[6, 6, 0, 0]}
+                              name="Efficiency (%)"
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
                     </div>
                   </div>
                 </div>

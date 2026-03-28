@@ -577,9 +577,11 @@ export default function AdminDashboard() {
     todaysTotal: 0,
     pendingReports: 0,
     delayedCollections: 0,
+    missedCollections: 0,
     collectionTrend: "No data from yesterday",
     pendingTrend: "No new reports today",
     delayedTrend: "No delays today",
+    missedTrend: "No missed collections today",
   });
 
   const collectionStatusClasses: Record<string, string> = {
@@ -698,6 +700,10 @@ export default function AdminDashboard() {
         isStatusMatch(row.status, "Delayed"),
       ).length;
 
+      const missedCount = normalizedCollections.filter((row) =>
+        isStatusMatch(row.status, "Missed"),
+      ).length;
+
       const { data: yesterdayCollections } = await supabase
         .from("collection_details")
         .select("status")
@@ -769,6 +775,7 @@ export default function AdminDashboard() {
         todaysTotal: normalizedCollections.length,
         pendingReports: pendingCount ?? 0,
         delayedCollections: delayedCount,
+        missedCollections: missedCount,
         collectionTrend,
         pendingTrend:
           (newTodayCount ?? 0) > 0
@@ -778,6 +785,10 @@ export default function AdminDashboard() {
           delayedCount > 0
             ? `${delayedCount} delayed today`
             : "No delays today",
+        missedTrend:
+          missedCount > 0
+            ? `${missedCount} missed today`
+            : "No missed collections today",
       });
     } catch (err) {
       console.error("Dashboard data fetch error", err);
@@ -1356,6 +1367,18 @@ export default function AdminDashboard() {
       iconBg: "bg-rose-500/15",
       iconColor: "text-rose-300",
     },
+    {
+      label: "Missed Collections",
+      value: String(dashboardMetrics.missedCollections),
+      trend: dashboardMetrics.missedTrend,
+      trendClass:
+        dashboardMetrics.missedCollections > 0
+          ? "text-red-300"
+          : "text-slate-400",
+      icon: "🛑",
+      iconBg: "bg-red-500/15",
+      iconColor: "text-red-300",
+    },
   ];
 
   const handleLogout = () => {
@@ -1727,6 +1750,57 @@ export default function AdminDashboard() {
     }
 
     try {
+      // Prevent archiving when the GCP has an active assignment this month.
+      const now = new Date();
+      const currentMonthStart = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        1,
+      ).toISOString();
+      const currentMonthEnd = new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+      ).toISOString();
+
+      const { data: scheduleAssignments, error: scheduleError } = await supabase
+        .from("collection_schedules")
+        .select("schedule_id")
+        .eq("gcp_user_id", userId)
+        .eq("status", "Active")
+        .limit(1);
+
+      if (scheduleError) {
+        setOtherUsersError(`Archive check failed: ${scheduleError.message}`);
+        return;
+      }
+
+      const { data: detailAssignments, error: detailError } = await supabase
+        .from("collection_details")
+        .select("collectiondetails_id")
+        .eq("gcp_user_id", userId)
+        .gte("collection_date", currentMonthStart)
+        .lte("collection_date", currentMonthEnd)
+        .limit(1);
+
+      if (detailError) {
+        setOtherUsersError(`Archive check failed: ${detailError.message}`);
+        return;
+      }
+
+      if (
+        (scheduleAssignments && scheduleAssignments.length > 0) ||
+        (detailAssignments && detailAssignments.length > 0)
+      ) {
+        setOtherUsersError(
+          `Cannot archive ${userName}. There is an active assignment for this month.`,
+        );
+        return;
+      }
+
       const { error } = await supabase
         .from("users")
         .update({ status: "archived" })
@@ -2324,7 +2398,7 @@ export default function AdminDashboard() {
                 </div>
 
                 {statsVisible && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     {dashboardStats.map((card) => (
                       <div
                         key={card.label}
@@ -3893,18 +3967,17 @@ export default function AdminDashboard() {
 
                   <div className="space-y-2">
                     <Label className="text-xs font-medium text-slate-300">
-                      📧 Email Address
+                      📧 Email Address (read-only)
                     </Label>
                     <Input
                       type="email"
                       value={editingUserForm.email}
-                      onChange={(e) =>
-                        setEditingUserForm({
-                          ...editingUserForm,
-                          email: e.target.value,
-                        })
+                      readOnly
+                      className="bg-slate-800 cursor-not-allowed"
+                      onClick={() =>
+                        /* no-op: email is not editable in this view */
+                        null
                       }
-                      disabled={isViewOnly}
                     />
                   </div>
 
