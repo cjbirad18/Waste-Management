@@ -541,6 +541,7 @@ function CollectionDelayMonitor({
     new Date().toISOString().slice(0, 10),
   );
   const [doneWeight, setDoneWeight] = useState("");
+  const [doneGarbageType, setDoneGarbageType] = useState("");
   const [doneSaving, setDoneSaving] = useState(false);
   const [doneError, setDoneError] = useState<string | null>(null);
   const [doneSuccess, setDoneSuccess] = useState<string | null>(null);
@@ -1071,6 +1072,11 @@ function CollectionDelayMonitor({
       return;
     }
 
+    if (!doneGarbageType) {
+      setDoneError("Please select a garbage type.");
+      return;
+    }
+
     setDoneSaving(true);
     setDoneError(null);
     setDoneSuccess(null);
@@ -1091,14 +1097,28 @@ function CollectionDelayMonitor({
         .maybeSingle();
 
       if (existing?.collectiondetails_id) {
-        await supabase
+        const completionTime = new Date().toTimeString().slice(0, 8); // HH:MM:SS as TIME type
+
+        const { data: updateData, error: updateError } = await supabase
           .from("collection_details")
           .update({
             status: "Done",
-            completion_time: `${doneDate}T00:00:00Z`,
+            completion_time: completionTime,
             waste_weight: weight,
+            garbage_type: doneGarbageType,
           })
-          .eq("collectiondetails_id", existing.collectiondetails_id);
+          .eq("collectiondetails_id", existing.collectiondetails_id)
+          .select()
+          .maybeSingle();
+
+        if (updateError) {
+          console.error("handleSubmitDone update error", updateError);
+          throw new Error(
+            updateError.message || "Failed to update collection_details.",
+          );
+        }
+
+        console.log("handleSubmitDone updated collection_details", updateData);
       } else {
         const { data: truck } = await supabase
           .from("garbage_trucks")
@@ -1106,14 +1126,30 @@ function CollectionDelayMonitor({
           .eq("gcp_user_id", authData.user.id)
           .single();
 
-        await supabase.from("collection_details").insert({
-          schedule_id: doneSchedule.schedule_id,
-          truck_id: truck?.truck_id || null,
-          collection_date: today,
-          status: "Done",
-          completion_time: `${doneDate}T00:00:00Z`,
-          waste_weight: weight,
-        });
+        const completionTime = new Date().toTimeString().slice(0, 8); // HH:MM:SS as TIME type
+
+        const { data: insertData, error: insertError } = await supabase
+          .from("collection_details")
+          .insert({
+            schedule_id: doneSchedule.schedule_id,
+            truck_id: truck?.truck_id || null,
+            collection_date: today,
+            status: "Done",
+            completion_time: completionTime,
+            waste_weight: weight,
+            garbage_type: doneGarbageType,
+          })
+          .select()
+          .maybeSingle();
+
+        if (insertError) {
+          console.error("handleSubmitDone insert error", insertError);
+          throw new Error(
+            insertError.message || "Failed to insert collection_details.",
+          );
+        }
+
+        console.log("handleSubmitDone inserted collection_details", insertData);
       }
 
       setDoneSuccess("Done collection reported successfully.");
@@ -1605,6 +1641,22 @@ function CollectionDelayMonitor({
                 className="rounded-lg bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30"
                 placeholder="Enter waste weight"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-blue-400/80 uppercase tracking-wider">
+                Garbage type <span className="text-red-400">*</span>
+              </Label>
+              <select
+                value={doneGarbageType}
+                onChange={(e) => setDoneGarbageType(e.target.value)}
+                className="w-full rounded-lg bg-slate-800/50 border border-slate-700/50 text-slate-200 px-3 py-2 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/30"
+              >
+                <option value="">Select garbage type</option>
+                <option value="biodegradable">Biodegradable</option>
+                <option value="recyclable">Recyclable</option>
+                <option value="residual">Residual</option>
+              </select>
             </div>
 
             {doneError && (

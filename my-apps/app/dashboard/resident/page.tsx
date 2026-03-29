@@ -929,7 +929,7 @@ function ResidentSchedulesFeature({
   );
 }
 
-const BUCKET = "incident-photos";
+const BUCKET = "report-photo";
 
 function SubmitReportSection({
   barangays,
@@ -1156,12 +1156,17 @@ function SubmitReportSection({
         const url = await uploadPhotoToSupabase(form.photoFile);
         if (url) {
           const { error: photoError } = await supabase
-            .from("community_reports")
-            .update({ photo_path: url }) // new column
-            .eq("report_id", reportData.report_id);
+            .from("report_photos")
+            .insert({
+              report_id: reportData.report_id,
+              photo_path: url,
+            });
 
           if (photoError) {
-            setFieldError(`Photo save failed, but report was submitted.`);
+            console.error("Photo DB insert error:", photoError);
+            setFieldError(
+              `Photo save failed, but report was submitted. Error: ${photoError.message}`,
+            );
             setLoading(false);
             return;
           }

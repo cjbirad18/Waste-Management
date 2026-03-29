@@ -3540,7 +3540,9 @@ function SecretaryGarbageCollectionsSection() {
     averageWaste: 0,
   });
   const [filterBarangay, setFilterBarangay] = useState<string>("");
-  const [filterDate, setFilterDate] = useState<string>("");
+  const [filterDate, setFilterDate] = useState<string>(
+    new Date().toISOString().slice(0, 10),
+  );
   const [notifPage, setNotifPage] = useState(1);
   const notifItemsPerPage = 10;
 

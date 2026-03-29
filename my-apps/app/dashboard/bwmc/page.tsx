@@ -1418,6 +1418,9 @@ export default function BWMCdashboard() {
     const [responseRemarks, setResponseRemarks] = useState("");
 
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [selectedReportPhotos, setSelectedReportPhotos] = useState<string[]>(
+      [],
+    );
     const [rejectRemarks, setRejectRemarks] = useState("");
 
     const [actionModalOpen, setActionModalOpen] = useState(false);
@@ -1523,6 +1526,32 @@ export default function BWMCdashboard() {
         supabase.removeChannel(channel);
       };
     }, []);
+
+    useEffect(() => {
+      if (!descModalOpen || !selectedDescReport) {
+        setSelectedReportPhotos([]);
+        return;
+      }
+
+      const fetchPhotos = async () => {
+        const { data, error } = await supabase
+          .from("report_photos")
+          .select("photo_path")
+          .eq("report_id", selectedDescReport.report_id);
+
+        if (error) {
+          console.error("Error fetching report_photos", error);
+          setSelectedReportPhotos([]);
+          return;
+        }
+
+        setSelectedReportPhotos(
+          (data || []).map((item: { photo_path: string }) => item.photo_path),
+        );
+      };
+
+      fetchPhotos();
+    }, [descModalOpen, selectedDescReport]);
 
     const getCurrentUserId = async () => {
       const { data, error } = await supabase.auth.getUser();
@@ -2191,12 +2220,17 @@ export default function BWMCdashboard() {
               <div className="p-6 space-y-4">
                 {/* Photo container */}
                 <div className="rounded-xl border border-slate-700/80 bg-slate-950/60 px-3 py-3 flex items-center justify-center min-h-[160px]">
-                  {selectedDescReport?.photo_path ? (
-                    <img
-                      src={selectedDescReport.photo_path}
-                      alt="Incident photo"
-                      className="max-h-72 max-w-full rounded-lg object-contain shadow-lg shadow-slate-900/70"
-                    />
+                  {selectedReportPhotos.length > 0 ? (
+                    <div className="flex flex-wrap justify-center items-center gap-2">
+                      {selectedReportPhotos.map((url, index) => (
+                        <img
+                          key={`${url}-${index}`}
+                          src={url}
+                          alt={`Incident photo ${index + 1}`}
+                          className="max-h-72 max-w-full rounded-lg object-contain shadow-lg shadow-slate-900/70"
+                        />
+                      ))}
+                    </div>
                   ) : (
                     <p className="text-xs text-slate-500 italic">
                       No photo was attached to this report.
