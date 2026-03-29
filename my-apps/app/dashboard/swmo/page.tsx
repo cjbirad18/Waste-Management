@@ -322,6 +322,30 @@ export default function AdminDashboard() {
     | "manageUsers"
     | "incidentReports"
   >("dashboard");
+  const [tabFadeIn, setTabFadeIn] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const persistedTab = localStorage.getItem("swmo_active_tab");
+    if (
+      persistedTab === "dashboard" ||
+      persistedTab === "userAdmin" ||
+      persistedTab === "manageAccount" ||
+      persistedTab === "reports" ||
+      persistedTab === "manageUsers" ||
+      persistedTab === "incidentReports"
+    ) {
+      setActiveTab(persistedTab);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("swmo_active_tab", activeTab);
+    setTabFadeIn(false);
+    const visibleTimeout = window.setTimeout(() => setTabFadeIn(true), 30);
+    return () => window.clearTimeout(visibleTimeout);
+  }, [activeTab]);
 
   const [hasLoadedManageAccount, setHasLoadedManageAccount] = useState(false);
 
@@ -2369,1661 +2393,1686 @@ export default function AdminDashboard() {
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-10 py-10 space-y-10 relative z-10 md:ml-64 bg-slate-900/40">
-          {/* DASHBOARD */}
-          {activeTab === "dashboard" && (
-            <>
-              <section className="space-y-6">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
-                      Dashboard
-                    </p>
-                    <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
-                      Track-the-Truck Overview
-                    </h1>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setStatsVisible(!statsVisible)}
-                      className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
-                    >
-                      {statsVisible ? "Hide Stats" : "Show Stats"}
-                    </Button>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                      Live
-                    </span>
-                  </div>
-                </div>
-
-                {statsVisible && (
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    {dashboardStats.map((card) => (
-                      <div
-                        key={card.label}
-                        className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-slate-400 text-sm">
-                              {card.label}
-                            </p>
-                            <h3 className="text-2xl font-bold text-slate-100">
-                              {card.value}
-                            </h3>
-                            <p className={`text-sm ${card.trendClass}`}>
-                              {card.trend}
-                            </p>
-                          </div>
-                          <div
-                            className={`${card.iconBg} ${card.iconColor} p-3 rounded-full text-xl`}
-                          >
-                            {card.icon}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                  {isUserTableExpanded ? (
-                    <div className="lg:col-span-5">
-                      {/* User list maximized: full width, hide map and reports */}
-                      <div className="dashboard-section overflow-hidden bg-slate-950 border border-slate-800 max-h-[90vh]">
-                        <div className="relative z-10">
-                          <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-bold text-slate-100">
-                              User List (Realtime)
-                            </h3>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs bg-emerald-600/20 text-emerald-300 px-3 py-1 rounded-lg border border-emerald-600/40 font-medium">
-                                {users.length} users
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setIsUserTableExpanded(false)}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-emerald-500 bg-slate-900 text-2xl font-bold text-emerald-300 hover:bg-emerald-500/10 transition ml-2 shadow-lg"
-                                aria-label="Minimize user list"
-                                title="Minimize user list"
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="h-6 w-6"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M20 12H4"
-                                  />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                          {loadingUsers && <TruckLoader />}
-                          {!loadingUsers && (
-                            <div className="overflow-x-auto rounded-lg border border-slate-800 max-h-[70vh] bg-slate-950">
-                              <table
-                                className={`min-w-full ${userTableSize.font}`}
-                              >
-                                <thead className="bg-slate-800 text-slate-300 border-b border-slate-700 sticky top-0 z-10">
-                                  <tr>
-                                    <th
-                                      className="px-4 py-3 text-left font-medium text-xs cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
-                                      title="Sort by Name"
-                                      onClick={() => {
-                                        setUserSortKey("name");
-                                        setUserSortDir(
-                                          userSortKey === "name" &&
-                                            userSortDir === "asc"
-                                            ? "desc"
-                                            : "asc",
-                                        );
-                                      }}
-                                    >
-                                      <span className="inline-flex items-center gap-1">
-                                        Name
-                                        <span className="text-xs opacity-70 group-hover:opacity-100 transition">
-                                          {userSortKey === "name"
-                                            ? userSortDir === "asc"
-                                              ? "▲"
-                                              : "▼"
-                                            : "▲▼"}
-                                        </span>
-                                      </span>
-                                    </th>
-                                    <th
-                                      className="px-4 py-3 text-left font-medium text-xs hidden sm:table-cell cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
-                                      title="Sort by Email"
-                                      onClick={() => {
-                                        setUserSortKey("email");
-                                        setUserSortDir(
-                                          userSortKey === "email" &&
-                                            userSortDir === "asc"
-                                            ? "desc"
-                                            : "asc",
-                                        );
-                                      }}
-                                    >
-                                      <span className="inline-flex items-center gap-1">
-                                        Email
-                                        <span className="text-xs opacity-70 group-hover:opacity-100 transition">
-                                          {userSortKey === "email"
-                                            ? userSortDir === "asc"
-                                              ? "▲"
-                                              : "▼"
-                                            : "▲▼"}
-                                        </span>
-                                      </span>
-                                    </th>
-                                    <th
-                                      className="px-4 py-3 text-left font-medium text-xs cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
-                                      title="Sort by Role"
-                                      onClick={() => {
-                                        setUserSortKey("role");
-                                        setUserSortDir(
-                                          userSortKey === "role" &&
-                                            userSortDir === "asc"
-                                            ? "desc"
-                                            : "asc",
-                                        );
-                                      }}
-                                    >
-                                      <span className="inline-flex items-center gap-1">
-                                        Role
-                                        <span className="text-xs opacity-70 group-hover:opacity-100 transition">
-                                          {userSortKey === "role"
-                                            ? userSortDir === "asc"
-                                              ? "▲"
-                                              : "▼"
-                                            : "▲▼"}
-                                        </span>
-                                      </span>
-                                    </th>
-                                    <th
-                                      className="px-4 py-3 text-left font-medium text-xs hidden md:table-cell cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
-                                      title="Sort by Barangay"
-                                      onClick={() => {
-                                        setUserSortKey("barangay");
-                                        setUserSortDir(
-                                          userSortKey === "barangay" &&
-                                            userSortDir === "asc"
-                                            ? "desc"
-                                            : "asc",
-                                        );
-                                      }}
-                                    >
-                                      <span className="inline-flex items-center gap-1">
-                                        Barangay
-                                        <span className="text-xs opacity-70 group-hover:opacity-100 transition">
-                                          {userSortKey === "barangay"
-                                            ? userSortDir === "asc"
-                                              ? "▲"
-                                              : "▼"
-                                            : "▲▼"}
-                                        </span>
-                                      </span>
-                                    </th>
-                                    <th className="px-4 py-3 text-left font-medium text-xs">
-                                      Actions
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {sortedUsers.map((user) => (
-                                    <tr
-                                      key={
-                                        user.id || user.user_id || user.email
-                                      }
-                                      className="border-t border-slate-800 hover:bg-slate-800 transition-colors"
-                                    >
-                                      <td
-                                        className={`px-4 ${userTableSize.row} font-medium text-slate-200 ${userTableSize.font}`}
-                                      >
-                                        {user.first_name} {user.last_name}
-                                        <div className="sm:hidden text-xs text-slate-400 font-normal">
-                                          {user.email}
-                                        </div>
-                                      </td>
-                                      <td
-                                        className={`px-4 ${userTableSize.row} text-slate-300 hidden sm:table-cell ${userTableSize.font}`}
-                                      >
-                                        {user.email}
-                                      </td>
-                                      <td
-                                        className={`px-4 ${userTableSize.row}`}
-                                      >
-                                        <span className="px-2 py-1 rounded-md bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 text-xs font-medium">
-                                          {user.role}
-                                        </span>
-                                      </td>
-                                      <td
-                                        className={`px-4 ${userTableSize.row} text-slate-400 hidden md:table-cell ${userTableSize.font}`}
-                                      >
-                                        {user.role === "BWMC"
-                                          ? user.barangay_id
-                                          : "-"}
-                                      </td>
-                                      <td
-                                        className={`px-4 ${userTableSize.row} ${userTableSize.font}`}
-                                      >
-                                        {[
-                                          "TCEMO Head",
-                                          "Secretary",
-                                          "BWMC",
-                                          "GCP",
-                                        ].includes(user.role) && (
-                                          <button
-                                            onClick={() =>
-                                              handleArchiveUser(
-                                                String(
-                                                  user.user_id ?? user.id ?? "",
-                                                ),
-                                                `${user.first_name} ${user.last_name}`,
-                                              )
-                                            }
-                                            className="text-rose-300 hover:text-rose-200 text-xs"
-                                          >
-                                            Archive
-                                          </button>
-                                        )}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+          <div
+            className={`transition-opacity duration-300 ease-in-out ${
+              tabFadeIn ? "opacity-100" : "opacity-0"
+            }`}
+            key={activeTab}
+          >
+            {/* DASHBOARD */}
+            {activeTab === "dashboard" && (
+              <>
+                <section className="space-y-6">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
+                        Dashboard
+                      </p>
+                      <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
+                        Track-the-Truck Overview
+                      </h1>
                     </div>
-                  ) : (
-                    <>
-                      <div
-                        className={`rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40 transition-all duration-300 ${
-                          isMapExpanded ? "lg:col-span-5" : "lg:col-span-3"
-                        }`}
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => setStatsVisible(!statsVisible)}
+                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
                       >
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                          <h2 className="text-xl font-bold text-slate-100">
-                            Live Truck Tracking
-                          </h2>
+                        {statsVisible ? "Hide Stats" : "Show Stats"}
+                      </Button>
+                      <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        Live
+                      </span>
+                    </div>
+                  </div>
 
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setIsMapExpanded(false)}
-                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border text-xs font-semibold transition ${
-                                isMapExpanded
-                                  ? "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
-                                  : "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
-                              }`}
-                              aria-label="Minimize map"
-                              title="Minimize"
+                  {statsVisible && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                      {dashboardStats.map((card) => (
+                        <div
+                          key={card.label}
+                          className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-slate-400 text-sm">
+                                {card.label}
+                              </p>
+                              <h3 className="text-2xl font-bold text-slate-100">
+                                {card.value}
+                              </h3>
+                              <p className={`text-sm ${card.trendClass}`}>
+                                {card.trend}
+                              </p>
+                            </div>
+                            <div
+                              className={`${card.iconBg} ${card.iconColor} p-3 rounded-full text-xl`}
                             >
-                              _
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setIsMapExpanded(true)}
-                              className={`inline-flex h-7 w-7 items-center justify-center rounded-md border text-[10px] font-semibold transition ${
-                                isMapExpanded
-                                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
-                                  : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
-                              }`}
-                              aria-label="Maximize map"
-                              title="Maximize"
-                            >
-                              []
-                            </button>
+                              {card.icon}
+                            </div>
                           </div>
                         </div>
-                        <div
-                          className={`relative rounded-xl bg-slate-950/60 overflow-hidden border border-slate-800 transition-all duration-300 ${
-                            isMapExpanded ? "h-[70vh]" : "h-[420px]"
-                          }`}
-                        >
-                          <LeafletMap />
-                        </div>
-                      </div>
+                      ))}
+                    </div>
+                  )}
 
-                      {!isMapExpanded && (
-                        <div className="lg:col-span-2 rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40">
-                          <h2 className="text-xl font-bold text-slate-100 mb-4">
-                            Recent Community Reports
-                          </h2>
-                          <div className="space-y-4">
-                            {dashboardReportCards.length === 0 ? (
-                              <div className="rounded-lg border border-dashed border-slate-800 px-4 py-6 text-sm text-slate-400">
-                                No recent community reports.
-                              </div>
-                            ) : (
-                              dashboardReportCards.map((report) => (
-                                <div
-                                  key={`${report.title}-${report.time}`}
-                                  className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 transition-shadow hover:shadow-lg hover:shadow-black/30"
+                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                    {isUserTableExpanded ? (
+                      <div className="lg:col-span-5">
+                        {/* User list maximized: full width, hide map and reports */}
+                        <div className="dashboard-section overflow-hidden bg-slate-950 border border-slate-800 max-h-[90vh]">
+                          <div className="relative z-10">
+                            <div className="flex items-center justify-between mb-6">
+                              <h3 className="text-lg font-bold text-slate-100">
+                                User List (Realtime)
+                              </h3>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs bg-emerald-600/20 text-emerald-300 px-3 py-1 rounded-lg border border-emerald-600/40 font-medium">
+                                  {users.length} users
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsUserTableExpanded(false)}
+                                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-emerald-500 bg-slate-900 text-2xl font-bold text-emerald-300 hover:bg-emerald-500/10 transition ml-2 shadow-lg"
+                                  aria-label="Minimize user list"
+                                  title="Minimize user list"
                                 >
-                                  <div className="flex justify-between items-start mb-2">
-                                    <span
-                                      className={`inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold ${
-                                        reportStatusClasses[report.status] ??
-                                        "bg-slate-800 text-slate-200"
-                                      }`}
-                                    >
-                                      {report.status}
-                                    </span>
-                                    <span className="text-xs text-slate-400">
-                                      {report.time}
-                                    </span>
-                                  </div>
-                                  <h4 className="font-medium mb-1 text-slate-100">
-                                    Title : {report.title}
-                                  </h4>
-                                  <p className="text-sm text-slate-300 mb-3">
-                                    Description : {report.description}
-                                  </p>
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-sm font-medium text-slate-300">
-                                      Barangay : {report.barangay}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-6 w-6"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M20 12H4"
+                                    />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                            {loadingUsers && <TruckLoader />}
+                            {!loadingUsers && (
+                              <div className="overflow-x-auto rounded-lg border border-slate-800 max-h-[70vh] bg-slate-950">
+                                <table
+                                  className={`min-w-full ${userTableSize.font}`}
+                                >
+                                  <thead className="bg-slate-800 text-slate-300 border-b border-slate-700 sticky top-0 z-10">
+                                    <tr>
+                                      <th
+                                        className="px-4 py-3 text-left font-medium text-xs cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
+                                        title="Sort by Name"
+                                        onClick={() => {
+                                          setUserSortKey("name");
+                                          setUserSortDir(
+                                            userSortKey === "name" &&
+                                              userSortDir === "asc"
+                                              ? "desc"
+                                              : "asc",
+                                          );
+                                        }}
+                                      >
+                                        <span className="inline-flex items-center gap-1">
+                                          Name
+                                          <span className="text-xs opacity-70 group-hover:opacity-100 transition">
+                                            {userSortKey === "name"
+                                              ? userSortDir === "asc"
+                                                ? "▲"
+                                                : "▼"
+                                              : "▲▼"}
+                                          </span>
+                                        </span>
+                                      </th>
+                                      <th
+                                        className="px-4 py-3 text-left font-medium text-xs hidden sm:table-cell cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
+                                        title="Sort by Email"
+                                        onClick={() => {
+                                          setUserSortKey("email");
+                                          setUserSortDir(
+                                            userSortKey === "email" &&
+                                              userSortDir === "asc"
+                                              ? "desc"
+                                              : "asc",
+                                          );
+                                        }}
+                                      >
+                                        <span className="inline-flex items-center gap-1">
+                                          Email
+                                          <span className="text-xs opacity-70 group-hover:opacity-100 transition">
+                                            {userSortKey === "email"
+                                              ? userSortDir === "asc"
+                                                ? "▲"
+                                                : "▼"
+                                              : "▲▼"}
+                                          </span>
+                                        </span>
+                                      </th>
+                                      <th
+                                        className="px-4 py-3 text-left font-medium text-xs cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
+                                        title="Sort by Role"
+                                        onClick={() => {
+                                          setUserSortKey("role");
+                                          setUserSortDir(
+                                            userSortKey === "role" &&
+                                              userSortDir === "asc"
+                                              ? "desc"
+                                              : "asc",
+                                          );
+                                        }}
+                                      >
+                                        <span className="inline-flex items-center gap-1">
+                                          Role
+                                          <span className="text-xs opacity-70 group-hover:opacity-100 transition">
+                                            {userSortKey === "role"
+                                              ? userSortDir === "asc"
+                                                ? "▲"
+                                                : "▼"
+                                              : "▲▼"}
+                                          </span>
+                                        </span>
+                                      </th>
+                                      <th
+                                        className="px-4 py-3 text-left font-medium text-xs hidden md:table-cell cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
+                                        title="Sort by Barangay"
+                                        onClick={() => {
+                                          setUserSortKey("barangay");
+                                          setUserSortDir(
+                                            userSortKey === "barangay" &&
+                                              userSortDir === "asc"
+                                              ? "desc"
+                                              : "asc",
+                                          );
+                                        }}
+                                      >
+                                        <span className="inline-flex items-center gap-1">
+                                          Barangay
+                                          <span className="text-xs opacity-70 group-hover:opacity-100 transition">
+                                            {userSortKey === "barangay"
+                                              ? userSortDir === "asc"
+                                                ? "▲"
+                                                : "▼"
+                                              : "▲▼"}
+                                          </span>
+                                        </span>
+                                      </th>
+                                      <th className="px-4 py-3 text-left font-medium text-xs">
+                                        Actions
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {sortedUsers.map((user) => (
+                                      <tr
+                                        key={
+                                          user.id || user.user_id || user.email
+                                        }
+                                        className="border-t border-slate-800 hover:bg-slate-800 transition-colors"
+                                      >
+                                        <td
+                                          className={`px-4 ${userTableSize.row} font-medium text-slate-200 ${userTableSize.font}`}
+                                        >
+                                          {user.first_name} {user.last_name}
+                                          <div className="sm:hidden text-xs text-slate-400 font-normal">
+                                            {user.email}
+                                          </div>
+                                        </td>
+                                        <td
+                                          className={`px-4 ${userTableSize.row} text-slate-300 hidden sm:table-cell ${userTableSize.font}`}
+                                        >
+                                          {user.email}
+                                        </td>
+                                        <td
+                                          className={`px-4 ${userTableSize.row}`}
+                                        >
+                                          <span className="px-2 py-1 rounded-md bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 text-xs font-medium">
+                                            {user.role}
+                                          </span>
+                                        </td>
+                                        <td
+                                          className={`px-4 ${userTableSize.row} text-slate-400 hidden md:table-cell ${userTableSize.font}`}
+                                        >
+                                          {user.role === "BWMC"
+                                            ? user.barangay_id
+                                            : "-"}
+                                        </td>
+                                        <td
+                                          className={`px-4 ${userTableSize.row} ${userTableSize.font}`}
+                                        >
+                                          {[
+                                            "TCEMO Head",
+                                            "Secretary",
+                                            "BWMC",
+                                            "GCP",
+                                          ].includes(user.role) && (
+                                            <button
+                                              onClick={() =>
+                                                handleArchiveUser(
+                                                  String(
+                                                    user.user_id ??
+                                                      user.id ??
+                                                      "",
+                                                  ),
+                                                  `${user.first_name} ${user.last_name}`,
+                                                )
+                                              }
+                                              className="text-rose-300 hover:text-rose-200 text-xs"
+                                            >
+                                              Archive
+                                            </button>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
                             )}
                           </div>
                         </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </section>
-            </>
-          )}
-          {/* USER ADMIN */}
-          {activeTab === "userAdmin" && (
-            <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              {/* Add user */}
-              <div className="dashboard-section overflow-hidden">
-                <div className="relative z-10">
-                  <h2 className="text-lg font-bold mb-4 text-slate-100">
-                    Add User
-                  </h2>
-                  <p className="text-xs text-slate-400 mb-6">
-                    Create accounts for collectors, BWMC officers, and admins.
-                  </p>
-                  <form
-                    onSubmit={handleAddUser}
-                    className="space-y-4"
-                    noValidate
-                  >
-                    {formError && (
-                      <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-red-300 text-xs">
-                        {formError}
                       </div>
-                    )}
-                    {formSuccess && (
-                      <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-emerald-300 text-xs">
-                        {formSuccess}
-                      </div>
-                    )}
-
-                    <SelectField
-                      label="Role"
-                      name="role"
-                      value={userForm.role}
-                      onChange={handleUserFormChange}
-                      required
-                      options={filteredRoleOptions.slice(1)}
-                      placeholder={filteredRoleOptions[0].label}
-                    />
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <InputField
-                        label="First Name"
-                        name="first_name"
-                        type="text"
-                        value={userForm.first_name}
-                        onChange={handleUserFormChange}
-                        required
-                        placeholder="e.g. Juan"
-                      />
-                      <InputField
-                        label="Last Name"
-                        name="last_name"
-                        type="text"
-                        value={userForm.last_name}
-                        onChange={handleUserFormChange}
-                        required
-                        placeholder="e.g. Dela Cruz"
-                      />
-                    </div>
-
-                    <InputField
-                      label="Username"
-                      name="username"
-                      type="text"
-                      value={userForm.username}
-                      onChange={handleUserFormChange}
-                      required
-                      placeholder="e.g. collector01 or user@example.com"
-                    />
-                    <p className="text-xs text-slate-400 mt-1 mb-3">
-                      This will be used for login.
-                    </p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="flex flex-col">
-                        <InputField
-                          label="Contact Number"
-                          name="contact_number"
-                          type="tel"
-                          value={userForm.contact_number}
-                          onChange={handleUserFormChange}
-                          required
-                          placeholder="09xx-xxx-xxxx"
-                        />
-                        {userForm.contact_number &&
-                          !/^09\d{9}$/.test(userForm.contact_number) && (
-                            <p className="text-xs text-red-400 mt-1">
-                              Number must start with 09 and be 11 digits
-                            </p>
-                          )}
-                      </div>
-                      <InputField
-                        label="Email"
-                        name="email"
-                        type="email"
-                        value={userForm.email}
-                        onChange={handleUserFormChange}
-                        required
-                        placeholder="name@example.com"
-                      />
-                    </div>
-
-                    {userForm.role === "BWMC" && (
-                      <SelectField
-                        label="Barangay"
-                        name="barangay_id"
-                        value={userForm.barangay_id}
-                        onChange={handleUserFormChange}
-                        required
-                        options={barangayOptions}
-                        placeholder="Select barangay..."
-                      />
-                    )}
-
-                    {/* password is autogenerated; no input required */}
-                    <p className="text-xs text-slate-400">
-                      A temporary password will be generated automatically and
-                      sent to the new user via SMS. They will be prompted to
-                      change it on first login.
-                    </p>
-
-                    <div className="flex justify-end pt-2">
-                      <Button type="submit">＋ Add User</Button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-
-              {/* User list */}
-              <div className="dashboard-section overflow-hidden max-h-[700px] relative">
-                <div className="z-10">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                      <h3 className="text-lg font-bold text-slate-100">
-                        User List (Realtime)
-                      </h3>
-                      <Select
-                        value={userRoleFilter}
-                        onValueChange={(value: string) =>
-                          setUserRoleFilter(value)
-                        }
-                      >
-                        <SelectTrigger className="w-40 bg-slate-900 border-slate-700 text-slate-200">
-                          <SelectValue placeholder="Filter by Role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Roles</SelectItem>
-                          <SelectItem value="BWMC">BWMC</SelectItem>
-                          <SelectItem value="GCP">GCP</SelectItem>
-                          <SelectItem value="Secretary">Secretary</SelectItem>
-                          <SelectItem value="SWMO Head">SWMO Head</SelectItem>
-                          <SelectItem value="TCEMO Head">TCEMO Head</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <span className="text-xs bg-emerald-600/20 text-emerald-300 px-3 py-1 rounded-lg border border-emerald-600/40 font-medium">
-                      {users.length} users
-                    </span>
-                  </div>
-                  {loadingUsers && <TruckLoader />}
-                  {!loadingUsers && (
-                    <div className="overflow-x-auto rounded-lg border border-slate-800 max-h-[575px] bg-slate-950">
-                      <table className="min-w-full text-sm">
-                        <thead className="bg-slate-800 text-slate-300 border-b border-slate-700 sticky top-0 z-10">
-                          <tr>
-                            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">
-                              User ID
-                            </th>
-                            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">
-                              Name
-                            </th>
-                            <th
-                              className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
-                              title="Sort by Role"
-                              onClick={() => {
-                                setUserSortKey && setUserSortKey("role");
-                                setUserSortDir &&
-                                  setUserSortDir(
-                                    userSortKey === "role" &&
-                                      userSortDir === "asc"
-                                      ? "desc"
-                                      : "asc",
-                                  );
-                              }}
-                            >
-                              <span className="inline-flex items-center gap-1">
-                                Role
-                                <span className="text-xs opacity-70 group-hover:opacity-100 transition">
-                                  {userSortKey === "role"
-                                    ? userSortDir === "asc"
-                                      ? "▲"
-                                      : "▼"
-                                    : "▲▼"}
-                                </span>
-                              </span>
-                            </th>
-                            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">
-                              Barangay
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(typeof sortedUsers !== "undefined"
-                            ? sortedUsers.filter(
-                                (user) =>
-                                  userRoleFilter === "all" ||
-                                  user.role === userRoleFilter,
-                              )
-                            : users.filter(
-                                (user) =>
-                                  userRoleFilter === "all" ||
-                                  user.role === userRoleFilter,
-                              )
-                          ).map((user) => {
-                            const initials =
-                              `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase();
-                            return (
-                              <tr
-                                key={user.id || user.user_id || user.email}
-                                className="border-t border-slate-800 hover:bg-slate-800 transition-colors"
-                              >
-                                <td className="px-4 py-3 font-mono text-slate-400 text-xs">
-                                  {user.user_id
-                                    ? `USR-${String(user.user_id).slice(0, 6).toUpperCase()}`
-                                    : "-"}
-                                </td>
-                                <td className="px-4 py-3 flex items-center gap-3 text-slate-100 text-sm">
-                                  <span className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-sm shadow-lg overflow-hidden">
-                                    {initials || "U"}
-                                  </span>
-                                  <span>
-                                    {user.first_name} {user.last_name}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span className="px-2 py-1 rounded-md bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 text-xs font-medium">
-                                    {user.role}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-slate-400 text-sm">
-                                  {user.role === "BWMC"
-                                    ? user.barangay_id
-                                    : "-"}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
-          )}
-          {/* MANAGE OTHER USERS */}
-          {activeTab === "manageUsers" && (
-            <div className="space-y-6">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <h2 className="text-2xl font-bold text-slate-100">
-                  User Accounts
-                </h2>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    value={userAccountsSearch}
-                    onChange={(e) => setUserAccountsSearch(e.target.value)}
-                    placeholder="Search users..."
-                    className="w-full md:w-64"
-                  />
-                  <Button
-                    variant="secondary"
-                    type="button"
-                    onClick={() => setShowUserFilters(!showUserFilters)}
-                    className="px-2 py-2 bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold"
-                    aria-label="Toggle filters"
-                  >
-                    ▼
-                  </Button>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 shadow-xl shadow-black/40">
-                <div className="p-5 md:p-6 space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex flex-wrap gap-2">
-                      {userAccountsTabs.map((tab) => (
-                        <button
-                          key={tab}
-                          type="button"
-                          onClick={() => setUserAccountsTab(tab)}
-                          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
-                            userAccountsTab === tab
-                              ? "bg-emerald-500/15 text-emerald-200 border border-emerald-500/30"
-                              : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                    ) : (
+                      <>
+                        <div
+                          className={`rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40 transition-all duration-300 ${
+                            isMapExpanded ? "lg:col-span-5" : "lg:col-span-3"
                           }`}
                         >
-                          {tab}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                          <div className="flex items-center justify-between gap-3 mb-4">
+                            <h2 className="text-xl font-bold text-slate-100">
+                              Live Truck Tracking
+                            </h2>
 
-                  {showUserFilters && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium text-slate-400">
-                          Role
-                        </Label>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setIsMapExpanded(false)}
+                                className={`inline-flex h-7 w-7 items-center justify-center rounded-md border text-xs font-semibold transition ${
+                                  isMapExpanded
+                                    ? "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                                    : "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
+                                }`}
+                                aria-label="Minimize map"
+                                title="Minimize"
+                              >
+                                _
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setIsMapExpanded(true)}
+                                className={`inline-flex h-7 w-7 items-center justify-center rounded-md border text-[10px] font-semibold transition ${
+                                  isMapExpanded
+                                    ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
+                                    : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                                }`}
+                                aria-label="Maximize map"
+                                title="Maximize"
+                              >
+                                []
+                              </button>
+                            </div>
+                          </div>
+                          <div
+                            className={`relative rounded-xl bg-slate-950/60 overflow-hidden border border-slate-800 transition-all duration-300 ${
+                              isMapExpanded ? "h-[70vh]" : "h-[420px]"
+                            }`}
+                          >
+                            <LeafletMap />
+                          </div>
+                        </div>
+
+                        {!isMapExpanded && (
+                          <div className="lg:col-span-2 rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40">
+                            <h2 className="text-xl font-bold text-slate-100 mb-4">
+                              Recent Community Reports
+                            </h2>
+                            <div className="space-y-4">
+                              {dashboardReportCards.length === 0 ? (
+                                <div className="rounded-lg border border-dashed border-slate-800 px-4 py-6 text-sm text-slate-400">
+                                  No recent community reports.
+                                </div>
+                              ) : (
+                                dashboardReportCards.map((report) => (
+                                  <div
+                                    key={`${report.title}-${report.time}`}
+                                    className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 transition-shadow hover:shadow-lg hover:shadow-black/30"
+                                  >
+                                    <div className="flex justify-between items-start mb-2">
+                                      <span
+                                        className={`inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold ${
+                                          reportStatusClasses[report.status] ??
+                                          "bg-slate-800 text-slate-200"
+                                        }`}
+                                      >
+                                        {report.status}
+                                      </span>
+                                      <span className="text-xs text-slate-400">
+                                        {report.time}
+                                      </span>
+                                    </div>
+                                    <h4 className="font-medium mb-1 text-slate-100">
+                                      Title : {report.title}
+                                    </h4>
+                                    <p className="text-sm text-slate-300 mb-3">
+                                      Description : {report.description}
+                                    </p>
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-sm font-medium text-slate-300">
+                                        Barangay : {report.barangay}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </section>
+              </>
+            )}
+            {/* USER ADMIN */}
+            {activeTab === "userAdmin" && (
+              <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {/* Add user */}
+                <div className="dashboard-section overflow-hidden">
+                  <div className="relative z-10">
+                    <h2 className="text-lg font-bold mb-4 text-slate-100">
+                      Add User
+                    </h2>
+                    <p className="text-xs text-slate-400 mb-6">
+                      Create accounts for collectors, BWMC officers, and admins.
+                    </p>
+                    <form
+                      onSubmit={handleAddUser}
+                      className="space-y-4"
+                      noValidate
+                    >
+                      {formError && (
+                        <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-red-300 text-xs">
+                          {formError}
+                        </div>
+                      )}
+                      {formSuccess && (
+                        <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-emerald-300 text-xs">
+                          {formSuccess}
+                        </div>
+                      )}
+
+                      <SelectField
+                        label="Role"
+                        name="role"
+                        value={userForm.role}
+                        onChange={handleUserFormChange}
+                        required
+                        options={filteredRoleOptions.slice(1)}
+                        placeholder={filteredRoleOptions[0].label}
+                      />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <InputField
+                          label="First Name"
+                          name="first_name"
+                          type="text"
+                          value={userForm.first_name}
+                          onChange={handleUserFormChange}
+                          required
+                          placeholder="e.g. Juan"
+                        />
+                        <InputField
+                          label="Last Name"
+                          name="last_name"
+                          type="text"
+                          value={userForm.last_name}
+                          onChange={handleUserFormChange}
+                          required
+                          placeholder="e.g. Dela Cruz"
+                        />
+                      </div>
+
+                      <InputField
+                        label="Username"
+                        name="username"
+                        type="text"
+                        value={userForm.username}
+                        onChange={handleUserFormChange}
+                        required
+                        placeholder="e.g. collector01 or user@example.com"
+                      />
+                      <p className="text-xs text-slate-400 mt-1 mb-3">
+                        This will be used for login.
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col">
+                          <InputField
+                            label="Contact Number"
+                            name="contact_number"
+                            type="tel"
+                            value={userForm.contact_number}
+                            onChange={handleUserFormChange}
+                            required
+                            placeholder="09xx-xxx-xxxx"
+                          />
+                          {userForm.contact_number &&
+                            !/^09\d{9}$/.test(userForm.contact_number) && (
+                              <p className="text-xs text-red-400 mt-1">
+                                Number must start with 09 and be 11 digits
+                              </p>
+                            )}
+                        </div>
+                        <InputField
+                          label="Email"
+                          name="email"
+                          type="email"
+                          value={userForm.email}
+                          onChange={handleUserFormChange}
+                          required
+                          placeholder="name@example.com"
+                        />
+                      </div>
+
+                      {userForm.role === "BWMC" && (
+                        <SelectField
+                          label="Barangay"
+                          name="barangay_id"
+                          value={userForm.barangay_id}
+                          onChange={handleUserFormChange}
+                          required
+                          options={barangayOptions}
+                          placeholder="Select barangay..."
+                        />
+                      )}
+
+                      {/* password is autogenerated; no input required */}
+                      <p className="text-xs text-slate-400">
+                        A temporary password will be generated automatically and
+                        sent to the new user via SMS. They will be prompted to
+                        change it on first login.
+                      </p>
+
+                      <div className="flex justify-end pt-2">
+                        <Button type="submit">＋ Add User</Button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+
+                {/* User list */}
+                <div className="dashboard-section overflow-hidden max-h-[700px] relative">
+                  <div className="z-10">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-4">
+                        <h3 className="text-lg font-bold text-slate-100">
+                          User List (Realtime)
+                        </h3>
                         <Select
                           value={userRoleFilter}
                           onValueChange={(value: string) =>
                             setUserRoleFilter(value)
                           }
                         >
-                          <SelectTrigger>
-                            <SelectValue />
+                          <SelectTrigger className="w-40 bg-slate-900 border-slate-700 text-slate-200">
+                            <SelectValue placeholder="Filter by Role" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Roles</SelectItem>
                             <SelectItem value="BWMC">BWMC</SelectItem>
                             <SelectItem value="GCP">GCP</SelectItem>
-                            <SelectItem value="Driver">Driver</SelectItem>
-                            <SelectItem value="Collector">Collector</SelectItem>
-                            <SelectItem value="Staff">Staff</SelectItem>
-                            <SelectItem value="Barangay Staff">
-                              Barangay Staff
+                            <SelectItem value="Secretary">Secretary</SelectItem>
+                            <SelectItem value="SWMO Head">SWMO Head</SelectItem>
+                            <SelectItem value="TCEMO Head">
+                              TCEMO Head
                             </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium text-slate-400">
-                          Barangay
-                        </Label>
-                        <Select
-                          value={userBarangayFilter}
-                          onValueChange={(value: string) =>
-                            setUserBarangayFilter(value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Barangays</SelectItem>
-                            {barangayOptions.map((barangay) => (
-                              <SelectItem
-                                key={barangay.value}
-                                value={String(barangay.value)}
+                      <span className="text-xs bg-emerald-600/20 text-emerald-300 px-3 py-1 rounded-lg border border-emerald-600/40 font-medium">
+                        {users.length} users
+                      </span>
+                    </div>
+                    {loadingUsers && <TruckLoader />}
+                    {!loadingUsers && (
+                      <div className="overflow-x-auto rounded-lg border border-slate-800 max-h-[575px] bg-slate-950">
+                        <table className="min-w-full text-sm">
+                          <thead className="bg-slate-800 text-slate-300 border-b border-slate-700 sticky top-0 z-10">
+                            <tr>
+                              <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">
+                                User ID
+                              </th>
+                              <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">
+                                Name
+                              </th>
+                              <th
+                                className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider cursor-pointer select-none transition bg-slate-800 hover:bg-slate-700 group"
+                                title="Sort by Role"
+                                onClick={() => {
+                                  setUserSortKey && setUserSortKey("role");
+                                  setUserSortDir &&
+                                    setUserSortDir(
+                                      userSortKey === "role" &&
+                                        userSortDir === "asc"
+                                        ? "desc"
+                                        : "asc",
+                                    );
+                                }}
                               >
-                                {barangay.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium text-slate-400">
-                          Status
-                        </Label>
-                        <Select
-                          value={userStatusFilter}
-                          onValueChange={(value: string) =>
-                            setUserStatusFilter(value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Statuses</SelectItem>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="archived">archived</SelectItem>
-                            <SelectItem value="pending">Pending</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
-
-                  {otherUsersError && (
-                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                      {otherUsersError}
-                    </div>
-                  )}
-
-                  {otherUsersSuccess && (
-                    <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-                      {otherUsersSuccess}
-                    </div>
-                  )}
-
-                  {loadingOtherUsers && <TruckLoader />}
-
-                  {!loadingOtherUsers && filteredUserAccounts.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-slate-800 px-4 py-8 text-center text-sm text-slate-400">
-                      No users match the selected filters.
-                    </div>
-                  )}
-
-                  {!loadingOtherUsers && filteredUserAccounts.length > 0 && (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-slate-800">
-                        <thead className="bg-slate-950/60">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              User ID
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Name
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Role
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Barangay
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Status
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Last Active
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800 bg-slate-900/40">
-                          {pagedUserAccounts.map((user) => {
-                            const initials = `${user.first_name?.[0] ?? ""}${
-                              user.last_name?.[0] ?? ""
-                            }`;
-                            const barangayName = user.barangay_id
-                              ? barangayNameById.get(String(user.barangay_id))
-                              : null;
-                            const lastActive =
-                              user.last_active ||
-                              user.created_at ||
-                              user.date_created;
-                            return (
-                              <tr key={user.user_id}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-100">
-                                  USR-
-                                  {String(user.user_id)
-                                    .slice(0, 6)
-                                    .toUpperCase()}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-100">
-                                  <div className="flex items-center gap-3">
+                                <span className="inline-flex items-center gap-1">
+                                  Role
+                                  <span className="text-xs opacity-70 group-hover:opacity-100 transition">
+                                    {userSortKey === "role"
+                                      ? userSortDir === "asc"
+                                        ? "▲"
+                                        : "▼"
+                                      : "▲▼"}
+                                  </span>
+                                </span>
+                              </th>
+                              <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider">
+                                Barangay
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(typeof sortedUsers !== "undefined"
+                              ? sortedUsers.filter(
+                                  (user) =>
+                                    userRoleFilter === "all" ||
+                                    user.role === userRoleFilter,
+                                )
+                              : users.filter(
+                                  (user) =>
+                                    userRoleFilter === "all" ||
+                                    user.role === userRoleFilter,
+                                )
+                            ).map((user) => {
+                              const initials =
+                                `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase();
+                              return (
+                                <tr
+                                  key={user.id || user.user_id || user.email}
+                                  className="border-t border-slate-800 hover:bg-slate-800 transition-colors"
+                                >
+                                  <td className="px-4 py-3 font-mono text-slate-400 text-xs">
+                                    {user.user_id
+                                      ? `USR-${String(user.user_id).slice(0, 6).toUpperCase()}`
+                                      : "-"}
+                                  </td>
+                                  <td className="px-4 py-3 flex items-center gap-3 text-slate-100 text-sm">
                                     <span className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-sm shadow-lg overflow-hidden">
                                       {initials || "U"}
                                     </span>
                                     <span>
                                       {user.first_name} {user.last_name}
                                     </span>
-                                  </div>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <span className="px-2 py-1 rounded-md bg-emerald-600/20 text-emerald-300 border border-emerald-600/40 text-xs font-medium">
+                                      {user.role}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-slate-400 text-sm">
+                                    {user.role === "BWMC"
+                                      ? user.barangay_id
+                                      : "-"}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+            )}
+            {/* MANAGE OTHER USERS */}
+            {activeTab === "manageUsers" && (
+              <div className="space-y-6">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <h2 className="text-2xl font-bold text-slate-100">
+                    User Accounts
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="text"
+                      value={userAccountsSearch}
+                      onChange={(e) => setUserAccountsSearch(e.target.value)}
+                      placeholder="Search users..."
+                      className="w-full md:w-64"
+                    />
+                    <Button
+                      variant="secondary"
+                      type="button"
+                      onClick={() => setShowUserFilters(!showUserFilters)}
+                      className="px-2 py-2 bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold"
+                      aria-label="Toggle filters"
+                    >
+                      ▼
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 shadow-xl shadow-black/40">
+                  <div className="p-5 md:p-6 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div className="flex flex-wrap gap-2">
+                        {userAccountsTabs.map((tab) => (
+                          <button
+                            key={tab}
+                            type="button"
+                            onClick={() => setUserAccountsTab(tab)}
+                            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+                              userAccountsTab === tab
+                                ? "bg-emerald-500/15 text-emerald-200 border border-emerald-500/30"
+                                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                            }`}
+                          >
+                            {tab}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {showUserFilters && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-slate-400">
+                            Role
+                          </Label>
+                          <Select
+                            value={userRoleFilter}
+                            onValueChange={(value: string) =>
+                              setUserRoleFilter(value)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Roles</SelectItem>
+                              <SelectItem value="BWMC">BWMC</SelectItem>
+                              <SelectItem value="GCP">GCP</SelectItem>
+                              <SelectItem value="Driver">Driver</SelectItem>
+                              <SelectItem value="Collector">
+                                Collector
+                              </SelectItem>
+                              <SelectItem value="Staff">Staff</SelectItem>
+                              <SelectItem value="Barangay Staff">
+                                Barangay Staff
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-slate-400">
+                            Barangay
+                          </Label>
+                          <Select
+                            value={userBarangayFilter}
+                            onValueChange={(value: string) =>
+                              setUserBarangayFilter(value)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Barangays</SelectItem>
+                              {barangayOptions.map((barangay) => (
+                                <SelectItem
+                                  key={barangay.value}
+                                  value={String(barangay.value)}
+                                >
+                                  {barangay.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-slate-400">
+                            Status
+                          </Label>
+                          <Select
+                            value={userStatusFilter}
+                            onValueChange={(value: string) =>
+                              setUserStatusFilter(value)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Statuses</SelectItem>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="archived">archived</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+
+                    {otherUsersError && (
+                      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                        {otherUsersError}
+                      </div>
+                    )}
+
+                    {otherUsersSuccess && (
+                      <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+                        {otherUsersSuccess}
+                      </div>
+                    )}
+
+                    {loadingOtherUsers && <TruckLoader />}
+
+                    {!loadingOtherUsers &&
+                      filteredUserAccounts.length === 0 && (
+                        <div className="rounded-lg border border-dashed border-slate-800 px-4 py-8 text-center text-sm text-slate-400">
+                          No users match the selected filters.
+                        </div>
+                      )}
+
+                    {!loadingOtherUsers && filteredUserAccounts.length > 0 && (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-slate-800">
+                          <thead className="bg-slate-950/60">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                User ID
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Name
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Role
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Barangay
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Status
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Last Active
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800 bg-slate-900/40">
+                            {pagedUserAccounts.map((user) => {
+                              const initials = `${user.first_name?.[0] ?? ""}${
+                                user.last_name?.[0] ?? ""
+                              }`;
+                              const barangayName = user.barangay_id
+                                ? barangayNameById.get(String(user.barangay_id))
+                                : null;
+                              const lastActive =
+                                user.last_active ||
+                                user.created_at ||
+                                user.date_created;
+                              return (
+                                <tr key={user.user_id}>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-100">
+                                    USR-
+                                    {String(user.user_id)
+                                      .slice(0, 6)
+                                      .toUpperCase()}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-100">
+                                    <div className="flex items-center gap-3">
+                                      <span className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-sm shadow-lg overflow-hidden">
+                                        {initials || "U"}
+                                      </span>
+                                      <span>
+                                        {user.first_name} {user.last_name}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
+                                    {user.role}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
+                                    {barangayName || "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                    <span
+                                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                                        user.status === "archived"
+                                          ? "bg-rose-500/15 text-rose-300 border border-rose-500/30"
+                                          : user.status === "pending"
+                                            ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                                            : "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                                      }`}
+                                    >
+                                      {user.status || "Active"}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
+                                    {lastActive
+                                      ? new Date(lastActive).toLocaleString()
+                                      : "-"}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                    <button
+                                      onClick={() => handleEditUser(user)}
+                                      className="text-emerald-300 hover:text-emerald-200 mr-4"
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={() => handleViewUser(user)}
+                                      className="text-slate-300 hover:text-slate-100 mr-4"
+                                    >
+                                      View
+                                    </button>
+                                    {[
+                                      "TCEMO Head",
+                                      "Secretary",
+                                      "BWMC",
+                                      "GCP",
+                                    ].includes(user.role) && (
+                                      <button
+                                        onClick={() =>
+                                          handleArchiveUser(
+                                            String(user.user_id ?? ""),
+                                            `${user.first_name} ${user.last_name}`,
+                                          )
+                                        }
+                                        className="text-rose-300 hover:text-rose-200 text-xs"
+                                      >
+                                        Archive
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {!loadingOtherUsers && filteredUserAccounts.length > 0 && (
+                      <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between text-sm text-slate-400">
+                        <div>
+                          Showing{" "}
+                          {filteredUserAccounts.length ? userStartIndex + 1 : 0}{" "}
+                          to{" "}
+                          {Math.min(
+                            userStartIndex + userAccountsPerPage,
+                            filteredUserAccounts.length,
+                          )}{" "}
+                          of {filteredUserAccounts.length} results
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setUserAccountsPage((prev) =>
+                                Math.max(1, prev - 1),
+                              )
+                            }
+                            disabled={currentUserPage === 1}
+                            className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
+                          >
+                            Previous
+                          </button>
+                          {visibleUserPages.map((page) => (
+                            <button
+                              key={page}
+                              type="button"
+                              onClick={() => setUserAccountsPage(page)}
+                              className={`rounded-lg px-3 py-1 text-sm ${
+                                page === currentUserPage
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-slate-800 text-slate-200"
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setUserAccountsPage((prev) =>
+                                Math.min(totalUserPages, prev + 1),
+                              )
+                            }
+                            disabled={currentUserPage === totalUserPages}
+                            className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* INCIDENT REPORTS */}
+            {activeTab === "incidentReports" && (
+              <div className="space-y-6">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <h2 className="text-2xl font-bold text-slate-100">
+                    Community Reports
+                  </h2>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 shadow-xl shadow-black/40">
+                  <div className="p-5 md:p-6 space-y-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex flex-wrap gap-2">
+                        {incidentStatusTabs.map((tab) => (
+                          <button
+                            key={tab}
+                            type="button"
+                            onClick={() => setReportStatusFilter(tab)}
+                            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+                              reportStatusFilter === tab
+                                ? "bg-emerald-500/15 text-emerald-200 border border-emerald-500/30"
+                                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                            }`}
+                          >
+                            {tab}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="text"
+                          value={reportSearch}
+                          onChange={(e) => setReportSearch(e.target.value)}
+                          placeholder="Search reports..."
+                          className="w-full md:w-64"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowReportFilters(!showReportFilters)
+                          }
+                          className="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700"
+                          aria-label="Toggle filters"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    </div>
+
+                    {showReportFilters && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-slate-400">
+                            Barangay
+                          </Label>
+                          <Select
+                            value={selectedBarangay}
+                            onValueChange={(value: string) =>
+                              setSelectedBarangay(value)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Barangays</SelectItem>
+                              {barangayOptions.map((barangay) => (
+                                <SelectItem
+                                  key={barangay.value}
+                                  value={barangay.value}
+                                >
+                                  {barangay.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-slate-400">
+                            Sort By
+                          </Label>
+                          <Select
+                            value={sortBy}
+                            onValueChange={(value: string) => setSortBy(value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="date_desc">
+                                Date (Newest First)
+                              </SelectItem>
+                              <SelectItem value="date_asc">
+                                Date (Oldest First)
+                              </SelectItem>
+                              <SelectItem value="status">Status</SelectItem>
+                              <SelectItem value="barangay">Barangay</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+
+                    {reportsError && (
+                      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                        {reportsError}
+                      </div>
+                    )}
+
+                    {loadingReports && <TruckLoader />}
+
+                    {!loadingReports &&
+                      filteredIncidentReports.length === 0 && (
+                        <div className="rounded-lg border border-dashed border-slate-800 px-4 py-8 text-center text-sm text-slate-400">
+                          No reports match the selected filters.
+                        </div>
+                      )}
+
+                    {!loadingReports && filteredIncidentReports.length > 0 && (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-slate-800">
+                          <thead className="bg-slate-950/60">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Report ID
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Type
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Location
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Status
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Date
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800 bg-slate-900/40">
+                            {pagedIncidentReports.map((report) => (
+                              <tr key={report.report_id}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-100">
+                                  RP-{report.report_id}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
-                                  {user.role}
+                                  {report.description || "Untitled"}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
-                                  {barangayName || "-"}
+                                  {report.location || "N/A"}
+                                  {report.barangay?.barangay_name
+                                    ? `, ${report.barangay.barangay_name}`
+                                    : ""}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <td className="px-6 py-4 whitespace-nowrap">
                                   <span
                                     className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                                      user.status === "archived"
-                                        ? "bg-rose-500/15 text-rose-300 border border-rose-500/30"
-                                        : user.status === "pending"
-                                          ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
-                                          : "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                                      reportStatusClasses[
+                                        report.current_status
+                                      ] ??
+                                      "bg-slate-800 text-slate-200 border border-slate-700"
                                     }`}
                                   >
-                                    {user.status || "Active"}
+                                    {report.current_status || "Submitted"}
                                   </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
-                                  {lastActive
-                                    ? new Date(lastActive).toLocaleString()
+                                  {report.date_submitted
+                                    ? new Date(
+                                        report.date_submitted,
+                                      ).toLocaleString()
                                     : "-"}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                                   <button
-                                    onClick={() => handleEditUser(user)}
+                                    onClick={() => handleViewReport(report)}
                                     className="text-emerald-300 hover:text-emerald-200 mr-4"
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={() => handleViewUser(user)}
-                                    className="text-slate-300 hover:text-slate-100 mr-4"
                                   >
                                     View
                                   </button>
-                                  {[
-                                    "TCEMO Head",
-                                    "Secretary",
-                                    "BWMC",
-                                    "GCP",
-                                  ].includes(user.role) && (
-                                    <button
-                                      onClick={() =>
-                                        handleArchiveUser(
-                                          String(user.user_id ?? ""),
-                                          `${user.first_name} ${user.last_name}`,
-                                        )
-                                      }
-                                      className="text-rose-300 hover:text-rose-200 text-xs"
-                                    >
-                                      Archive
-                                    </button>
-                                  )}
+                                  <button
+                                    onClick={() => handleViewHistory(report)}
+                                    className="text-slate-300 hover:text-slate-100"
+                                  >
+                                    History
+                                  </button>
                                 </td>
                               </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {!loadingOtherUsers && filteredUserAccounts.length > 0 && (
-                    <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between text-sm text-slate-400">
-                      <div>
-                        Showing{" "}
-                        {filteredUserAccounts.length ? userStartIndex + 1 : 0}{" "}
-                        to{" "}
-                        {Math.min(
-                          userStartIndex + userAccountsPerPage,
-                          filteredUserAccounts.length,
-                        )}{" "}
-                        of {filteredUserAccounts.length} results
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setUserAccountsPage((prev) => Math.max(1, prev - 1))
-                          }
-                          disabled={currentUserPage === 1}
-                          className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
-                        >
-                          Previous
-                        </button>
-                        {visibleUserPages.map((page) => (
-                          <button
-                            key={page}
-                            type="button"
-                            onClick={() => setUserAccountsPage(page)}
-                            className={`rounded-lg px-3 py-1 text-sm ${
-                              page === currentUserPage
-                                ? "bg-emerald-600 text-white"
-                                : "bg-slate-800 text-slate-200"
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setUserAccountsPage((prev) =>
-                              Math.min(totalUserPages, prev + 1),
-                            )
-                          }
-                          disabled={currentUserPage === totalUserPages}
-                          className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-          {/* INCIDENT REPORTS */}
-          {activeTab === "incidentReports" && (
-            <div className="space-y-6">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <h2 className="text-2xl font-bold text-slate-100">
-                  Community Reports
-                </h2>
-              </div>
-
-              <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 shadow-xl shadow-black/40">
-                <div className="p-5 md:p-6 space-y-4">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex flex-wrap gap-2">
-                      {incidentStatusTabs.map((tab) => (
-                        <button
-                          key={tab}
-                          type="button"
-                          onClick={() => setReportStatusFilter(tab)}
-                          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
-                            reportStatusFilter === tab
-                              ? "bg-emerald-500/15 text-emerald-200 border border-emerald-500/30"
-                              : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                          }`}
-                        >
-                          {tab}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="text"
-                        value={reportSearch}
-                        onChange={(e) => setReportSearch(e.target.value)}
-                        placeholder="Search reports..."
-                        className="w-full md:w-64"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowReportFilters(!showReportFilters)}
-                        className="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700"
-                        aria-label="Toggle filters"
-                      >
-                        ▼
-                      </button>
-                    </div>
-                  </div>
-
-                  {showReportFilters && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium text-slate-400">
-                          Barangay
-                        </Label>
-                        <Select
-                          value={selectedBarangay}
-                          onValueChange={(value: string) =>
-                            setSelectedBarangay(value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Barangays</SelectItem>
-                            {barangayOptions.map((barangay) => (
-                              <SelectItem
-                                key={barangay.value}
-                                value={barangay.value}
-                              >
-                                {barangay.label}
-                              </SelectItem>
                             ))}
-                          </SelectContent>
-                        </Select>
+                          </tbody>
+                        </table>
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium text-slate-400">
-                          Sort By
-                        </Label>
-                        <Select
-                          value={sortBy}
-                          onValueChange={(value: string) => setSortBy(value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="date_desc">
-                              Date (Newest First)
-                            </SelectItem>
-                            <SelectItem value="date_asc">
-                              Date (Oldest First)
-                            </SelectItem>
-                            <SelectItem value="status">Status</SelectItem>
-                            <SelectItem value="barangay">Barangay</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
+                    )}
 
-                  {reportsError && (
-                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                      {reportsError}
-                    </div>
-                  )}
-
-                  {loadingReports && <TruckLoader />}
-
-                  {!loadingReports && filteredIncidentReports.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-slate-800 px-4 py-8 text-center text-sm text-slate-400">
-                      No reports match the selected filters.
-                    </div>
-                  )}
-
-                  {!loadingReports && filteredIncidentReports.length > 0 && (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-slate-800">
-                        <thead className="bg-slate-950/60">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Report ID
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Type
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Location
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Status
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Date
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800 bg-slate-900/40">
-                          {pagedIncidentReports.map((report) => (
-                            <tr key={report.report_id}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-100">
-                                RP-{report.report_id}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
-                                {report.description || "Untitled"}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
-                                {report.location || "N/A"}
-                                {report.barangay?.barangay_name
-                                  ? `, ${report.barangay.barangay_name}`
-                                  : ""}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span
-                                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                                    reportStatusClasses[
-                                      report.current_status
-                                    ] ??
-                                    "bg-slate-800 text-slate-200 border border-slate-700"
-                                  }`}
-                                >
-                                  {report.current_status || "Submitted"}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
-                                {report.date_submitted
-                                  ? new Date(
-                                      report.date_submitted,
-                                    ).toLocaleString()
-                                  : "-"}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                <button
-                                  onClick={() => handleViewReport(report)}
-                                  className="text-emerald-300 hover:text-emerald-200 mr-4"
-                                >
-                                  View
-                                </button>
-                                <button
-                                  onClick={() => handleViewHistory(report)}
-                                  className="text-slate-300 hover:text-slate-100"
-                                >
-                                  History
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {!loadingReports && filteredIncidentReports.length > 0 && (
-                    <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between text-sm text-slate-400">
-                      <div>
-                        Showing{" "}
-                        {filteredIncidentReports.length
-                          ? reportStartIndex + 1
-                          : 0}{" "}
-                        to{" "}
-                        {Math.min(
-                          reportStartIndex + reportsPerPage,
-                          filteredIncidentReports.length,
-                        )}{" "}
-                        of {filteredIncidentReports.length} results
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setReportPage((prev) => Math.max(1, prev - 1))
-                          }
-                          disabled={currentReportPage === 1}
-                          className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
-                        >
-                          Previous
-                        </button>
-                        {visibleReportPages.map((page) => (
+                    {!loadingReports && filteredIncidentReports.length > 0 && (
+                      <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between text-sm text-slate-400">
+                        <div>
+                          Showing{" "}
+                          {filteredIncidentReports.length
+                            ? reportStartIndex + 1
+                            : 0}{" "}
+                          to{" "}
+                          {Math.min(
+                            reportStartIndex + reportsPerPage,
+                            filteredIncidentReports.length,
+                          )}{" "}
+                          of {filteredIncidentReports.length} results
+                        </div>
+                        <div className="flex items-center gap-2">
                           <button
-                            key={page}
                             type="button"
-                            onClick={() => setReportPage(page)}
-                            className={`rounded-lg px-3 py-1 text-sm ${
-                              page === currentReportPage
-                                ? "bg-emerald-600 text-white"
-                                : "bg-slate-800 text-slate-200"
-                            }`}
+                            onClick={() =>
+                              setReportPage((prev) => Math.max(1, prev - 1))
+                            }
+                            disabled={currentReportPage === 1}
+                            className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
                           >
-                            {page}
+                            Previous
                           </button>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setReportPage((prev) =>
-                              Math.min(totalReportPages, prev + 1),
-                            )
-                          }
-                          disabled={currentReportPage === totalReportPages}
-                          className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {historyModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-                  <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
-                    <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
-                      <div>
-                        <h3 className="text-lg font-semibold text-slate-100">
-                          Report History
-                        </h3>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Location : {historyModal.title}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setHistoryModal(null)}
-                        className="text-slate-400 hover:text-slate-200"
-                        aria-label="Close history"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <div className="px-5 py-4">
-                      {historyModal.entries.length === 0 ? (
-                        <div className="rounded-lg border border-dashed border-slate-800 px-4 py-6 text-sm text-slate-400">
-                          {historyModal.message || "No history records found."}
-                        </div>
-                      ) : (
-                        <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-                          {historyModal.entries.map((entry, index) => (
-                            <div
-                              key={`${entry.time}-${index}`}
-                              className="rounded-xl border border-slate-800 bg-slate-950/60 p-4"
-                            >
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="text-xs text-slate-400">
-                                  {entry.time}
-                                </span>
-                                <span
-                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
-                                    reportStatusClasses[entry.status] ??
-                                    "bg-slate-800 text-slate-200 border border-slate-700"
-                                  }`}
-                                >
-                                  {entry.status}
-                                </span>
-                              </div>
-                              {entry.remarks && (
-                                <p className="mt-2 text-sm text-slate-200 whitespace-pre-wrap">
-                                  {entry.remarks}
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex justify-end border-t border-slate-800 px-5 py-4">
-                      <button
-                        type="button"
-                        onClick={() => setHistoryModal(null)}
-                        className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200"
-                      >
-                        Close
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Report Details Modal */}
-              {showReportModal && selectedReport && (
-                <div
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
-                  onClick={() => setShowReportModal(false)}
-                >
-                  <div
-                    className="relative w-full max-w-3xl max-h-[75vh] overflow-y-auto rounded-lg border border-slate-800 bg-slate-900 p-6 shadow-2xl"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="relative z-10">
-                      {/* Modal Header */}
-                      <div className="flex items-start justify-between mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-slate-800 gap-3">
-                        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-                          <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-red-600/20 border border-red-600/30 flex-shrink-0">
-                            <span className="text-lg sm:text-2xl">🚨</span>
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="text-base sm:text-lg font-bold text-slate-100 truncate">
-                              Incident Report Details
-                            </h3>
-                            <p className="text-xs text-slate-400 truncate">
-                              ID: #
-                              {String(selectedReport.report_id).slice(0, 12)}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => setShowReportModal(false)}
-                          className="rounded-lg bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700 transition-colors flex-shrink-0 text-sm"
-                        >
-                          ✖️
-                        </button>
-                      </div>
-
-                      {/* Report Information */}
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
-                            <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
-                              Status
-                            </p>
-                            <span
-                              className={`inline-flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium ${
-                                selectedReport.current_status === "Resolved"
-                                  ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
-                                  : selectedReport.current_status === "Ongoing"
-                                    ? "bg-blue-500/10 text-blue-300 border border-blue-500/30"
-                                    : "bg-amber-500/10 text-amber-300 border border-amber-500/30"
+                          {visibleReportPages.map((page) => (
+                            <button
+                              key={page}
+                              type="button"
+                              onClick={() => setReportPage(page)}
+                              className={`rounded-lg px-3 py-1 text-sm ${
+                                page === currentReportPage
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-slate-800 text-slate-200"
                               }`}
                             >
-                              {selectedReport.current_status || "Pending"}
-                            </span>
-                          </div>
-
-                          <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
-                            <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
-                              Barangay
-                            </p>
-                            <p className="text-xs text-slate-200">
-                              {selectedReport.barangay?.barangay_name ||
-                                "Unknown"}
-                            </p>
-                          </div>
-
-                          <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
-                            <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
-                              Location
-                            </p>
-                            <p className="text-xs text-slate-200">
-                              {selectedReport.location || "N/A"}
-                            </p>
-                          </div>
-
-                          <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
-                            <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
-                              Date Submitted
-                            </p>
-                            <p className="text-xs text-slate-200">
-                              {new Date(
-                                selectedReport.date_submitted,
-                              ).toLocaleDateString("en-US", {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                          </div>
+                              {page}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReportPage((prev) =>
+                                Math.min(totalReportPages, prev + 1),
+                              )
+                            }
+                            disabled={currentReportPage === totalReportPages}
+                            className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
+                          >
+                            Next
+                          </button>
                         </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-                        {selectedReport.landmark && (
-                          <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
-                            <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
-                              Landmark
-                            </p>
-                            <p className="text-xs text-slate-200">
-                              {selectedReport.landmark}
-                            </p>
+                {historyModal && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                    <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
+                      <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-slate-100">
+                            Report History
+                          </h3>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Location : {historyModal.title}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setHistoryModal(null)}
+                          className="text-slate-400 hover:text-slate-200"
+                          aria-label="Close history"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="px-5 py-4">
+                        {historyModal.entries.length === 0 ? (
+                          <div className="rounded-lg border border-dashed border-slate-800 px-4 py-6 text-sm text-slate-400">
+                            {historyModal.message ||
+                              "No history records found."}
                           </div>
-                        )}
-
-                        {selectedReport.description && (
-                          <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
-                            <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
-                              Description
-                            </p>
-                            <p className="text-xs text-slate-200 whitespace-pre-wrap">
-                              {selectedReport.description}
-                            </p>
-                          </div>
-                        )}
-
-                        {selectedReport.image_url && (
-                          <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
-                            <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
-                              Attached Image
-                            </p>
-                            <img
-                              src={selectedReport.image_url}
-                              alt="Report evidence"
-                              className="w-full rounded-lg border border-slate-700"
-                            />
+                        ) : (
+                          <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                            {historyModal.entries.map((entry, index) => (
+                              <div
+                                key={`${entry.time}-${index}`}
+                                className="rounded-xl border border-slate-800 bg-slate-950/60 p-4"
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <span className="text-xs text-slate-400">
+                                    {entry.time}
+                                  </span>
+                                  <span
+                                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                                      reportStatusClasses[entry.status] ??
+                                      "bg-slate-800 text-slate-200 border border-slate-700"
+                                    }`}
+                                  >
+                                    {entry.status}
+                                  </span>
+                                </div>
+                                {entry.remarks && (
+                                  <p className="mt-2 text-sm text-slate-200 whitespace-pre-wrap">
+                                    {entry.remarks}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
-
-                      {/* Close Button */}
-                      <div className="mt-6 pt-6 border-t border-slate-700/50">
+                      <div className="flex justify-end border-t border-slate-800 px-5 py-4">
                         <button
-                          onClick={() => setShowReportModal(false)}
-                          className="w-full rounded-lg bg-slate-800 hover:bg-slate-700 px-4 py-2 text-xs font-medium text-slate-200 transition-colors"
+                          type="button"
+                          onClick={() => setHistoryModal(null)}
+                          className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200"
                         >
                           Close
                         </button>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-          {/* REPORTS */}
-          {activeTab === "reports" && (
-            <section className="space-y-6">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
-                    Analytics
-                  </p>
-                  <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
-                    Generate Reports
-                  </h1>
-                </div>
-              </div>
+                )}
 
-              <div className="flex gap-3">
-                <Button
-                  onClick={() => setActiveReportOption("wasteCollection")}
-                  variant={
-                    activeReportOption === "wasteCollection"
-                      ? "default"
-                      : "outline"
-                  }
-                  className={
-                    activeReportOption === "wasteCollection"
-                      ? ""
-                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
-                  }
-                >
-                  📊 Waste Collection
-                </Button>
-                <Button
-                  onClick={() => setActiveReportOption("barangayConcerns")}
-                  variant={
-                    activeReportOption === "barangayConcerns"
-                      ? "default"
-                      : "outline"
-                  }
-                  className={
-                    activeReportOption === "barangayConcerns"
-                      ? ""
-                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
-                  }
-                >
-                  🚩 Barangay Concerns
-                </Button>
-              </div>
-
-              {activeReportOption === "wasteCollection" && <ReportsAnalytics />}
-
-              {activeReportOption === "barangayConcerns" && (
-                <>
-                  {/* dropdown to choose barangay before showing chart */}
-                  <div className="mb-4">
-                    <Label className="text-xs font-semibold text-slate-100">
-                      Select Barangay
-                    </Label>
-                    <select
-                      className="mt-1 block w-full rounded-md bg-slate-900/80 border border-slate-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      value={reportBarangayId}
-                      onChange={(e) => setReportBarangayId(e.target.value)}
-                    >
-                      <option value="">-- choose barangay --</option>
-                      {barangayOptions.map((b) => (
-                        <option key={b.value} value={String(b.value)}>
-                          {b.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {reportBarangayId ? (
-                    <BarangayConcernsAnalytics
-                      barangayId={Number(reportBarangayId) || undefined}
-                    />
-                  ) : (
-                    <p className="text-xs text-slate-400">
-                      Please select a barangay to view the chart.
-                    </p>
-                  )}
-                </>
-              )}
-            </section>
-          )}
-
-          {activeTab === "manageAccount" && (
-            <div className="dashboard-section max-w-2xl mx-auto">
-              <div className="relative z-10">
-                <ManageAccountSection
-                  form={manageAccountForm}
-                  loading={manageAccountLoading}
-                  error={manageAccountError}
-                  success={manageAccountSuccess}
-                  onChange={handleManageAccountFormChange}
-                  onSubmit={handleManageAccountSubmit}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Edit User Modal */}
-          {showEditUserModal && editingUserForm && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
-              <div className="bg-slate-900 border border-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                {/* Modal Header */}
-                <div className="sticky top-0 flex items-center justify-between bg-slate-950 border-b border-slate-800 p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-emerald-600/20 flex items-center justify-center border border-emerald-600/30">
-                      <span className="text-xl">✏️</span>
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-bold text-slate-100">
-                        {isViewOnly ? "View User Account" : "Edit User Account"}
-                      </h2>
-                      <p className="text-xs text-slate-400 mt-1">
-                        {isViewOnly
-                          ? "User details (read-only)"
-                          : "Update user information"}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleCancelEdit}
-                    className="text-slate-400 hover:text-slate-100 transition-colors text-2xl leading-none"
-                    aria-label="Close modal"
+                {/* Report Details Modal */}
+                {showReportModal && selectedReport && (
+                  <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+                    onClick={() => setShowReportModal(false)}
                   >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Modal Body */}
-                <div className="p-6 space-y-4">
-                  {/* Error/Success Messages */}
-                  {otherUsersError && (
-                    <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
-                      {otherUsersError}
-                    </div>
-                  )}
-                  {otherUsersSuccess && (
-                    <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
-                      {otherUsersSuccess}
-                    </div>
-                  )}
-
-                  {/* Form Fields */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium text-slate-300">
-                        First Name
-                      </Label>
-                      <Input
-                        type="text"
-                        value={editingUserForm.first_name}
-                        onChange={(e) =>
-                          setEditingUserForm({
-                            ...editingUserForm,
-                            first_name: e.target.value,
-                          })
-                        }
-                        disabled={isViewOnly}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium text-slate-300">
-                        Last Name
-                      </Label>
-                      <Input
-                        type="text"
-                        value={editingUserForm.last_name}
-                        onChange={(e) =>
-                          setEditingUserForm({
-                            ...editingUserForm,
-                            last_name: e.target.value,
-                          })
-                        }
-                        disabled={isViewOnly}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium text-slate-300">
-                      📧 Email Address (read-only)
-                    </Label>
-                    <Input
-                      type="email"
-                      value={editingUserForm.email}
-                      readOnly
-                      className="bg-slate-800 cursor-not-allowed"
-                      onClick={() =>
-                        /* no-op: email is not editable in this view */
-                        null
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium text-slate-300">
-                      📱 Contact Number
-                    </Label>
-                    <Input
-                      type="tel"
-                      value={editingUserForm.contact_number}
-                      onChange={(e) =>
-                        setEditingUserForm({
-                          ...editingUserForm,
-                          contact_number: e.target.value,
-                        })
-                      }
-                      disabled={isViewOnly}
-                    />
-                    {editingUserForm.contact_number &&
-                      !/^09\d{9}$/.test(editingUserForm.contact_number) && (
-                        <p className="text-xs text-red-400">
-                          Number must start with 09 and be 11 digits
-                        </p>
-                      )}
-                  </div>
-                </div>
-
-                {/* Modal Footer */}
-                <div className="sticky bottom-0 bg-slate-950 border-t border-slate-800 p-6 flex gap-3">
-                  {!isViewOnly && (
-                    <Button
-                      onClick={() => handleSaveUserEdit(editingUserId || "")}
-                      className="flex-1"
+                    <div
+                      className="relative w-full max-w-3xl max-h-[75vh] overflow-y-auto rounded-lg border border-slate-800 bg-slate-900 p-6 shadow-2xl"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <span>💾</span>
-                      Save Changes
-                    </Button>
-                  )}
-                  <Button onClick={handleCancelEdit} className="flex-1">
-                    <span>✖️</span>
-                    {isViewOnly ? "Close" : "Cancel"}
+                      <div className="relative z-10">
+                        {/* Modal Header */}
+                        <div className="flex items-start justify-between mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-slate-800 gap-3">
+                          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                            <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-red-600/20 border border-red-600/30 flex-shrink-0">
+                              <span className="text-lg sm:text-2xl">🚨</span>
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-base sm:text-lg font-bold text-slate-100 truncate">
+                                Incident Report Details
+                              </h3>
+                              <p className="text-xs text-slate-400 truncate">
+                                ID: #
+                                {String(selectedReport.report_id).slice(0, 12)}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setShowReportModal(false)}
+                            className="rounded-lg bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700 transition-colors flex-shrink-0 text-sm"
+                          >
+                            ✖️
+                          </button>
+                        </div>
+
+                        {/* Report Information */}
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                              <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
+                                Status
+                              </p>
+                              <span
+                                className={`inline-flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium ${
+                                  selectedReport.current_status === "Resolved"
+                                    ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                                    : selectedReport.current_status ===
+                                        "Ongoing"
+                                      ? "bg-blue-500/10 text-blue-300 border border-blue-500/30"
+                                      : "bg-amber-500/10 text-amber-300 border border-amber-500/30"
+                                }`}
+                              >
+                                {selectedReport.current_status || "Pending"}
+                              </span>
+                            </div>
+
+                            <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                              <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
+                                Barangay
+                              </p>
+                              <p className="text-xs text-slate-200">
+                                {selectedReport.barangay?.barangay_name ||
+                                  "Unknown"}
+                              </p>
+                            </div>
+
+                            <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                              <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
+                                Location
+                              </p>
+                              <p className="text-xs text-slate-200">
+                                {selectedReport.location || "N/A"}
+                              </p>
+                            </div>
+
+                            <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                              <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
+                                Date Submitted
+                              </p>
+                              <p className="text-xs text-slate-200">
+                                {new Date(
+                                  selectedReport.date_submitted,
+                                ).toLocaleDateString("en-US", {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
+                          </div>
+
+                          {selectedReport.landmark && (
+                            <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                              <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
+                                Landmark
+                              </p>
+                              <p className="text-xs text-slate-200">
+                                {selectedReport.landmark}
+                              </p>
+                            </div>
+                          )}
+
+                          {selectedReport.description && (
+                            <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                              <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
+                                Description
+                              </p>
+                              <p className="text-xs text-slate-200 whitespace-pre-wrap">
+                                {selectedReport.description}
+                              </p>
+                            </div>
+                          )}
+
+                          {selectedReport.image_url && (
+                            <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                              <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
+                                Attached Image
+                              </p>
+                              <img
+                                src={selectedReport.image_url}
+                                alt="Report evidence"
+                                className="w-full rounded-lg border border-slate-700"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Close Button */}
+                        <div className="mt-6 pt-6 border-t border-slate-700/50">
+                          <button
+                            onClick={() => setShowReportModal(false)}
+                            className="w-full rounded-lg bg-slate-800 hover:bg-slate-700 px-4 py-2 text-xs font-medium text-slate-200 transition-colors"
+                          >
+                            Close
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {/* REPORTS */}
+            {activeTab === "reports" && (
+              <section className="space-y-6">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
+                      Analytics
+                    </p>
+                    <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
+                      Generate Reports
+                    </h1>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => setActiveReportOption("wasteCollection")}
+                    variant={
+                      activeReportOption === "wasteCollection"
+                        ? "default"
+                        : "outline"
+                    }
+                    className={
+                      activeReportOption === "wasteCollection"
+                        ? ""
+                        : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                    }
+                  >
+                    📊 Waste Collection
+                  </Button>
+                  <Button
+                    onClick={() => setActiveReportOption("barangayConcerns")}
+                    variant={
+                      activeReportOption === "barangayConcerns"
+                        ? "default"
+                        : "outline"
+                    }
+                    className={
+                      activeReportOption === "barangayConcerns"
+                        ? ""
+                        : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                    }
+                  >
+                    🚩 Barangay Concerns
                   </Button>
                 </div>
+
+                {activeReportOption === "wasteCollection" && (
+                  <ReportsAnalytics />
+                )}
+
+                {activeReportOption === "barangayConcerns" && (
+                  <>
+                    {/* dropdown to choose barangay before showing chart */}
+                    <div className="mb-4">
+                      <Label className="text-xs font-semibold text-slate-100">
+                        Select Barangay
+                      </Label>
+                      <select
+                        className="mt-1 block w-full rounded-md bg-slate-900/80 border border-slate-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        value={reportBarangayId}
+                        onChange={(e) => setReportBarangayId(e.target.value)}
+                      >
+                        <option value="">-- choose barangay --</option>
+                        {barangayOptions.map((b) => (
+                          <option key={b.value} value={String(b.value)}>
+                            {b.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {reportBarangayId ? (
+                      <BarangayConcernsAnalytics
+                        barangayId={Number(reportBarangayId) || undefined}
+                      />
+                    ) : (
+                      <p className="text-xs text-slate-400">
+                        Please select a barangay to view the chart.
+                      </p>
+                    )}
+                  </>
+                )}
+              </section>
+            )}
+
+            {activeTab === "manageAccount" && (
+              <div className="dashboard-section max-w-2xl mx-auto">
+                <div className="relative z-10">
+                  <ManageAccountSection
+                    form={manageAccountForm}
+                    loading={manageAccountLoading}
+                    error={manageAccountError}
+                    success={manageAccountSuccess}
+                    onChange={handleManageAccountFormChange}
+                    onSubmit={handleManageAccountSubmit}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Edit User Modal */}
+            {showEditUserModal && editingUserForm && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                  {/* Modal Header */}
+                  <div className="sticky top-0 flex items-center justify-between bg-slate-950 border-b border-slate-800 p-6">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-emerald-600/20 flex items-center justify-center border border-emerald-600/30">
+                        <span className="text-xl">✏️</span>
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold text-slate-100">
+                          {isViewOnly
+                            ? "View User Account"
+                            : "Edit User Account"}
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {isViewOnly
+                            ? "User details (read-only)"
+                            : "Update user information"}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="text-slate-400 hover:text-slate-100 transition-colors text-2xl leading-none"
+                      aria-label="Close modal"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="p-6 space-y-4">
+                    {/* Error/Success Messages */}
+                    {otherUsersError && (
+                      <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
+                        {otherUsersError}
+                      </div>
+                    )}
+                    {otherUsersSuccess && (
+                      <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
+                        {otherUsersSuccess}
+                      </div>
+                    )}
+
+                    {/* Form Fields */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-slate-300">
+                          First Name
+                        </Label>
+                        <Input
+                          type="text"
+                          value={editingUserForm.first_name}
+                          onChange={(e) =>
+                            setEditingUserForm({
+                              ...editingUserForm,
+                              first_name: e.target.value,
+                            })
+                          }
+                          disabled={isViewOnly}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-medium text-slate-300">
+                          Last Name
+                        </Label>
+                        <Input
+                          type="text"
+                          value={editingUserForm.last_name}
+                          onChange={(e) =>
+                            setEditingUserForm({
+                              ...editingUserForm,
+                              last_name: e.target.value,
+                            })
+                          }
+                          disabled={isViewOnly}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-slate-300">
+                        📧 Email Address (read-only)
+                      </Label>
+                      <Input
+                        type="email"
+                        value={editingUserForm.email}
+                        readOnly
+                        className="bg-slate-800 cursor-not-allowed"
+                        onClick={() =>
+                          /* no-op: email is not editable in this view */
+                          null
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-slate-300">
+                        📱 Contact Number
+                      </Label>
+                      <Input
+                        type="tel"
+                        value={editingUserForm.contact_number}
+                        onChange={(e) =>
+                          setEditingUserForm({
+                            ...editingUserForm,
+                            contact_number: e.target.value,
+                          })
+                        }
+                        disabled={isViewOnly}
+                      />
+                      {editingUserForm.contact_number &&
+                        !/^09\d{9}$/.test(editingUserForm.contact_number) && (
+                          <p className="text-xs text-red-400">
+                            Number must start with 09 and be 11 digits
+                          </p>
+                        )}
+                    </div>
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="sticky bottom-0 bg-slate-950 border-t border-slate-800 p-6 flex gap-3">
+                    {!isViewOnly && (
+                      <Button
+                        onClick={() => handleSaveUserEdit(editingUserId || "")}
+                        className="flex-1"
+                      >
+                        <span>💾</span>
+                        Save Changes
+                      </Button>
+                    )}
+                    <Button onClick={handleCancelEdit} className="flex-1">
+                      <span>✖️</span>
+                      {isViewOnly ? "Close" : "Cancel"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </main>
       </div>
     </div>

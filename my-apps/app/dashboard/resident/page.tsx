@@ -1812,12 +1812,35 @@ export default function ResidentDashboard() {
     message?: string;
   } | null>(null);
   const [activeTab, setActiveTab] = useState<ResidentActiveTab>("dashboard");
+  const [tabFadeIn, setTabFadeIn] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [displayName, setDisplayName] = useState("User");
   const [gps, setGps] = useState<{ lat: number | null; lng: number | null }>({
     lat: null,
     lng: null,
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedTab = localStorage.getItem("resident_active_tab");
+    if (
+      storedTab === "dashboard" ||
+      storedTab === "schedule" ||
+      storedTab === "submitIncidentReport" ||
+      storedTab === "myReports" ||
+      storedTab === "manageAccount"
+    ) {
+      setActiveTab(storedTab);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("resident_active_tab", activeTab);
+    setTabFadeIn(false);
+    const timeoutId = window.setTimeout(() => setTabFadeIn(true), 30);
+    return () => window.clearTimeout(timeoutId);
+  }, [activeTab]);
 
   useResidentTracking(setGps);
 
@@ -2657,585 +2680,567 @@ export default function ResidentDashboard() {
 
         {/* Main content area */}
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-10 py-10 space-y-10 relative z-10 md:ml-64 bg-slate-900/40">
-          {/* Success modal */}
-          {reportSuccessModalOpen && (
-            <div
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center"
-              onClick={() => setReportSuccessModalOpen(false)}
-            >
+          <div
+            className={`transition-opacity duration-300 ease-in-out ${
+              tabFadeIn ? "opacity-100" : "opacity-0"
+            }`}
+            key={activeTab}
+          >
+            {/* Success modal */}
+            {reportSuccessModalOpen && (
               <div
-                className="bg-slate-900/95 rounded-2xl shadow-2xl border border-emerald-700/60 max-w-sm w-full p-6 relative text-slate-100 backdrop-blur-xl"
-                onClick={(e) => e.stopPropagation()}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center"
+                onClick={() => setReportSuccessModalOpen(false)}
               >
-                <button
-                  onClick={() => setReportSuccessModalOpen(false)}
-                  className="absolute top-1 right-2 text-2xl text-slate-500 hover:text-red-400 font-bold"
-                  aria-label="Close"
+                <div
+                  className="bg-slate-900/95 rounded-2xl shadow-2xl border border-emerald-700/60 max-w-sm w-full p-6 relative text-slate-100 backdrop-blur-xl"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  ×
-                </button>
-                <h3 className="font-bold text-lg mb-3 text-emerald-300 text-center">
-                  Incident Report Submitted
-                </h3>
-                <p className="text-slate-200 text-center">
-                  {reportSuccess || "Your report was submitted successfully."}
-                </p>
-                <div className="mt-4 flex justify-center">
-                  <Button
+                  <button
                     onClick={() => setReportSuccessModalOpen(false)}
-                    className="h-auto"
+                    className="absolute top-1 right-2 text-2xl text-slate-500 hover:text-red-400 font-bold"
+                    aria-label="Close"
                   >
-                    OK
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Dashboard */}
-          {activeTab === "dashboard" && (
-            <>
-              {/* Responsive metrics grid */}
-              {/* Map + small stats layout */}
-              <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
-                <div className="dashboard-section overflow-hidden">
-                  <div className="dashboard-section-glow" />
-                  <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
-                        Collection Coverage Map
-                      </h2>
-                      <div className="flex flex-wrap items-center gap-2 z-20">
-                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
-                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-                          Live vehicles
-                        </span>
-                        <div className="inline-flex items-center rounded-2xl border border-slate-700/60 bg-slate-900/60 p-1 shadow-md">
-                          <button
-                            type="button"
-                            onClick={() => setShowAllTrucks(true)}
-                            className={`inline-flex items-center rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 ${
-                              showAllTrucks
-                                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/50"
-                                : "text-slate-400 hover:text-slate-200"
-                            }`}
-                          >
-                            All trucks
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setShowAllTrucks(false)}
-                            className={`inline-flex items-center rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 ${
-                              !showAllTrucks
-                                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/50"
-                                : "text-slate-400 hover:text-slate-200"
-                            }`}
-                          >
-                            Assigned truck
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 relative z-0">
-                      <LeafletMap
-                        residentGps={gps}
-                        showAllTrucks={showAllTrucks}
-                        assignedTruckId={assignedTruckId}
-                      />
-                    </div>
+                    ×
+                  </button>
+                  <h3 className="font-bold text-lg mb-3 text-emerald-300 text-center">
+                    Incident Report Submitted
+                  </h3>
+                  <p className="text-slate-200 text-center">
+                    {reportSuccess || "Your report was submitted successfully."}
+                  </p>
+                  <div className="mt-4 flex justify-center">
+                    <Button
+                      onClick={() => setReportSuccessModalOpen(false)}
+                      className="h-auto"
+                    >
+                      OK
+                    </Button>
                   </div>
                 </div>
-              </section>
+              </div>
+            )}
 
-              {/* Delayed Collections Alert Banner */}
-              {delayedCollections.length > 0 && (
-                <section className="dashboard-section">
-                  <div className="dashboard-section-glow" />
-                  <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="text-xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent drop-shadow-lg">
-                          ⚠️ Collection Delay Alert
-                        </h3>
-                        <p className="text-sm text-slate-400 mt-1">
-                          Your barangay collection is delayed
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      {delayedCollections.map((delayed, idx) => {
-                        const delayStatus = getDelayStatusColor(
-                          delayed.delay_minutes,
-                        );
-                        return (
-                          <div
-                            key={`${delayed.schedule_id}-${idx}`}
-                            className="rounded-xl border border-red-800/60 bg-gradient-to-br from-red-900/20 to-orange-900/20 p-5 shadow-lg"
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-3">
-                                  <span
-                                    className={`px-3 py-1 rounded-full text-xs font-bold ${delayStatus.bg} ${delayStatus.text} border ${delayStatus.text.replace("text-", "border-")}/30`}
-                                  >
-                                    {delayStatus.label}
-                                  </span>
-                                  <span className="text-slate-400 text-xs">
-                                    Delay:{" "}
-                                    <span className="text-red-400 font-semibold">
-                                      {delayed.delay_minutes} min
-                                    </span>
-                                  </span>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                                  <p className="text-slate-300">
-                                    <span className="text-slate-500">
-                                      Scheduled:
-                                    </span>{" "}
-                                    {delayed.scheduled_date} at{" "}
-                                    {delayed.scheduled_time}
-                                  </p>
-                                  <p className="text-slate-300">
-                                    <span className="text-slate-500">
-                                      Status:
-                                    </span>{" "}
-                                    <span className="text-amber-400">
-                                      {delayed.status}
-                                    </span>
-                                  </p>
-                                </div>
-                                <p className="text-xs text-slate-400 mt-2">
-                                  The collection truck is running behind
-                                  schedule. Please keep your waste ready for
-                                  pickup.
-                                </p>
-                              </div>
-                              <div className="flex-shrink-0">
-                                <div className="text-4xl">🚛</div>
-                              </div>
-                            </div>
+            {/* Dashboard */}
+            {activeTab === "dashboard" && (
+              <>
+                {/* Responsive metrics grid */}
+                {/* Map + small stats layout */}
+                <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
+                  <div className="dashboard-section overflow-hidden">
+                    <div className="dashboard-section-glow" />
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                          Collection Coverage Map
+                        </h2>
+                        <div className="flex flex-wrap items-center gap-2 z-20">
+                          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold text-sm backdrop-blur-sm relative z-10">
+                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                            Live vehicles
+                          </span>
+                          <div className="inline-flex items-center rounded-2xl border border-slate-700/60 bg-slate-900/60 p-1 shadow-md">
+                            <button
+                              type="button"
+                              onClick={() => setShowAllTrucks(true)}
+                              className={`inline-flex items-center rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 ${
+                                showAllTrucks
+                                  ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/50"
+                                  : "text-slate-400 hover:text-slate-200"
+                              }`}
+                            >
+                              All trucks
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowAllTrucks(false)}
+                              className={`inline-flex items-center rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 ${
+                                !showAllTrucks
+                                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/50"
+                                  : "text-slate-400 hover:text-slate-200"
+                              }`}
+                            >
+                              Assigned truck
+                            </button>
                           </div>
-                        );
-                      })}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 relative z-0">
+                        <LeafletMap
+                          residentGps={gps}
+                          showAllTrucks={showAllTrucks}
+                          assignedTruckId={assignedTruckId}
+                        />
+                      </div>
                     </div>
                   </div>
                 </section>
-              )}
-            </>
-          )}
 
-          {/* Submit Incident Report */}
-          {activeTab === "submitIncidentReport" && (
-            <SubmitReportSection
-              barangays={barangays}
-              onReportSubmit={handleReportSubmit}
-            />
-          )}
-
-          {/* Manage Account */}
-          {activeTab === "manageAccount" && (
-            <ManageAccountSection
-              form={manageAccountForm}
-              loading={manageAccountLoading}
-              error={manageAccountError}
-              success={manageAccountSuccess}
-              onChange={handleManageAccountFormChange}
-              onSubmit={handleManageAccountSubmit}
-            />
-          )}
-
-          {/* Schedules */}
-          {activeTab === "schedule" && (
-            <ResidentSchedulesFeature
-              residentBarangayId={residentBarangayId}
-              barangays={barangays}
-            />
-          )}
-
-          {/* My Reports */}
-          {activeTab === "myReports" &&
-            (() => {
-              // Filter by tab
-              const tabFiltered =
-                myReportsFilterTab === "all"
-                  ? userReports
-                  : userReports.filter(
-                      (r) => r.current_status === myReportsFilterTab,
-                    );
-
-              // Filter by search
-              const searchFiltered = tabFiltered.filter((r) => {
-                const s = myReportsSearch.toLowerCase();
-                if (!s) return true;
-                return (
-                  (r.location && r.location.toLowerCase().includes(s)) ||
-                  (r.description && r.description.toLowerCase().includes(s)) ||
-                  (r.report_id && String(r.report_id).includes(s))
-                );
-              });
-
-              // Sort by date
-              const sortedReports = [...searchFiltered].sort((a, b) => {
-                const dateA = new Date(a.date_submitted).getTime();
-                const dateB = new Date(b.date_submitted).getTime();
-                return myReportsDateSort === "newest"
-                  ? dateB - dateA
-                  : dateA - dateB;
-              });
-
-              return (
-                <section className="dashboard-section max-w-8xl mx-auto">
-                  <div className="dashboard-section-glow" />
-                  <h2 className="text-4xl font-bold text-emerald-300 mb-4">
-                    My Recent Reports
-                  </h2>
-
-                  {/* Filter tabs + Sort dropdown + Search */}
-                  {!reportsLoading &&
-                    !reportsError &&
-                    userReports.length > 0 && (
-                      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                        {/* Tab filters */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {(
-                            [
-                              "all",
-                              "Submitted",
-                              "Ongoing",
-                              "Resolved",
-                              "Rejected",
-                            ] as const
-                          ).map((tab) => (
-                            <button
-                              key={tab}
-                              onClick={() => setMyReportsFilterTab(tab)}
-                              className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all duration-200 ${
-                                myReportsFilterTab === tab
-                                  ? "bg-emerald-600/20 text-emerald-400 border-emerald-500/40"
-                                  : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:bg-slate-700/60 hover:text-slate-200"
-                              }`}
-                            >
-                              {tab === "all" ? "All" : tab}
-                            </button>
-                          ))}
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          {/* Date sort dropdown */}
-                          <select
-                            value={myReportsDateSort}
-                            onChange={(e) =>
-                              setMyReportsDateSort(
-                                e.target.value as "newest" | "oldest",
-                              )
-                            }
-                            className="rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 appearance-none cursor-pointer"
-                          >
-                            <option value="newest">Newest First</option>
-                            <option value="oldest">Oldest First</option>
-                          </select>
-
-                          {/* Search */}
-                          <input
-                            type="text"
-                            placeholder="Search reports..."
-                            value={myReportsSearch}
-                            onChange={(e) => setMyReportsSearch(e.target.value)}
-                            className="rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 w-48"
-                          />
+                {/* Delayed Collections Alert Banner */}
+                {delayedCollections.length > 0 && (
+                  <section className="dashboard-section">
+                    <div className="dashboard-section-glow" />
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent drop-shadow-lg">
+                            ⚠️ Collection Delay Alert
+                          </h3>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Your barangay collection is delayed
+                          </p>
                         </div>
                       </div>
-                    )}
 
-                  {reportsLoading && <TruckLoader />}
-                  {reportsError && (
-                    <p className="text-red-300 mb-2">{reportsError}</p>
-                  )}
-                  {!reportsLoading &&
-                    !reportsError &&
-                    userReports.length === 0 && (
-                      <p className="text-slate-300">
-                        You have not submitted any reports yet.
-                      </p>
-                    )}
-                  {!reportsLoading &&
-                    !reportsError &&
-                    userReports.length > 0 && (
-                      <div className="overflow-x-auto rounded-2xl border border-emerald-800/30 bg-slate-900/70 shadow-lg">
-                        <table className="min-w-full text-sm">
-                          <thead>
-                            <tr className="bg-slate-900/80">
-                              <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                                Report ID
-                              </th>
-                              <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                                Location
-                              </th>
-                              <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                                Status
-                              </th>
-                              <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                                Date
-                              </th>
-                              <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                                Actions
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sortedReports.length === 0 ? (
-                              <tr>
-                                <td
-                                  colSpan={5}
-                                  className="px-4 py-6 text-center text-slate-400"
-                                >
-                                  No reports match your filters.
-                                </td>
-                              </tr>
-                            ) : (
-                              sortedReports.map((report) => (
-                                <tr
-                                  key={report.report_id}
-                                  className="text-md border-b border-emerald-800/20 hover:bg-slate-800/60 transition-colors"
-                                >
-                                  <td className="px-4 py-2 font-bold text-emerald-200">
-                                    RP-{report.report_id}
-                                  </td>
-                                  <td className="px-4 py-2 text-slate-200 max-w-[160px] truncate">
-                                    {report.location || "N/A"}
-                                  </td>
-                                  <td className="px-4 py-2">
+                      <div className="space-y-3">
+                        {delayedCollections.map((delayed, idx) => {
+                          const delayStatus = getDelayStatusColor(
+                            delayed.delay_minutes,
+                          );
+                          return (
+                            <div
+                              key={`${delayed.schedule_id}-${idx}`}
+                              className="rounded-xl border border-red-800/60 bg-gradient-to-br from-red-900/20 to-orange-900/20 p-5 shadow-lg"
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-3">
                                     <span
-                                      className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${
-                                        report.current_status === "Resolved"
-                                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                                          : report.current_status ===
-                                                "Ongoing" ||
-                                              report.current_status ===
-                                                "In Progress"
-                                            ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                                            : report.current_status ===
-                                                "Rejected"
-                                              ? "bg-red-500/20 text-red-300 border-red-500/40"
-                                              : "bg-slate-500/30 text-slate-200 border-slate-500/60"
-                                      }`}
+                                      className={`px-3 py-1 rounded-full text-xs font-bold ${delayStatus.bg} ${delayStatus.text} border ${delayStatus.text.replace("text-", "border-")}/30`}
                                     >
-                                      {report.current_status || "Unknown"}
+                                      {delayStatus.label}
                                     </span>
-                                  </td>
-                                  <td className="px-4 py-2 text-slate-300 whitespace-nowrap">
-                                    {report.date_submitted
-                                      ? new Date(
-                                          report.date_submitted,
-                                        ).toLocaleString()
-                                      : "N/A"}
-                                  </td>
-                                  <td className="px-4 py-2">
-                                    <button
-                                      onClick={() => {
-                                        setSelectedMessage(report.description);
-                                        setModalOpen(true);
-                                      }}
-                                      className="text-emerald-400 hover:underline mr-3"
-                                    >
-                                      View
-                                    </button>
-                                    <button
-                                      onClick={() => handleViewHistory(report)}
-                                      className="text-slate-400 hover:underline"
-                                    >
-                                      History
-                                    </button>
+                                    <span className="text-slate-400 text-xs">
+                                      Delay:{" "}
+                                      <span className="text-red-400 font-semibold">
+                                        {delayed.delay_minutes} min
+                                      </span>
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                                    <p className="text-slate-300">
+                                      <span className="text-slate-500">
+                                        Scheduled:
+                                      </span>{" "}
+                                      {delayed.scheduled_date} at{" "}
+                                      {delayed.scheduled_time}
+                                    </p>
+                                    <p className="text-slate-300">
+                                      <span className="text-slate-500">
+                                        Status:
+                                      </span>{" "}
+                                      <span className="text-amber-400">
+                                        {delayed.status}
+                                      </span>
+                                    </p>
+                                  </div>
+                                  <p className="text-xs text-slate-400 mt-2">
+                                    The collection truck is running behind
+                                    schedule. Please keep your waste ready for
+                                    pickup.
+                                  </p>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  <div className="text-4xl">🚛</div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
+
+            {/* Submit Incident Report */}
+            {activeTab === "submitIncidentReport" && (
+              <SubmitReportSection
+                barangays={barangays}
+                onReportSubmit={handleReportSubmit}
+              />
+            )}
+
+            {/* Manage Account */}
+            {activeTab === "manageAccount" && (
+              <ManageAccountSection
+                form={manageAccountForm}
+                loading={manageAccountLoading}
+                error={manageAccountError}
+                success={manageAccountSuccess}
+                onChange={handleManageAccountFormChange}
+                onSubmit={handleManageAccountSubmit}
+              />
+            )}
+
+            {/* Schedules */}
+            {activeTab === "schedule" && (
+              <ResidentSchedulesFeature
+                residentBarangayId={residentBarangayId}
+                barangays={barangays}
+              />
+            )}
+
+            {/* My Reports */}
+            {activeTab === "myReports" &&
+              (() => {
+                // Filter by tab
+                const tabFiltered =
+                  myReportsFilterTab === "all"
+                    ? userReports
+                    : userReports.filter(
+                        (r) => r.current_status === myReportsFilterTab,
+                      );
+
+                // Filter by search
+                const searchFiltered = tabFiltered.filter((r) => {
+                  const s = myReportsSearch.toLowerCase();
+                  if (!s) return true;
+                  return (
+                    (r.location && r.location.toLowerCase().includes(s)) ||
+                    (r.description &&
+                      r.description.toLowerCase().includes(s)) ||
+                    (r.report_id && String(r.report_id).includes(s))
+                  );
+                });
+
+                // Sort by date
+                const sortedReports = [...searchFiltered].sort((a, b) => {
+                  const dateA = new Date(a.date_submitted).getTime();
+                  const dateB = new Date(b.date_submitted).getTime();
+                  return myReportsDateSort === "newest"
+                    ? dateB - dateA
+                    : dateA - dateB;
+                });
+
+                return (
+                  <section className="dashboard-section max-w-8xl mx-auto">
+                    <div className="dashboard-section-glow" />
+                    <h2 className="text-4xl font-bold text-emerald-300 mb-4">
+                      My Recent Reports
+                    </h2>
+
+                    {/* Filter tabs + Sort dropdown + Search */}
+                    {!reportsLoading &&
+                      !reportsError &&
+                      userReports.length > 0 && (
+                        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                          {/* Tab filters */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {(
+                              [
+                                "all",
+                                "Submitted",
+                                "Ongoing",
+                                "Resolved",
+                                "Rejected",
+                              ] as const
+                            ).map((tab) => (
+                              <button
+                                key={tab}
+                                onClick={() => setMyReportsFilterTab(tab)}
+                                className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all duration-200 ${
+                                  myReportsFilterTab === tab
+                                    ? "bg-emerald-600/20 text-emerald-400 border-emerald-500/40"
+                                    : "bg-slate-800/60 text-slate-400 border-slate-700/50 hover:bg-slate-700/60 hover:text-slate-200"
+                                }`}
+                              >
+                                {tab === "all" ? "All" : tab}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            {/* Date sort dropdown */}
+                            <select
+                              value={myReportsDateSort}
+                              onChange={(e) =>
+                                setMyReportsDateSort(
+                                  e.target.value as "newest" | "oldest",
+                                )
+                              }
+                              className="rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 appearance-none cursor-pointer"
+                            >
+                              <option value="newest">Newest First</option>
+                              <option value="oldest">Oldest First</option>
+                            </select>
+
+                            {/* Search */}
+                            <input
+                              type="text"
+                              placeholder="Search reports..."
+                              value={myReportsSearch}
+                              onChange={(e) =>
+                                setMyReportsSearch(e.target.value)
+                              }
+                              className="rounded-lg bg-slate-900/80 border border-green-800/50 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-500 w-48"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                    {reportsLoading && <TruckLoader />}
+                    {reportsError && (
+                      <p className="text-red-300 mb-2">{reportsError}</p>
+                    )}
+                    {!reportsLoading &&
+                      !reportsError &&
+                      userReports.length === 0 && (
+                        <p className="text-slate-300">
+                          You have not submitted any reports yet.
+                        </p>
+                      )}
+                    {!reportsLoading &&
+                      !reportsError &&
+                      userReports.length > 0 && (
+                        <div className="overflow-x-auto rounded-2xl border border-emerald-800/30 bg-slate-900/70 shadow-lg">
+                          <table className="min-w-full text-sm">
+                            <thead>
+                              <tr className="bg-slate-900/80">
+                                <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                  Report ID
+                                </th>
+                                <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                  Location
+                                </th>
+                                <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                  Status
+                                </th>
+                                <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                  Date
+                                </th>
+                                <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                  Actions
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sortedReports.length === 0 ? (
+                                <tr>
+                                  <td
+                                    colSpan={5}
+                                    className="px-4 py-6 text-center text-slate-400"
+                                  >
+                                    No reports match your filters.
                                   </td>
                                 </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
+                              ) : (
+                                sortedReports.map((report) => (
+                                  <tr
+                                    key={report.report_id}
+                                    className="text-md border-b border-emerald-800/20 hover:bg-slate-800/60 transition-colors"
+                                  >
+                                    <td className="px-4 py-2 font-bold text-emerald-200">
+                                      RP-{report.report_id}
+                                    </td>
+                                    <td className="px-4 py-2 text-slate-200 max-w-[160px] truncate">
+                                      {report.location || "N/A"}
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <span
+                                        className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${
+                                          report.current_status === "Resolved"
+                                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                            : report.current_status ===
+                                                  "Ongoing" ||
+                                                report.current_status ===
+                                                  "In Progress"
+                                              ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                                              : report.current_status ===
+                                                  "Rejected"
+                                                ? "bg-red-500/20 text-red-300 border-red-500/40"
+                                                : "bg-slate-500/30 text-slate-200 border-slate-500/60"
+                                        }`}
+                                      >
+                                        {report.current_status || "Unknown"}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-2 text-slate-300 whitespace-nowrap">
+                                      {report.date_submitted
+                                        ? new Date(
+                                            report.date_submitted,
+                                          ).toLocaleString()
+                                        : "N/A"}
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <button
+                                        onClick={() => {
+                                          setSelectedMessage(
+                                            report.description,
+                                          );
+                                          setModalOpen(true);
+                                        }}
+                                        className="text-emerald-400 hover:underline mr-3"
+                                      >
+                                        View
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handleViewHistory(report)
+                                        }
+                                        className="text-slate-400 hover:underline"
+                                      >
+                                        History
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                    {modalOpen && (
+                      <div
+                        className="pt-50 fixed inset-0 backdrop-blur-sm z-50 flex justify-center items-center"
+                        onClick={() => setModalOpen(false)}
+                        onKeyDown={(e) =>
+                          e.key === "Escape" && setModalOpen(false)
+                        }
+                        tabIndex={-1}
+                        role="presentation"
+                      >
+                        <div
+                          className="relative max-w-lg w-full text-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.7)] rounded-2xl border border-emerald-700/60 bg-gradient-to-b from-slate-900/95 to-slate-800/90 transform transition-all duration-200 ease-out"
+                          onClick={(e) => e.stopPropagation()}
+                          role="dialog"
+                          aria-modal="true"
+                          aria-labelledby="report-message-title"
+                        >
+                          {/* Title bar */}
+                          <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-3 border-b border-emerald-700/70">
+                            <div className="flex items-center gap-3">
+                              <span className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-emerald-600/10 text-emerald-300 border border-emerald-700/30">
+                                💬
+                              </span>
+                              <h3
+                                id="report-message-title"
+                                className="ml-1 text-sm font-semibold tracking-wide text-slate-100"
+                              >
+                                Report Message
+                              </h3>
+                            </div>
+
+                            <button
+                              onClick={() => setModalOpen(false)}
+                              className="text-sm font-semibold text-slate-400 hover:text-red-400 px-2 py-1 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+                              aria-label="Close dialog"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          {/* Content */}
+                          <div className="p-6">
+                            <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-3">
+                              MESSAGE
+                            </p>
+                            <div className="rounded-lg bg-slate-900/80 border border-slate-700/70 px-4 py-3">
+                              <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed break-words">
+                                {selectedMessage || "No message available."}
+                              </p>
+                            </div>
+
+                            <div className="mt-5 flex justify-end">
+                              <button
+                                onClick={() => setModalOpen(false)}
+                                className="px-4 py-2 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 transition-colors"
+                              >
+                                Close
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 
-                  {modalOpen && (
-                    <div
-                      className="pt-50 fixed inset-0 backdrop-blur-sm z-50 flex justify-center items-center"
-                      onClick={() => setModalOpen(false)}
-                      onKeyDown={(e) =>
-                        e.key === "Escape" && setModalOpen(false)
-                      }
-                      tabIndex={-1}
-                      role="presentation"
-                    >
+                    {historyModal && (
                       <div
-                        className="relative max-w-lg w-full text-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.7)] rounded-2xl border border-emerald-700/60 bg-gradient-to-b from-slate-900/95 to-slate-800/90 transform transition-all duration-200 ease-out"
-                        onClick={(e) => e.stopPropagation()}
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="report-message-title"
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                        onClick={() => setHistoryModal(null)}
+                        onKeyDown={(e) =>
+                          e.key === "Escape" && setHistoryModal(null)
+                        }
+                        tabIndex={-1}
+                        role="presentation"
                       >
-                        {/* Title bar */}
-                        <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 px-4 py-3 border-b border-emerald-700/70">
-                          <div className="flex items-center gap-3">
-                            <span className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-emerald-600/10 text-emerald-300 border border-emerald-700/30">
-                              💬
-                            </span>
-                            <h3
-                              id="report-message-title"
-                              className="ml-1 text-sm font-semibold tracking-wide text-slate-100"
-                            >
-                              Report Message
-                            </h3>
-                          </div>
-
-                          <button
-                            onClick={() => setModalOpen(false)}
-                            className="text-sm font-semibold text-slate-400 hover:text-red-400 px-2 py-1 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
-                            aria-label="Close dialog"
-                          >
-                            ✕
-                          </button>
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-6">
-                          <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-3">
-                            MESSAGE
-                          </p>
-                          <div className="rounded-lg bg-slate-900/80 border border-slate-700/70 px-4 py-3">
-                            <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed break-words">
-                              {selectedMessage || "No message available."}
-                            </p>
-                          </div>
-
-                          <div className="mt-5 flex justify-end">
+                        <div
+                          className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-slate-800 shadow-xl"
+                          onClick={(e) => e.stopPropagation()}
+                          role="dialog"
+                          aria-modal="true"
+                          aria-labelledby="history-modal-title"
+                        >
+                          <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+                            <div>
+                              <h3
+                                className="text-lg font-semibold text-slate-100"
+                                id="history-modal-title"
+                              >
+                                Report History
+                              </h3>
+                              <p className="text-xs text-slate-400 mt-1">
+                                Location: {historyModal.title}
+                              </p>
+                            </div>
                             <button
-                              onClick={() => setModalOpen(false)}
-                              className="px-4 py-2 text-sm rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 border border-emerald-500/80 shadow-sm shadow-emerald-700/60 hover:from-emerald-500 hover:to-teal-500 transition-colors"
+                              type="button"
+                              onClick={() => setHistoryModal(null)}
+                              className="text-slate-400 hover:text-slate-200"
+                              aria-label="Close history"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          <div className="px-5 py-4 space-y-3 max-h-[50vh] overflow-y-auto">
+                            {historyModal.entries.length === 0 ? (
+                              <div className="rounded-lg border border-dashed border-slate-800 px-4 py-6 text-sm text-slate-400">
+                                {historyModal.message ||
+                                  "No history records found."}
+                              </div>
+                            ) : (
+                              historyModal.entries.map((entry, index) => (
+                                <div
+                                  key={`${entry.time}-${index}`}
+                                  className="rounded-xl border border-slate-800 bg-slate-950/60 p-4"
+                                >
+                                  <div className="flex items-center justify-between mb-1 text-xs text-slate-400">
+                                    <span>{entry.time}</span>
+                                    <span>{entry.status}</span>
+                                  </div>
+                                  <p className="text-sm text-slate-200 whitespace-pre-wrap">
+                                    {entry.remarks || "No remarks provided."}
+                                  </p>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                          <div className="flex justify-end border-t border-slate-800 px-5 py-4">
+                            <button
+                              type="button"
+                              onClick={() => setHistoryModal(null)}
+                              className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200"
                             >
                               Close
                             </button>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </section>
+                );
+              })()}
 
-                  {historyModal && (
-                    <div
-                      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-                      onClick={() => setHistoryModal(null)}
-                      onKeyDown={(e) =>
-                        e.key === "Escape" && setHistoryModal(null)
-                      }
-                      tabIndex={-1}
-                      role="presentation"
-                    >
-                      <div
-                        className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-slate-800 shadow-xl"
-                        onClick={(e) => e.stopPropagation()}
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="history-modal-title"
-                      >
-                        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
-                          <div>
-                            <h3
-                              className="text-lg font-semibold text-slate-100"
-                              id="history-modal-title"
-                            >
-                              Report History
-                            </h3>
-                            <p className="text-xs text-slate-400 mt-1">
-                              Location: {historyModal.title}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setHistoryModal(null)}
-                            className="text-slate-400 hover:text-slate-200"
-                            aria-label="Close history"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                        <div className="px-5 py-4 space-y-3 max-h-[50vh] overflow-y-auto">
-                          {historyModal.entries.length === 0 ? (
-                            <div className="rounded-lg border border-dashed border-slate-800 px-4 py-6 text-sm text-slate-400">
-                              {historyModal.message ||
-                                "No history records found."}
-                            </div>
-                          ) : (
-                            historyModal.entries.map((entry, index) => (
-                              <div
-                                key={`${entry.time}-${index}`}
-                                className="rounded-xl border border-slate-800 bg-slate-950/60 p-4"
-                              >
-                                <div className="flex items-center justify-between mb-1 text-xs text-slate-400">
-                                  <span>{entry.time}</span>
-                                  <span>{entry.status}</span>
-                                </div>
-                                <p className="text-sm text-slate-200 whitespace-pre-wrap">
-                                  {entry.remarks || "No remarks provided."}
-                                </p>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                        <div className="flex justify-end border-t border-slate-800 px-5 py-4">
-                          <button
-                            type="button"
-                            onClick={() => setHistoryModal(null)}
-                            className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200"
-                          >
-                            Close
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </section>
-              );
-            })()}
-
-          {/* Notifications */}
-          {activeTab === "notifications" && (
-            <section className="dashboard-section max-w-8xl mx-auto">
-              <div className="dashboard-section-glow" />
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                  <svg
-                    className="w-5 h-5 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-3xl font-bold text-white tracking-tight">
-                    Notifications
-                  </h2>
-                  <p className="text-slate-400 text-sm">
-                    Your report status updates
-                  </p>
-                </div>
-              </div>
-
-              {reportsLoading && <TruckLoader />}
-              {reportsError && (
-                <p className="text-red-300 mb-2">{reportsError}</p>
-              )}
-              {!reportsLoading && !reportsError && userReports.length === 0 && (
-                <div className="bg-slate-900/40 rounded-3xl border border-slate-800/50 p-12 text-center">
-                  <div className="w-20 h-20 rounded-3xl bg-slate-800/50 flex items-center justify-center mx-auto mb-6">
+            {/* Notifications */}
+            {activeTab === "notifications" && (
+              <section className="dashboard-section max-w-8xl mx-auto">
+                <div className="dashboard-section-glow" />
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
                     <svg
-                      className="w-10 h-10 text-slate-600"
+                      className="w-5 h-5 text-white"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -3248,122 +3253,156 @@ export default function ResidentDashboard() {
                       />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-semibold text-slate-300 mb-2">
-                    No notifications yet
-                  </h3>
-                  <p className="text-slate-500 text-sm">
-                    Submit an incident report and you'll see status updates
-                    here.
-                  </p>
+                  <div>
+                    <h2 className="text-3xl font-bold text-white tracking-tight">
+                      Notifications
+                    </h2>
+                    <p className="text-slate-400 text-sm">
+                      Your report status updates
+                    </p>
+                  </div>
                 </div>
-              )}
-              {!reportsLoading && !reportsError && userReports.length > 0 && (
-                <div className="space-y-3">
-                  {userReports.map((report) => (
-                    <div
-                      key={report.report_id}
-                      className="group relative bg-slate-900/40 rounded-2xl p-5 border border-slate-800/50 hover:border-emerald-500/20 transition-all duration-300"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-start gap-4 flex-1 min-w-0">
-                          <div
-                            className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center border ${
-                              report.current_status === "Resolved"
-                                ? "bg-emerald-500/10 border-emerald-500/20"
-                                : report.current_status === "Ongoing" ||
-                                    report.current_status === "In Progress"
-                                  ? "bg-amber-500/10 border-amber-500/20"
-                                  : report.current_status === "Rejected"
-                                    ? "bg-red-500/10 border-red-500/20"
-                                    : "bg-slate-800/50 border-slate-700/50"
-                            }`}
-                          >
-                            <svg
-                              className={`w-5 h-5 ${
+
+                {reportsLoading && <TruckLoader />}
+                {reportsError && (
+                  <p className="text-red-300 mb-2">{reportsError}</p>
+                )}
+                {!reportsLoading &&
+                  !reportsError &&
+                  userReports.length === 0 && (
+                    <div className="bg-slate-900/40 rounded-3xl border border-slate-800/50 p-12 text-center">
+                      <div className="w-20 h-20 rounded-3xl bg-slate-800/50 flex items-center justify-center mx-auto mb-6">
+                        <svg
+                          className="w-10 h-10 text-slate-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                          />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-300 mb-2">
+                        No notifications yet
+                      </h3>
+                      <p className="text-slate-500 text-sm">
+                        Submit an incident report and you'll see status updates
+                        here.
+                      </p>
+                    </div>
+                  )}
+                {!reportsLoading && !reportsError && userReports.length > 0 && (
+                  <div className="space-y-3">
+                    {userReports.map((report) => (
+                      <div
+                        key={report.report_id}
+                        className="group relative bg-slate-900/40 rounded-2xl p-5 border border-slate-800/50 hover:border-emerald-500/20 transition-all duration-300"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="flex items-start gap-4 flex-1 min-w-0">
+                            <div
+                              className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center border ${
                                 report.current_status === "Resolved"
-                                  ? "text-emerald-400"
+                                  ? "bg-emerald-500/10 border-emerald-500/20"
                                   : report.current_status === "Ongoing" ||
                                       report.current_status === "In Progress"
-                                    ? "text-amber-400"
+                                    ? "bg-amber-500/10 border-amber-500/20"
                                     : report.current_status === "Rejected"
-                                      ? "text-red-400"
-                                      : "text-slate-400"
+                                      ? "bg-red-500/10 border-red-500/20"
+                                      : "bg-slate-800/50 border-slate-700/50"
                               }`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
                             >
-                              {report.current_status === "Resolved" ? (
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                              ) : report.current_status === "Rejected" ? (
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                              ) : (
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                              )}
-                            </svg>
+                              <svg
+                                className={`w-5 h-5 ${
+                                  report.current_status === "Resolved"
+                                    ? "text-emerald-400"
+                                    : report.current_status === "Ongoing" ||
+                                        report.current_status === "In Progress"
+                                      ? "text-amber-400"
+                                      : report.current_status === "Rejected"
+                                        ? "text-red-400"
+                                        : "text-slate-400"
+                                }`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                {report.current_status === "Resolved" ? (
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                ) : report.current_status === "Rejected" ? (
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                ) : (
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                )}
+                              </svg>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-white truncate">
+                                {report.description}
+                              </p>
+                              <p className="text-xs text-slate-500 mt-1">
+                                Report RP-{report.report_id} •{" "}
+                                {report.date_submitted
+                                  ? new Date(
+                                      report.date_submitted,
+                                    ).toLocaleString()
+                                  : "N/A"}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-white truncate">
-                              {report.description}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-1">
-                              Report RP-{report.report_id} •{" "}
-                              {report.date_submitted
-                                ? new Date(
-                                    report.date_submitted,
-                                  ).toLocaleString()
-                                : "N/A"}
-                            </p>
-                          </div>
-                        </div>
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border flex-shrink-0 ${
-                            report.current_status === "Resolved"
-                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                              : report.current_status === "Ongoing" ||
-                                  report.current_status === "In Progress"
-                                ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                                : report.current_status === "Rejected"
-                                  ? "bg-red-500/10 text-red-400 border-red-500/20"
-                                  : "bg-slate-500/10 text-slate-300 border-slate-500/20"
-                          }`}
-                        >
                           <span
-                            className={`w-1.5 h-1.5 rounded-full ${
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border flex-shrink-0 ${
                               report.current_status === "Resolved"
-                                ? "bg-emerald-400"
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                                 : report.current_status === "Ongoing" ||
                                     report.current_status === "In Progress"
-                                  ? "bg-amber-400"
+                                  ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
                                   : report.current_status === "Rejected"
-                                    ? "bg-red-400"
-                                    : "bg-slate-400"
+                                    ? "bg-red-500/10 text-red-400 border-red-500/20"
+                                    : "bg-slate-500/10 text-slate-300 border-slate-500/20"
                             }`}
-                          />
-                          {report.current_status || "Submitted"}
-                        </span>
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                report.current_status === "Resolved"
+                                  ? "bg-emerald-400"
+                                  : report.current_status === "Ongoing" ||
+                                      report.current_status === "In Progress"
+                                    ? "bg-amber-400"
+                                    : report.current_status === "Rejected"
+                                      ? "bg-red-400"
+                                      : "bg-slate-400"
+                              }`}
+                            />
+                            {report.current_status || "Submitted"}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+          </div>
         </main>
       </div>
     </div>

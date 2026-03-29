@@ -5111,7 +5111,33 @@ export default function SecretaryDashboard() {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [displayName, setDisplayName] = useState("User");
   const [activeTab, setActiveTab] = useState<SecretaryActiveTab>("dashboard");
+  const [tabFadeIn, setTabFadeIn] = useState(false);
   const [initials, setInitials] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedTab = localStorage.getItem("secretary_active_tab");
+    if (
+      storedTab === "dashboard" ||
+      storedTab === "manageAccount" ||
+      storedTab === "inputSchedule" ||
+      storedTab === "garbageTrucks" ||
+      storedTab === "schedules" ||
+      storedTab === "garbageCollections" ||
+      storedTab === "passedIncidents" ||
+      storedTab === "gcpResponses"
+    ) {
+      setActiveTab(storedTab);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("secretary_active_tab", activeTab);
+    setTabFadeIn(false);
+    const timeoutId = window.setTimeout(() => setTabFadeIn(true), 50);
+    return () => window.clearTimeout(timeoutId);
+  }, [activeTab]);
 
   useEffect(() => {
     async function fetchDisplayName() {
@@ -5894,162 +5920,171 @@ export default function SecretaryDashboard() {
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-10 py-10 space-y-10 relative z-10 md:ml-64 bg-slate-900/40">
-          {/* DASHBOARD */}
-          {activeTab === "dashboard" && (
-            <>
-              {/* Collapsible Stats Section */}
-              <div
-                className={`transition-all duration-500 ease-in-out overflow-hidden ${
-                  statsVisible
-                    ? "max-h-[500px] opacity-100 mb-8"
-                    : "max-h-0 opacity-0 mb-0"
-                }`}
-              >
-                <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-                  {summaryCards.map((card, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40"
-                      role="region"
-                      aria-label={card.label}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-slate-400 text-sm">{card.label}</p>
-                          <h3 className="text-2xl font-bold text-slate-100">
-                            {card.count}
-                          </h3>
-                          <p className={`text-sm ${card.trendClass}`}>
-                            {card.trend}
-                          </p>
-                        </div>
-                        <div
-                          className={`${card.iconBg} ${card.iconColor} p-3 rounded-full text-xl`}
-                        >
-                          {card.icon}
+          <div
+            className={`transition-opacity duration-300 ease-in-out ${
+              tabFadeIn ? "opacity-100" : "opacity-0"
+            }`}
+            key={activeTab}
+          >
+            {/* DASHBOARD */}
+            {activeTab === "dashboard" && (
+              <>
+                {/* Collapsible Stats Section */}
+                <div
+                  className={`transition-all duration-500 ease-in-out overflow-hidden ${
+                    statsVisible
+                      ? "max-h-[500px] opacity-100 mb-8"
+                      : "max-h-0 opacity-0 mb-0"
+                  }`}
+                >
+                  <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                    {summaryCards.map((card, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40"
+                        role="region"
+                        aria-label={card.label}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-slate-400 text-sm">
+                              {card.label}
+                            </p>
+                            <h3 className="text-2xl font-bold text-slate-100">
+                              {card.count}
+                            </h3>
+                            <p className={`text-sm ${card.trendClass}`}>
+                              {card.trend}
+                            </p>
+                          </div>
+                          <div
+                            className={`${card.iconBg} ${card.iconColor} p-3 rounded-full text-xl`}
+                          >
+                            {card.icon}
+                          </div>
                         </div>
                       </div>
+                    ))}
+                  </section>
+                </div>
+
+                {/* Map Section with Toggle Button */}
+                <section>
+                  <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 overflow-hidden">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-xl font-bold text-slate-100">
+                        Collection Coverage Map
+                      </h2>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={() => setStatsVisible(!statsVisible)}
+                          variant="outline"
+                          className="h-auto border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                          title={
+                            statsVisible ? "Hide Statistics" : "Show Statistics"
+                          }
+                        >
+                          {statsVisible ? "📊 Hide Stats" : "📈 Show Stats"}
+                        </Button>
+                        <span className="px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-sm font-medium">
+                          🟢 Live
+                        </span>
+                      </div>
                     </div>
-                  ))}
+                    <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px]">
+                      <LeafletMap />
+                    </div>
+                  </div>
                 </section>
-              </div>
+              </>
+            )}
 
-              {/* Map Section with Toggle Button */}
-              <section>
-                <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 overflow-hidden">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-slate-100">
-                      Collection Coverage Map
+            {/* Manage Account */}
+            {activeTab === "manageAccount" && (
+              <div className="dashboard-section max-w-2xl mx-auto">
+                <div className="dashboard-section-glow" />
+                <div className="relative z-10">
+                  <ManageAccountSection
+                    form={manageAccountForm}
+                    loading={manageAccountLoading}
+                    error={manageAccountError}
+                    success={manageAccountSuccess}
+                    onChange={handleManageAccountFormChange}
+                    onSubmit={handleManageAccountSubmit}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Create Schedules */}
+            {activeTab === "inputSchedule" && (
+              <div className="dashboard-section overflow-hidden">
+                <div className="dashboard-section-glow" />
+                <div className="relative z-10">
+                  <ScheduleFormWithCalendar
+                    barangays={barangays}
+                    trucks={trucks}
+                    gcps={gcps}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Garbage Trucks */}
+            {activeTab === "garbageTrucks" && (
+              <div className="dashboard-section overflow-hidden">
+                <div className="dashboard-section-glow" />
+                <div className="relative z-10">
+                  <GarbageTrucksSection gcps={gcps} />
+                </div>
+              </div>
+            )}
+
+            {/* Schedules */}
+            {activeTab === "schedules" && (
+              <div className="dashboard-section max-w-6xl mx-auto overflow-hidden">
+                <div className="dashboard-section-glow" />
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-3xl font-black bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-2xl">
+                      Schedules Overview
                     </h2>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        onClick={() => setStatsVisible(!statsVisible)}
-                        variant="outline"
-                        className="h-auto border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
-                        title={
-                          statsVisible ? "Hide Statistics" : "Show Statistics"
-                        }
-                      >
-                        {statsVisible ? "📊 Hide Stats" : "📈 Show Stats"}
-                      </Button>
-                      <span className="px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-sm font-medium">
-                        🟢 Live
-                      </span>
-                    </div>
                   </div>
-                  <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px]">
-                    <LeafletMap />
-                  </div>
+                  <SchedulesSidebarItem barangays={barangays} />
                 </div>
-              </section>
-            </>
-          )}
-
-          {/* Manage Account */}
-          {activeTab === "manageAccount" && (
-            <div className="dashboard-section max-w-2xl mx-auto">
-              <div className="dashboard-section-glow" />
-              <div className="relative z-10">
-                <ManageAccountSection
-                  form={manageAccountForm}
-                  loading={manageAccountLoading}
-                  error={manageAccountError}
-                  success={manageAccountSuccess}
-                  onChange={handleManageAccountFormChange}
-                  onSubmit={handleManageAccountSubmit}
-                />
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Create Schedules */}
-          {activeTab === "inputSchedule" && (
-            <div className="dashboard-section overflow-hidden">
-              <div className="dashboard-section-glow" />
-              <div className="relative z-10">
-                <ScheduleFormWithCalendar
-                  barangays={barangays}
-                  trucks={trucks}
-                  gcps={gcps}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Garbage Trucks */}
-          {activeTab === "garbageTrucks" && (
-            <div className="dashboard-section overflow-hidden">
-              <div className="dashboard-section-glow" />
-              <div className="relative z-10">
-                <GarbageTrucksSection gcps={gcps} />
-              </div>
-            </div>
-          )}
-
-          {/* Schedules */}
-          {activeTab === "schedules" && (
-            <div className="dashboard-section max-w-6xl mx-auto overflow-hidden">
-              <div className="dashboard-section-glow" />
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-3xl font-black bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-2xl">
-                    Schedules Overview
-                  </h2>
+            {/* Garbage Collections */}
+            {activeTab === "garbageCollections" && (
+              <div className="dashboard-section overflow-hidden">
+                <div className="dashboard-section-glow" />
+                <div className="relative z-10">
+                  <SecretaryGarbageCollectionsSection />
                 </div>
-                <SchedulesSidebarItem barangays={barangays} />
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Garbage Collections */}
-          {activeTab === "garbageCollections" && (
-            <div className="dashboard-section overflow-hidden">
-              <div className="dashboard-section-glow" />
-              <div className="relative z-10">
-                <SecretaryGarbageCollectionsSection />
+            {/* Passed Incidents */}
+            {activeTab === "passedIncidents" && (
+              <div className="dashboard-section overflow-hidden">
+                <div className="dashboard-section-glow" />
+                <div className="relative z-10">
+                  <SecretaryReportsSection />
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Passed Incidents */}
-          {activeTab === "passedIncidents" && (
-            <div className="dashboard-section overflow-hidden">
-              <div className="dashboard-section-glow" />
-              <div className="relative z-10">
-                <SecretaryReportsSection />
+            {/* GCP Responses */}
+            {activeTab === "gcpResponses" && (
+              <div className="dashboard-section overflow-hidden">
+                <div className="dashboard-section-glow" />
+                <div className="relative z-10">
+                  <SecretaryGcpResponsesSection />
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* GCP Responses */}
-          {activeTab === "gcpResponses" && (
-            <div className="dashboard-section overflow-hidden">
-              <div className="dashboard-section-glow" />
-              <div className="relative z-10">
-                <SecretaryGcpResponsesSection />
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </main>
       </div>
     </div>

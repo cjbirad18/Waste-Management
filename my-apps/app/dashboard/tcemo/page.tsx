@@ -181,6 +181,36 @@ export default function TcemoDashboard() {
     | "schedules"
     | "incidentReports"
   >("dashboard");
+  const [tabFadeIn, setTabFadeIn] = useState(false);
+
+  // Restore active tab from localStorage and keep it in sync
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedTab = localStorage.getItem("tcemo_active_tab");
+    if (
+      storedTab === "dashboard" ||
+      storedTab === "manageUsers" ||
+      storedTab === "manageAccount" ||
+      storedTab === "generateReports" ||
+      storedTab === "schedules" ||
+      storedTab === "incidentReports"
+    ) {
+      setActiveTab(storedTab);
+    }
+  }, []);
+
+  useEffect(() => {
+    setTabFadeIn(false);
+    const timeoutId = window.setTimeout(() => {
+      setTabFadeIn(true);
+    }, 50);
+    return () => window.clearTimeout(timeoutId);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("tcemo_active_tab", activeTab);
+  }, [activeTab]);
 
   // Incident Reports State (copied from SWMO Head dashboard)
   const [incidentReports, setIncidentReports] = useState<any[]>([]);
@@ -1277,780 +1307,784 @@ export default function TcemoDashboard() {
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-10 py-10 space-y-10 relative z-10 md:ml-64 bg-slate-900/40">
-          {/* DASHBOARD */}
-          {activeTab === "dashboard" && (
-            <>
+          <div
+            className={`transition-opacity duration-300 ease-in-out ${
+              tabFadeIn ? "opacity-100" : "opacity-0"
+            }`}
+            key={activeTab}
+          >
+            {/* DASHBOARD */}
+            {activeTab === "dashboard" && (
+              <>
+                <section className="space-y-6">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
+                        Dashboard
+                      </p>
+                      <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
+                        Track-the-Truck Overview
+                      </h1>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        onClick={() => setStatsVisible(!statsVisible)}
+                        variant="outline"
+                        className="h-auto border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                      >
+                        {statsVisible ? "Hide Stats" : "Show Stats"}
+                      </Button>
+                      <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        Live
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Collapsible Stats Section */}
+                  {statsVisible && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                      {summaryCards.map((card, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40"
+                          role="region"
+                          aria-label={card.label}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-slate-400 text-sm">
+                                {card.label}
+                              </p>
+                              <h3 className="text-2xl font-bold text-slate-100">
+                                {card.count}
+                              </h3>
+                              <p className="text-sm text-emerald-400 font-medium">
+                                ↑ Active
+                              </p>
+                            </div>
+                            <div className="bg-emerald-500/15 text-emerald-300 p-3 rounded-full text-xl">
+                              {card.icon}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Map Section with Toggle Button */}
+                  <section>
+                    <div className="dashboard-section overflow-hidden">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-bold text-slate-100">
+                          Live Truck Tracking
+                        </h2>
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-sm font-medium">
+                            🟢 Live
+                          </span>
+                        </div>
+                      </div>
+                      <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px]">
+                        <LeafletMap />
+                      </div>
+                    </div>
+                  </section>
+                </section>
+              </>
+            )}
+            {/* INCIDENT REPORTS */}
+            {activeTab === "incidentReports" && (
+              <div className="space-y-6">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <h2 className="text-2xl font-bold text-slate-100">
+                    Community Reports
+                  </h2>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 shadow-xl shadow-black/40">
+                  <div className="p-5 md:p-6 space-y-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex flex-wrap gap-2">
+                        {incidentStatusTabs.map((tab) => (
+                          <button
+                            key={tab}
+                            type="button"
+                            onClick={() => setReportStatusFilter(tab)}
+                            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+                              reportStatusFilter === tab
+                                ? "bg-emerald-500/15 text-emerald-200 border border-emerald-500/30"
+                                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                            }`}
+                          >
+                            {tab}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="text"
+                          value={reportSearch}
+                          onChange={(e) => setReportSearch(e.target.value)}
+                          placeholder="Search reports..."
+                          className="w-full md:w-64"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowReportFilters(!showReportFilters)
+                          }
+                          className="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700"
+                          aria-label="Toggle filters"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    </div>
+
+                    {showReportFilters && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-slate-400">
+                            Barangay
+                          </Label>
+                          <Select
+                            value={selectedBarangay}
+                            onValueChange={(value: string) =>
+                              setSelectedBarangay(value)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Barangays</SelectItem>
+                              {barangayOptions.map((barangay) => (
+                                <SelectItem
+                                  key={barangay.value}
+                                  value={barangay.value}
+                                >
+                                  {barangay.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-slate-400">
+                            Sort By
+                          </Label>
+                          <Select
+                            value={sortBy}
+                            onValueChange={(value: string) => setSortBy(value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="date_desc">
+                                Date (Newest First)
+                              </SelectItem>
+                              <SelectItem value="date_asc">
+                                Date (Oldest First)
+                              </SelectItem>
+                              <SelectItem value="status">Status</SelectItem>
+                              <SelectItem value="barangay">Barangay</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+
+                    {reportsError && (
+                      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                        {reportsError}
+                      </div>
+                    )}
+
+                    {loadingReports && <TruckLoader />}
+
+                    {!loadingReports &&
+                      filteredIncidentReports.length === 0 && (
+                        <div className="rounded-lg border border-dashed border-slate-800 px-4 py-8 text-center text-sm text-slate-400">
+                          No reports match the selected filters.
+                        </div>
+                      )}
+
+                    {!loadingReports && filteredIncidentReports.length > 0 && (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-slate-800">
+                          <thead className="bg-slate-950/60">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Report ID
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Type
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Location
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Status
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Date
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800 bg-slate-900/40">
+                            {pagedIncidentReports.map((report) => (
+                              <tr key={report.report_id}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-100">
+                                  RP-{report.report_id}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
+                                  {report.description || "Untitled"}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
+                                  {report.location}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
+                                  {report.current_status}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
+                                  {report.date_submitted
+                                    ? new Date(
+                                        report.date_submitted,
+                                      ).toLocaleString()
+                                    : "N/A"}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedReport(report);
+                                        setShowReportModal(true);
+                                      }}
+                                    >
+                                      View
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleViewHistory(report)}
+                                    >
+                                      History
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {totalReportPages > 1 && (
+                      <div className="flex justify-center items-center gap-3 mt-4">
+                        <Button
+                          disabled={currentReportPage === 1}
+                          onClick={() => setReportPage(currentReportPage - 1)}
+                          variant="outline"
+                          className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                        >
+                          Previous
+                        </Button>
+                        <span className="text-xs text-slate-300">
+                          Page {currentReportPage} of {totalReportPages} (
+                          {filteredIncidentReports.length} total)
+                        </span>
+                        <Button
+                          disabled={currentReportPage === totalReportPages}
+                          onClick={() => setReportPage(currentReportPage + 1)}
+                          variant="outline"
+                          className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* History Modal */}
+            {historyModal && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+                onClick={() => setHistoryModal(null)}
+              >
+                <div
+                  className="relative w-full max-w-3xl max-h-[75vh] overflow-y-auto rounded-lg border border-slate-800 bg-slate-900 p-6 shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-start justify-between mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-slate-800 gap-3">
+                    <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                      <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-blue-600/20 border border-blue-600/30 flex-shrink-0">
+                        <span className="text-lg sm:text-2xl">🕘</span>
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-base sm:text-lg font-bold text-slate-100 truncate">
+                          History: {historyModal.title}
+                        </h3>
+                        <p className="text-xs text-slate-400 truncate">
+                          Most recent updates first
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setHistoryModal(null)}
+                      className="rounded-lg bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700 transition-colors flex-shrink-0 text-sm"
+                    >
+                      ✖️
+                    </button>
+                  </div>
+
+                  {historyModal.entries.length === 0 ? (
+                    <div className="rounded-lg border border-slate-800/70 bg-slate-900/80 p-6 text-sm text-slate-300">
+                      {historyModal.message || "No history records found."}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {historyModal.entries.map((entry, index) => (
+                        <div
+                          key={index}
+                          className="rounded-lg border border-slate-800/70 bg-slate-900/80 p-4"
+                        >
+                          <div className="flex items-center justify-between text-xs text-slate-400">
+                            <span>{entry.status}</span>
+                            <span>{entry.time}</span>
+                          </div>
+                          <p className="mt-2 text-sm text-slate-200 whitespace-pre-wrap">
+                            {entry.remarks || "No remarks."}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end border-t border-slate-800 px-5 py-4">
+                    <button
+                      type="button"
+                      onClick={() => setHistoryModal(null)}
+                      className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Report Details Modal */}
+            {showReportModal && selectedReport && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+                onClick={() => setShowReportModal(false)}
+              >
+                <div
+                  className="relative w-full max-w-3xl max-h-[75vh] overflow-y-auto rounded-lg border border-slate-800 bg-slate-900 p-6 shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-start justify-between mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-slate-800 gap-3">
+                    <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                      <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-red-600/20 border border-red-600/30 flex-shrink-0">
+                        <span className="text-lg sm:text-2xl">🚨</span>
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-base sm:text-lg font-bold text-slate-100 truncate">
+                          Incident Report Details
+                        </h3>
+                        <p className="text-xs text-slate-400 truncate">
+                          ID: #{String(selectedReport.report_id).slice(0, 12)}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowReportModal(false)}
+                      className="rounded-lg bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700 transition-colors flex-shrink-0 text-sm"
+                    >
+                      ✖️
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                        <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
+                          Status
+                        </p>
+                        <span
+                          className={`inline-flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium ${
+                            selectedReport.current_status === "Resolved"
+                              ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
+                              : selectedReport.current_status === "Ongoing"
+                                ? "bg-blue-500/10 text-blue-300 border border-blue-500/30"
+                                : "bg-amber-500/10 text-amber-300 border border-amber-500/30"
+                          }`}
+                        >
+                          {selectedReport.current_status || "Pending"}
+                        </span>
+                      </div>
+
+                      <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                        <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
+                          Barangay
+                        </p>
+                        <p className="text-xs text-slate-200">
+                          {selectedReport.barangay?.barangay_name || "Unknown"}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                        <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
+                          Location
+                        </p>
+                        <p className="text-xs text-slate-200">
+                          {selectedReport.location || "N/A"}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                        <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
+                          Date Submitted
+                        </p>
+                        <p className="text-xs text-slate-200">
+                          {new Date(
+                            selectedReport.date_submitted,
+                          ).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+
+                    {selectedReport.landmark && (
+                      <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                        <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
+                          Landmark
+                        </p>
+                        <p className="text-xs text-slate-200">
+                          {selectedReport.landmark}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedReport.description && (
+                      <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                        <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
+                          Description
+                        </p>
+                        <p className="text-xs text-slate-200 whitespace-pre-wrap">
+                          {selectedReport.description}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedReport.image_url && (
+                      <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                        <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
+                          Attached Image
+                        </p>
+                        <img
+                          src={selectedReport.image_url}
+                          alt="Report evidence"
+                          className="w-full rounded-lg border border-slate-700"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end border-t border-slate-800 px-5 py-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowReportModal(false)}
+                      className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* USER ADMIN – Add SWMO Head + list, styled */}
+            {activeTab === "manageUsers" && (
+              <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Form */}
+                <div className="dashboard-section overflow-hidden">
+                  <div className="relative z-10">
+                    <h2 className="text-lg font-bold mb-2 text-slate-100">
+                      Add New SWMO Head
+                    </h2>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Create an account for the Solid Waste Management Office
+                      head.
+                    </p>
+                    {activeSWMOHead && (
+                      <div className="px-3 py-2 mb-4 bg-yellow-500/10 text-yellow-300 border border-yellow-500/30 rounded-lg text-xs">
+                        An SWMO Head account (
+                        <strong>{activeSWMOHead.email}</strong>) is currently
+                        active. Deactivate it first to create a new one.
+                      </div>
+                    )}
+                    <form
+                      onSubmit={handleAddUser}
+                      className="space-y-2"
+                      noValidate
+                    >
+                      <fieldset
+                        disabled={!!activeSWMOHead}
+                        className="disabled:opacity-50"
+                      >
+                        {formError && (
+                          <div className="px-3 py-2 bg-red-500/10 text-red-300 border border-red-500/30 rounded-lg text-xs">
+                            {formError}
+                          </div>
+                        )}
+                        {formSuccess && (
+                          <div className="px-3 py-2 bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs">
+                            {formSuccess}
+                          </div>
+                        )}
+                        <InputField
+                          label="First Name"
+                          name="first_name"
+                          type="text"
+                          value={userForm.first_name}
+                          onChange={handleUserFormChange}
+                          required
+                        />
+                        <InputField
+                          label="Last Name"
+                          name="last_name"
+                          type="text"
+                          value={userForm.last_name}
+                          onChange={handleUserFormChange}
+                          required
+                        />
+                        <InputField
+                          label="Contact Number"
+                          name="contact_number"
+                          type="tel"
+                          value={userForm.contact_number}
+                          onChange={handleUserFormChange}
+                          required
+                        />
+                        <InputField
+                          label="Email"
+                          name="email"
+                          type="email"
+                          value={userForm.email}
+                          onChange={handleUserFormChange}
+                          required
+                        />
+
+                        {/* password is autogenerated and sent via SMS */}
+                        <p className="text-xs text-slate-400 mb-4">
+                          A temporary password will be generated automatically
+                          and delivered to the new SWMO Head by SMS. They will
+                          be required to change it when they first log in.
+                        </p>
+                        <div className="flex justify-end mt-4">
+                          <Button
+                            type="submit"
+                            className="h-auto"
+                            disabled={!!activeSWMOHead}
+                          >
+                            Add User
+                          </Button>
+                        </div>
+                      </fieldset>
+                    </form>
+                  </div>
+                </div>
+
+                {/* SWMO Head list */}
+                <div className="dashboard-section overflow-hidden">
+                  <div className="relative z-10">
+                    <h3 className="text-lg font-bold mb-3 text-slate-100">
+                      SWMO Head Accounts
+                    </h3>
+                    {loadingSWMOHeads ? (
+                      <TruckLoader />
+                    ) : (
+                      <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-950">
+                        <table className="min-w-full text-sm">
+                          <thead className="bg-slate-800 text-slate-200 sticky top-0 z-10">
+                            <tr>
+                              <th className="px-3 py-2 text-left text-xs font-medium">
+                                Name
+                              </th>
+                              <th className="px-3 py-2 text-left text-xs font-medium hidden sm:table-cell">
+                                Email
+                              </th>
+                              <th className="px-3 py-2 text-left text-xs font-medium">
+                                Status
+                              </th>
+                              <th className="px-3 py-2 text-left text-xs font-medium">
+                                Action
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {swmoHeads.map((user) => (
+                              <tr
+                                key={user.user_id}
+                                className="border-t border-slate-800 hover:bg-slate-800 transition-colors"
+                              >
+                                <td className="px-3 py-2">
+                                  {user.first_name} {user.last_name}
+                                  <div className="sm:hidden text-xs text-slate-400">
+                                    {user.email}
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2 hidden sm:table-cell">
+                                  {user.email}
+                                </td>
+                                <td className="px-3 py-2 capitalize">
+                                  {user.status}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {user.status.toLowerCase() === "active" ? (
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() =>
+                                        handleDeactivateSWMOHead(user.user_id)
+                                      }
+                                    >
+                                      Deactivate
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      onClick={() =>
+                                        handleActivateSWMOHead(user.user_id)
+                                      }
+                                    >
+                                      Activate
+                                    </Button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeTab === "generateReports" && (
               <section className="space-y-6">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
-                      Dashboard
+                      Analytics
                     </p>
                     <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
-                      Track-the-Truck Overview
+                      Generate Reports
                     </h1>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      onClick={() => setStatsVisible(!statsVisible)}
-                      variant="outline"
-                      className="h-auto border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
-                    >
-                      {statsVisible ? "Hide Stats" : "Show Stats"}
-                    </Button>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                      Live
-                    </span>
-                  </div>
                 </div>
 
-                {/* Collapsible Stats Section */}
-                {statsVisible && (
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    {summaryCards.map((card, idx) => (
-                      <div
-                        key={idx}
-                        className="rounded-2xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-xl shadow-black/40"
-                        role="region"
-                        aria-label={card.label}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-slate-400 text-sm">
-                              {card.label}
-                            </p>
-                            <h3 className="text-2xl font-bold text-slate-100">
-                              {card.count}
-                            </h3>
-                            <p className="text-sm text-emerald-400 font-medium">
-                              ↑ Active
-                            </p>
-                          </div>
-                          <div className="bg-emerald-500/15 text-emerald-300 p-3 rounded-full text-xl">
-                            {card.icon}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => setActiveReportOption("wasteCollection")}
+                    variant={
+                      activeReportOption === "wasteCollection"
+                        ? "default"
+                        : "outline"
+                    }
+                    className={
+                      activeReportOption === "wasteCollection"
+                        ? ""
+                        : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                    }
+                  >
+                    📊 Waste Collection
+                  </Button>
+                  <Button
+                    onClick={() => setActiveReportOption("barangayConcerns")}
+                    variant={
+                      activeReportOption === "barangayConcerns"
+                        ? "default"
+                        : "outline"
+                    }
+                    className={
+                      activeReportOption === "barangayConcerns"
+                        ? ""
+                        : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                    }
+                  >
+                    🚩 Barangay Concerns
+                  </Button>
+                </div>
+
+                {activeReportOption === "wasteCollection" && (
+                  <ReportsAnalytics />
                 )}
 
-                {/* Map Section with Toggle Button */}
-                <section>
-                  <div className="dashboard-section overflow-hidden">
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-xl font-bold text-slate-100">
-                        Live Truck Tracking
-                      </h2>
-                      <div className="flex items-center gap-2">
-                        <span className="px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-400 text-sm font-medium">
-                          🟢 Live
-                        </span>
-                      </div>
+                {activeReportOption === "barangayConcerns" && (
+                  <>
+                    <div className="mb-4">
+                      <Label className="text-xs font-semibold text-slate-100">
+                        Select Barangay
+                      </Label>
+                      <select
+                        className="mt-1 block w-full rounded-md bg-slate-900/80 border border-slate-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        value={reportBarangayId}
+                        onChange={(e) => setReportBarangayId(e.target.value)}
+                      >
+                        <option value="">-- choose barangay --</option>
+                        {barangayOptions.map((b) => (
+                          <option key={b.value} value={String(b.value)}>
+                            {b.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px]">
-                      <LeafletMap />
-                    </div>
-                  </div>
-                </section>
+                    {reportBarangayId ? (
+                      <BarangayConcernsAnalytics
+                        barangayId={Number(reportBarangayId) || undefined}
+                      />
+                    ) : (
+                      <p className="text-xs text-slate-400">
+                        Please select a barangay to view the chart.
+                      </p>
+                    )}
+                  </>
+                )}
               </section>
-            </>
-          )}
-          {/* INCIDENT REPORTS */}
-          {activeTab === "incidentReports" && (
-            <div className="space-y-6">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <h2 className="text-2xl font-bold text-slate-100">
-                  Community Reports
-                </h2>
-              </div>
+            )}
 
-              <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 shadow-xl shadow-black/40">
-                <div className="p-5 md:p-6 space-y-4">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex flex-wrap gap-2">
-                      {incidentStatusTabs.map((tab) => (
-                        <button
-                          key={tab}
-                          type="button"
-                          onClick={() => setReportStatusFilter(tab)}
-                          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
-                            reportStatusFilter === tab
-                              ? "bg-emerald-500/15 text-emerald-200 border border-emerald-500/30"
-                              : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                          }`}
-                        >
-                          {tab}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="text"
-                        value={reportSearch}
-                        onChange={(e) => setReportSearch(e.target.value)}
-                        placeholder="Search reports..."
-                        className="w-full md:w-64"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowReportFilters(!showReportFilters)}
-                        className="inline-flex items-center justify-center rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700"
-                        aria-label="Toggle filters"
-                      >
-                        ▼
-                      </button>
-                    </div>
-                  </div>
-
-                  {showReportFilters && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium text-slate-400">
-                          Barangay
-                        </Label>
-                        <Select
-                          value={selectedBarangay}
-                          onValueChange={(value: string) =>
-                            setSelectedBarangay(value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Barangays</SelectItem>
-                            {barangayOptions.map((barangay) => (
-                              <SelectItem
-                                key={barangay.value}
-                                value={barangay.value}
-                              >
-                                {barangay.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium text-slate-400">
-                          Sort By
-                        </Label>
-                        <Select
-                          value={sortBy}
-                          onValueChange={(value: string) => setSortBy(value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="date_desc">
-                              Date (Newest First)
-                            </SelectItem>
-                            <SelectItem value="date_asc">
-                              Date (Oldest First)
-                            </SelectItem>
-                            <SelectItem value="status">Status</SelectItem>
-                            <SelectItem value="barangay">Barangay</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
-
-                  {reportsError && (
-                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                      {reportsError}
-                    </div>
-                  )}
-
-                  {loadingReports && <TruckLoader />}
-
-                  {!loadingReports && filteredIncidentReports.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-slate-800 px-4 py-8 text-center text-sm text-slate-400">
-                      No reports match the selected filters.
-                    </div>
-                  )}
-
-                  {!loadingReports && filteredIncidentReports.length > 0 && (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-slate-800">
-                        <thead className="bg-slate-950/60">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Report ID
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Type
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Location
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Status
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Date
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800 bg-slate-900/40">
-                          {pagedIncidentReports.map((report) => (
-                            <tr key={report.report_id}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-100">
-                                RP-{report.report_id}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
-                                {report.description || "Untitled"}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
-                                {report.location}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
-                                {report.current_status}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
-                                {report.date_submitted
-                                  ? new Date(
-                                      report.date_submitted,
-                                    ).toLocaleString()
-                                  : "N/A"}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedReport(report);
-                                      setShowReportModal(true);
-                                    }}
-                                  >
-                                    View
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleViewHistory(report)}
-                                  >
-                                    History
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {totalReportPages > 1 && (
-                    <div className="flex justify-center items-center gap-3 mt-4">
-                      <Button
-                        disabled={currentReportPage === 1}
-                        onClick={() => setReportPage(currentReportPage - 1)}
-                        variant="outline"
-                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
-                      >
-                        Previous
-                      </Button>
-                      <span className="text-xs text-slate-300">
-                        Page {currentReportPage} of {totalReportPages} (
-                        {filteredIncidentReports.length} total)
-                      </span>
-                      <Button
-                        disabled={currentReportPage === totalReportPages}
-                        onClick={() => setReportPage(currentReportPage + 1)}
-                        variant="outline"
-                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* History Modal */}
-          {historyModal && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
-              onClick={() => setHistoryModal(null)}
-            >
-              <div
-                className="relative w-full max-w-3xl max-h-[75vh] overflow-y-auto rounded-lg border border-slate-800 bg-slate-900 p-6 shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-start justify-between mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-slate-800 gap-3">
-                  <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-                    <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-blue-600/20 border border-blue-600/30 flex-shrink-0">
-                      <span className="text-lg sm:text-2xl">🕘</span>
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-base sm:text-lg font-bold text-slate-100 truncate">
-                        History: {historyModal.title}
-                      </h3>
-                      <p className="text-xs text-slate-400 truncate">
-                        Most recent updates first
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setHistoryModal(null)}
-                    className="rounded-lg bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700 transition-colors flex-shrink-0 text-sm"
-                  >
-                    ✖️
-                  </button>
-                </div>
-
-                {historyModal.entries.length === 0 ? (
-                  <div className="rounded-lg border border-slate-800/70 bg-slate-900/80 p-6 text-sm text-slate-300">
-                    {historyModal.message || "No history records found."}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {historyModal.entries.map((entry, index) => (
-                      <div
-                        key={index}
-                        className="rounded-lg border border-slate-800/70 bg-slate-900/80 p-4"
-                      >
-                        <div className="flex items-center justify-between text-xs text-slate-400">
-                          <span>{entry.status}</span>
-                          <span>{entry.time}</span>
-                        </div>
-                        <p className="mt-2 text-sm text-slate-200 whitespace-pre-wrap">
-                          {entry.remarks || "No remarks."}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex justify-end border-t border-slate-800 px-5 py-4">
-                  <button
-                    type="button"
-                    onClick={() => setHistoryModal(null)}
-                    className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Report Details Modal */}
-          {showReportModal && selectedReport && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
-              onClick={() => setShowReportModal(false)}
-            >
-              <div
-                className="relative w-full max-w-3xl max-h-[75vh] overflow-y-auto rounded-lg border border-slate-800 bg-slate-900 p-6 shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-start justify-between mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-slate-800 gap-3">
-                  <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-                    <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg bg-red-600/20 border border-red-600/30 flex-shrink-0">
-                      <span className="text-lg sm:text-2xl">🚨</span>
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-base sm:text-lg font-bold text-slate-100 truncate">
-                        Incident Report Details
-                      </h3>
-                      <p className="text-xs text-slate-400 truncate">
-                        ID: #{String(selectedReport.report_id).slice(0, 12)}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowReportModal(false)}
-                    className="rounded-lg bg-slate-800 px-3 py-2 text-slate-300 hover:bg-slate-700 transition-colors flex-shrink-0 text-sm"
-                  >
-                    ✖️
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
-                      <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
-                        Status
-                      </p>
-                      <span
-                        className={`inline-flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium ${
-                          selectedReport.current_status === "Resolved"
-                            ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30"
-                            : selectedReport.current_status === "Ongoing"
-                              ? "bg-blue-500/10 text-blue-300 border border-blue-500/30"
-                              : "bg-amber-500/10 text-amber-300 border border-amber-500/30"
-                        }`}
-                      >
-                        {selectedReport.current_status || "Pending"}
-                      </span>
-                    </div>
-
-                    <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
-                      <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
-                        Barangay
-                      </p>
-                      <p className="text-xs text-slate-200">
-                        {selectedReport.barangay?.barangay_name || "Unknown"}
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
-                      <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
-                        Location
-                      </p>
-                      <p className="text-xs text-slate-200">
-                        {selectedReport.location || "N/A"}
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
-                      <p className="text-[10px] font-medium text-slate-400 mb-1 uppercase">
-                        Date Submitted
-                      </p>
-                      <p className="text-xs text-slate-200">
-                        {new Date(
-                          selectedReport.date_submitted,
-                        ).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                  </div>
-
-                  {selectedReport.landmark && (
-                    <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
-                      <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
-                        Landmark
-                      </p>
-                      <p className="text-xs text-slate-200">
-                        {selectedReport.landmark}
-                      </p>
-                    </div>
-                  )}
-
-                  {selectedReport.description && (
-                    <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
-                      <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
-                        Description
-                      </p>
-                      <p className="text-xs text-slate-200 whitespace-pre-wrap">
-                        {selectedReport.description}
-                      </p>
-                    </div>
-                  )}
-
-                  {selectedReport.image_url && (
-                    <div className="p-4 rounded-lg bg-slate-800 border border-slate-700">
-                      <p className="text-[10px] font-medium text-slate-400 mb-2 uppercase">
-                        Attached Image
-                      </p>
-                      <img
-                        src={selectedReport.image_url}
-                        alt="Report evidence"
-                        className="w-full rounded-lg border border-slate-700"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-end border-t border-slate-800 px-5 py-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowReportModal(false)}
-                    className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-          {/* USER ADMIN – Add SWMO Head + list, styled */}
-          {activeTab === "manageUsers" && (
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Form */}
-              <div className="dashboard-section overflow-hidden">
+            {/* MANAGE ACCOUNT – card style */}
+            {activeTab === "manageAccount" && (
+              <div className="dashboard-section max-w-2xl mx-auto">
                 <div className="relative z-10">
-                  <h2 className="text-lg font-bold mb-2 text-slate-100">
-                    Add New SWMO Head
-                  </h2>
-                  <p className="text-xs text-slate-400 mb-4">
-                    Create an account for the Solid Waste Management Office
-                    head.
-                  </p>
-                  {activeSWMOHead && (
-                    <div className="px-3 py-2 mb-4 bg-yellow-500/10 text-yellow-300 border border-yellow-500/30 rounded-lg text-xs">
-                      An SWMO Head account (
-                      <strong>{activeSWMOHead.email}</strong>) is currently
-                      active. Deactivate it first to create a new one.
-                    </div>
-                  )}
-                  <form
-                    onSubmit={handleAddUser}
-                    className="space-y-2"
-                    noValidate
-                  >
-                    <fieldset
-                      disabled={!!activeSWMOHead}
-                      className="disabled:opacity-50"
-                    >
-                      {formError && (
-                        <div className="px-3 py-2 bg-red-500/10 text-red-300 border border-red-500/30 rounded-lg text-xs">
-                          {formError}
-                        </div>
-                      )}
-                      {formSuccess && (
-                        <div className="px-3 py-2 bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs">
-                          {formSuccess}
-                        </div>
-                      )}
-                      <InputField
-                        label="First Name"
-                        name="first_name"
-                        type="text"
-                        value={userForm.first_name}
-                        onChange={handleUserFormChange}
-                        required
-                      />
-                      <InputField
-                        label="Last Name"
-                        name="last_name"
-                        type="text"
-                        value={userForm.last_name}
-                        onChange={handleUserFormChange}
-                        required
-                      />
-                      <InputField
-                        label="Contact Number"
-                        name="contact_number"
-                        type="tel"
-                        value={userForm.contact_number}
-                        onChange={handleUserFormChange}
-                        required
-                      />
-                      <InputField
-                        label="Email"
-                        name="email"
-                        type="email"
-                        value={userForm.email}
-                        onChange={handleUserFormChange}
-                        required
-                      />
-
-                      {/* password is autogenerated and sent via SMS */}
-                      <p className="text-xs text-slate-400 mb-4">
-                        A temporary password will be generated automatically and
-                        delivered to the new SWMO Head by SMS. They will be
-                        required to change it when they first log in.
-                      </p>
-                      <div className="flex justify-end mt-4">
-                        <Button
-                          type="submit"
-                          className="h-auto"
-                          disabled={!!activeSWMOHead}
-                        >
-                          Add User
-                        </Button>
-                      </div>
-                    </fieldset>
-                  </form>
+                  <ManageAccountSection
+                    form={manageAccountForm}
+                    loading={manageAccountLoading}
+                    error={manageAccountError}
+                    success={manageAccountSuccess}
+                    onChange={handleManageAccountFormChange}
+                    onSubmit={handleManageAccountSubmit}
+                  />
                 </div>
               </div>
-
-              {/* SWMO Head list */}
-              <div className="dashboard-section overflow-hidden">
-                <div className="relative z-10">
-                  <h3 className="text-lg font-bold mb-3 text-slate-100">
-                    SWMO Head Accounts
-                  </h3>
-                  {loadingSWMOHeads ? (
-                    <TruckLoader />
-                  ) : (
-                    <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-950">
-                      <table className="min-w-full text-sm">
-                        <thead className="bg-slate-800 text-slate-200 sticky top-0 z-10">
-                          <tr>
-                            <th className="px-3 py-2 text-left text-xs font-medium">
-                              Name
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium hidden sm:table-cell">
-                              Email
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium">
-                              Status
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium">
-                              Action
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {swmoHeads.map((user) => (
-                            <tr
-                              key={user.user_id}
-                              className="border-t border-slate-800 hover:bg-slate-800 transition-colors"
-                            >
-                              <td className="px-3 py-2">
-                                {user.first_name} {user.last_name}
-                                <div className="sm:hidden text-xs text-slate-400">
-                                  {user.email}
-                                </div>
-                              </td>
-                              <td className="px-3 py-2 hidden sm:table-cell">
-                                {user.email}
-                              </td>
-                              <td className="px-3 py-2 capitalize">
-                                {user.status}
-                              </td>
-                              <td className="px-3 py-2">
-                                {user.status.toLowerCase() === "active" ? (
-                                  <Button
-                                    variant="destructive"
-                                    onClick={() =>
-                                      openConfirmModal(
-                                        "deactivate",
-                                        user.user_id,
-                                        `${user.first_name} ${user.last_name}`,
-                                      )
-                                    }
-                                  >
-                                    Deactivate
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    onClick={() =>
-                                      openConfirmModal(
-                                        "activate",
-                                        user.user_id,
-                                        `${user.first_name} ${user.last_name}`,
-                                      )
-                                    }
-                                  >
-                                    Activate
-                                  </Button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
-          )}
-
-          {activeTab === "generateReports" && (
-            <section className="space-y-6">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
-                    Analytics
-                  </p>
-                  <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
-                    Generate Reports
-                  </h1>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  onClick={() => setActiveReportOption("wasteCollection")}
-                  variant={
-                    activeReportOption === "wasteCollection"
-                      ? "default"
-                      : "outline"
-                  }
-                  className={
-                    activeReportOption === "wasteCollection"
-                      ? ""
-                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
-                  }
-                >
-                  📊 Waste Collection
-                </Button>
-                <Button
-                  onClick={() => setActiveReportOption("barangayConcerns")}
-                  variant={
-                    activeReportOption === "barangayConcerns"
-                      ? "default"
-                      : "outline"
-                  }
-                  className={
-                    activeReportOption === "barangayConcerns"
-                      ? ""
-                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
-                  }
-                >
-                  🚩 Barangay Concerns
-                </Button>
-              </div>
-
-              {activeReportOption === "wasteCollection" && <ReportsAnalytics />}
-
-              {activeReportOption === "barangayConcerns" && (
-                <>
-                  <div className="mb-4">
-                    <Label className="text-xs font-semibold text-slate-100">
-                      Select Barangay
-                    </Label>
-                    <select
-                      className="mt-1 block w-full rounded-md bg-slate-900/80 border border-slate-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      value={reportBarangayId}
-                      onChange={(e) => setReportBarangayId(e.target.value)}
-                    >
-                      <option value="">-- choose barangay --</option>
-                      {barangayOptions.map((b) => (
-                        <option key={b.value} value={String(b.value)}>
-                          {b.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {reportBarangayId ? (
-                    <BarangayConcernsAnalytics
-                      barangayId={Number(reportBarangayId) || undefined}
-                    />
-                  ) : (
-                    <p className="text-xs text-slate-400">
-                      Please select a barangay to view the chart.
-                    </p>
-                  )}
-                </>
-              )}
-            </section>
-          )}
-
-          {/* MANAGE ACCOUNT – card style */}
-          {activeTab === "manageAccount" && (
-            <div className="dashboard-section max-w-2xl mx-auto">
-              <div className="relative z-10">
-                <ManageAccountSection
-                  form={manageAccountForm}
-                  loading={manageAccountLoading}
-                  error={manageAccountError}
-                  success={manageAccountSuccess}
-                  onChange={handleManageAccountFormChange}
-                  onSubmit={handleManageAccountSubmit}
-                />
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Confirmation Modal */}
           {confirmModalOpen && (

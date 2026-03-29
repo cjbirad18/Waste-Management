@@ -2697,6 +2697,29 @@ export default function GCPDashboard() {
     | "assignedTasks"
     | "manageAccount"
   >("dashboard");
+  const [tabFadeIn, setTabFadeIn] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedTab = localStorage.getItem("gcp_active_tab");
+    if (
+      storedTab === "dashboard" ||
+      storedTab === "userAdmin" ||
+      storedTab === "viewSchedule" ||
+      storedTab === "assignedTasks" ||
+      storedTab === "manageAccount"
+    ) {
+      setActiveTab(storedTab);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("gcp_active_tab", activeTab);
+    setTabFadeIn(false);
+    const timeoutId = window.setTimeout(() => setTabFadeIn(true), 40);
+    return () => window.clearTimeout(timeoutId);
+  }, [activeTab]);
 
   useEffect(() => {
     async function fetchDisplayName() {
@@ -3047,111 +3070,118 @@ export default function GCPDashboard() {
 
         {/* Main content (unchanged components) */}
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-10 py-10 space-y-10 relative z-10 md:ml-64 bg-slate-900/40">
-          {activeTab === "dashboard" && (
-            <>
-              <section className="space-y-6">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.32em] text-emerald-400/90 font-semibold">
-                      Dashboard
-                    </p>
-                    <h1 className="text-2xl font-semibold text-slate-50 md:text-3xl tracking-tight">
-                      Track-the-Truck Overview
-                    </h1>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setStatsVisible(!statsVisible)}
-                      className="h-auto border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
-                    >
-                      {statsVisible ? "Hide Stats" : "Show Stats"}
-                    </Button>
-                    <Badge className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold border border-emerald-500/40 shadow-sm shadow-emerald-900/30">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                      Live
-                    </Badge>
-                  </div>
-                </div>
-
-                {statsVisible && (
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    {summaryCards.map((card) => (
-                      <Card
-                        key={card.label}
-                        className="dashboard-card"
-                        role="region"
-                        aria-label={card.label}
+          <div
+            className={`transition-opacity duration-300 ease-in-out ${
+              tabFadeIn ? "opacity-100" : "opacity-0"
+            }`}
+            key={activeTab}
+          >
+            {activeTab === "dashboard" && (
+              <>
+                <section className="space-y-6">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.32em] text-emerald-400/90 font-semibold">
+                        Dashboard
+                      </p>
+                      <h1 className="text-2xl font-semibold text-slate-50 md:text-3xl tracking-tight">
+                        Track-the-Truck Overview
+                      </h1>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setStatsVisible(!statsVisible)}
+                        className="h-auto border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
                       >
-                        <CardContent className="relative p-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-slate-400 text-sm">
-                                {card.label}
-                              </p>
-                              <CardTitle className="text-3xl font-semibold text-slate-50 tracking-tight">
-                                {card.count}
-                              </CardTitle>
-                              <p className={`text-sm ${card.trendClass}`}>
-                                {card.trend}
-                              </p>
-                            </div>
-                            <div
-                              className={`${card.iconBg} ${card.iconColor} p-3 rounded-full text-xl ring-1 ring-white/10 shadow-lg shadow-emerald-900/30`}
-                            >
-                              {card.icon}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section>
-                <div className="relative bg-slate-900/70 border border-emerald-900/40 rounded-2xl p-6 overflow-hidden shadow-2xl shadow-emerald-900/20">
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-sky-500/5 opacity-70 pointer-events-none" />
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-slate-100">
-                      Live Truck Tracking
-                    </h2>
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-300 text-sm font-medium border border-emerald-500/30">
-                        🟢 Live
-                      </span>
+                        {statsVisible ? "Hide Stats" : "Show Stats"}
+                      </Button>
+                      <Badge className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold border border-emerald-500/40 shadow-sm shadow-emerald-900/30">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        Live
+                      </Badge>
                     </div>
                   </div>
-                  <div className="relative rounded-xl overflow-hidden border border-slate-800/80 bg-slate-950 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px] ring-1 ring-emerald-500/10">
-                    <LeafletMap />
+
+                  {statsVisible && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                      {summaryCards.map((card) => (
+                        <Card
+                          key={card.label}
+                          className="dashboard-card"
+                          role="region"
+                          aria-label={card.label}
+                        >
+                          <CardContent className="relative p-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-slate-400 text-sm">
+                                  {card.label}
+                                </p>
+                                <CardTitle className="text-3xl font-semibold text-slate-50 tracking-tight">
+                                  {card.count}
+                                </CardTitle>
+                                <p className={`text-sm ${card.trendClass}`}>
+                                  {card.trend}
+                                </p>
+                              </div>
+                              <div
+                                className={`${card.iconBg} ${card.iconColor} p-3 rounded-full text-xl ring-1 ring-white/10 shadow-lg shadow-emerald-900/30`}
+                              >
+                                {card.icon}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                <section>
+                  <div className="relative bg-slate-900/70 border border-emerald-900/40 rounded-2xl p-6 overflow-hidden shadow-2xl shadow-emerald-900/20">
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-sky-500/5 opacity-70 pointer-events-none" />
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-xl font-bold text-slate-100">
+                        Live Truck Tracking
+                      </h2>
+                      <div className="flex items-center gap-2">
+                        <span className="px-3 py-2 rounded-lg bg-emerald-600/20 text-emerald-300 text-sm font-medium border border-emerald-500/30">
+                          🟢 Live
+                        </span>
+                      </div>
+                    </div>
+                    <div className="relative rounded-xl overflow-hidden border border-slate-800/80 bg-slate-950 h-[340px] sm:h-[420px] md:h-[520px] lg:h-[600px] ring-1 ring-emerald-500/10">
+                      <LeafletMap />
+                    </div>
                   </div>
+                </section>
+              </>
+            )}
+
+            <GCPCollectionMonitor />
+
+            {activeTab === "viewSchedule" && <GCPScheduleSection />}
+
+            {activeTab === "assignedTasks" && <GCPAssignedTasksSection />}
+
+            {activeTab === "manageAccount" && (
+              <div className="dashboard-section max-w-2xl mx-auto">
+                <div className="dashboard-section-glow" />
+                <div className="relative z-10">
+                  <ManageAccountSection
+                    form={manageAccountForm}
+                    loading={manageAccountLoading}
+                    error={manageAccountError}
+                    success={manageAccountSuccess}
+                    onChange={handleManageAccountFormChange}
+                    onSubmit={handleManageAccountSubmit}
+                  />
                 </div>
-              </section>
-            </>
-          )}
-
-          <GCPCollectionMonitor />
-
-          {activeTab === "viewSchedule" && <GCPScheduleSection />}
-
-          {activeTab === "assignedTasks" && <GCPAssignedTasksSection />}
-
-          {activeTab === "manageAccount" && (
-            <div className="dashboard-section max-w-2xl mx-auto">
-              <div className="dashboard-section-glow" />
-              <div className="relative z-10">
-                <ManageAccountSection
-                  form={manageAccountForm}
-                  loading={manageAccountLoading}
-                  error={manageAccountError}
-                  success={manageAccountSuccess}
-                  onChange={handleManageAccountFormChange}
-                  onSubmit={handleManageAccountSubmit}
-                />
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </main>
       </div>
     </div>

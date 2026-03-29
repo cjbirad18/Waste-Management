@@ -375,6 +375,32 @@ export default function BWMCdashboard() {
     | "generateReports"
     | "manageAccount"
   >("dashboard");
+  const [tabFadeIn, setTabFadeIn] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const persisted = localStorage.getItem("bwmc_active_tab");
+    if (
+      persisted === "dashboard" ||
+      persisted === "viewReports" ||
+      persisted === "schedules" ||
+      persisted === "pendingAccounts" ||
+      persisted === "processedAccounts" ||
+      persisted === "reports" ||
+      persisted === "generateReports" ||
+      persisted === "manageAccount"
+    ) {
+      setActiveTab(persisted);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("bwmc_active_tab", activeTab);
+    setTabFadeIn(false);
+    const timeoutId = window.setTimeout(() => setTabFadeIn(true), 40);
+    return () => window.clearTimeout(timeoutId);
+  }, [activeTab]);
 
   // Manage Account form and states
   const [hasLoadedManageAccount, setHasLoadedManageAccount] = useState(false);
@@ -2782,485 +2808,628 @@ export default function BWMCdashboard() {
 
         {/* Main content – same paddings, structure as SWMO */}
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-10 py-10 space-y-10 relative z-10 md:ml-64 bg-slate-900/40">
-          {/* DASHBOARD */}
-          {activeTab === "dashboard" && (
-            <>
-              <section className="space-y-6">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
-                      Dashboard
-                    </p>
-                    <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
-                      Track-the-Truck Overview
-                    </h1>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setStatsVisible(!statsVisible)}
-                      className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
-                    >
-                      {statsVisible ? "Hide Stats" : "Show Stats"}
-                    </Button>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                      Live
-                    </span>
-                  </div>
-                </div>
-
-                {statsVisible && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                    {summaryCards.map((card) => (
-                      <div
-                        key={card.label}
-                        className="rounded-2xl border-2 border-gray-700 bg-slate-900/80 p-6 shadow-xl shadow-black/40"
-                        role="region"
-                        aria-label={card.label}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-slate-400 text-sm">
-                              {card.label}
-                            </p>
-                            <h3 className="text-2xl font-bold text-slate-100">
-                              {card.count}
-                            </h3>
-                            <p className={`text-sm ${card.trendClass}`}>
-                              {card.trend}
-                            </p>
-                          </div>
-                          <div
-                            className={`${card.iconBg} ${card.iconColor} p-3 rounded-full text-xl`}
-                          >
-                            {card.icon}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              {/* Delayed Collections Alert Section */}
-              {delayedCollections.length > 0 && (
-                <section className="dashboard-section">
-                  <div className="dashboard-section-glow" />
-                  <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <h2 className="text-2xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent drop-shadow-lg">
-                          ⚠️ Delayed Collections
-                        </h2>
-                        <p className="text-sm text-slate-400 mt-1">
-                          Collections past their scheduled time
-                        </p>
-                      </div>
-                      <Button
-                        onClick={async () => {
-                          if (!currentUser?.barangay?.barangay_id) return;
-                          setSendingSMS(true);
-                          try {
-                            const delayed =
-                              await getDelayedCollectionsForBarangay(
-                                currentUser.barangay.barangay_id,
-                              );
-                            setDelayedCollections(delayed);
-                            setDashboardCounts((prev) => ({
-                              ...prev,
-                              delayedCollections: delayed.length,
-                            }));
-                          } catch (error) {
-                            console.error("Error refreshing delays:", error);
-                          } finally {
-                            setSendingSMS(false);
-                          }
-                        }}
-                        variant="secondary"
-                        className="h-auto"
-                        disabled={loadingDelays}
-                      >
-                        🔄 Refresh
-                      </Button>
+          <div
+            className={`transition-opacity duration-300 ease-in-out ${
+              tabFadeIn ? "opacity-100" : "opacity-0"
+            }`}
+            key={activeTab}
+          >
+            {/* DASHBOARD */}
+            {activeTab === "dashboard" && (
+              <>
+                <section className="space-y-6">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
+                        Dashboard
+                      </p>
+                      <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">
+                        Track-the-Truck Overview
+                      </h1>
                     </div>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => setStatsVisible(!statsVisible)}
+                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                      >
+                        {statsVisible ? "Hide Stats" : "Show Stats"}
+                      </Button>
+                      <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-2 text-xs font-semibold">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        Live
+                      </span>
+                    </div>
+                  </div>
 
-                    <div className="space-y-4">
-                      {delayedCollections.map((delayed, idx) => {
-                        const delayStatus = getDelayStatusColor(
-                          delayed.delay_minutes,
-                        );
-                        return (
-                          <div
-                            key={`${delayed.schedule_id}-${idx}`}
-                            className="rounded-xl border border-red-800/60 bg-slate-900/80 p-4 shadow-lg"
-                          >
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <h3 className="text-lg font-semibold text-slate-100">
-                                    {delayed.barangay_name}
-                                  </h3>
-                                  <span
-                                    className={`px-2 py-1 rounded text-xs font-semibold ${delayStatus.bg} ${delayStatus.text}`}
-                                  >
-                                    {delayStatus.label}
-                                  </span>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-slate-300">
-                                  <p>
-                                    <span className="text-slate-500">
-                                      Scheduled:
-                                    </span>{" "}
-                                    {delayed.scheduled_date} at{" "}
-                                    {delayed.scheduled_time}
-                                  </p>
-                                  <p>
-                                    <span className="text-slate-500">
-                                      Delay:
-                                    </span>{" "}
-                                    <span className="text-red-400 font-semibold">
-                                      {delayed.delay_minutes} minutes
-                                    </span>
-                                  </p>
-                                  <p>
-                                    <span className="text-slate-500">GCP:</span>{" "}
-                                    {delayed.gcp_name}
-                                  </p>
-                                  <p>
-                                    <span className="text-slate-500">
-                                      Status:
-                                    </span>{" "}
-                                    {delayed.status}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex flex-col gap-2">
-                                <Button
-                                  onClick={async () => {
-                                    // Notify residents in the barangay
-                                    if (
-                                      !confirm(
-                                        `Send delay notification to residents in ${delayed.barangay_name}?`,
-                                      )
-                                    )
-                                      return;
-
-                                    setSendingSMS(true);
-                                    try {
-                                      // Fetch residents in this barangay
-                                      const { data: residents, error } =
-                                        await supabase
-                                          .from("users")
-                                          .select(
-                                            "first_name, last_name, contact_number",
-                                          )
-                                          .eq("role", "Resident")
-                                          .eq(
-                                            "barangay_id",
-                                            delayed.barangay_id,
-                                          )
-                                          .eq("status", "approved");
-
-                                      if (error) throw error;
-
-                                      // Send SMS to each resident
-                                      for (const resident of residents || []) {
-                                        await notifyCollectionDelay(
-                                          {
-                                            name: `${resident.first_name} ${resident.last_name}`,
-                                            phoneNumber:
-                                              resident.contact_number,
-                                          },
-                                          delayed.barangay_name,
-                                          delayed.delay_minutes,
-                                        );
-                                      }
-
-                                      alert(
-                                        `Delay notifications sent to ${residents?.length || 0} residents`,
-                                      );
-                                    } catch (error) {
-                                      console.error(
-                                        "Error sending notifications:",
-                                        error,
-                                      );
-                                      alert(
-                                        "Failed to send notifications. Check console for details.",
-                                      );
-                                    } finally {
-                                      setSendingSMS(false);
-                                    }
-                                  }}
-                                  variant="outline"
-                                  className="text-sm h-auto"
-                                  disabled={sendingSMS}
-                                >
-                                  📱 Notify Residents
-                                </Button>
-                              </div>
+                  {statsVisible && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                      {summaryCards.map((card) => (
+                        <div
+                          key={card.label}
+                          className="rounded-2xl border-2 border-gray-700 bg-slate-900/80 p-6 shadow-xl shadow-black/40"
+                          role="region"
+                          aria-label={card.label}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-slate-400 text-sm">
+                                {card.label}
+                              </p>
+                              <h3 className="text-2xl font-bold text-slate-100">
+                                {card.count}
+                              </h3>
+                              <p className={`text-sm ${card.trendClass}`}>
+                                {card.trend}
+                              </p>
+                            </div>
+                            <div
+                              className={`${card.iconBg} ${card.iconColor} p-3 rounded-full text-xl`}
+                            >
+                              {card.icon}
                             </div>
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                {/* Delayed Collections Alert Section */}
+                {delayedCollections.length > 0 && (
+                  <section className="dashboard-section">
+                    <div className="dashboard-section-glow" />
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-6">
+                        <div>
+                          <h2 className="text-2xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent drop-shadow-lg">
+                            ⚠️ Delayed Collections
+                          </h2>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Collections past their scheduled time
+                          </p>
+                        </div>
+                        <Button
+                          onClick={async () => {
+                            if (!currentUser?.barangay?.barangay_id) return;
+                            setSendingSMS(true);
+                            try {
+                              const delayed =
+                                await getDelayedCollectionsForBarangay(
+                                  currentUser.barangay.barangay_id,
+                                );
+                              setDelayedCollections(delayed);
+                              setDashboardCounts((prev) => ({
+                                ...prev,
+                                delayedCollections: delayed.length,
+                              }));
+                            } catch (error) {
+                              console.error("Error refreshing delays:", error);
+                            } finally {
+                              setSendingSMS(false);
+                            }
+                          }}
+                          variant="secondary"
+                          className="h-auto"
+                          disabled={loadingDelays}
+                        >
+                          🔄 Refresh
+                        </Button>
+                      </div>
+
+                      <div className="space-y-4">
+                        {delayedCollections.map((delayed, idx) => {
+                          const delayStatus = getDelayStatusColor(
+                            delayed.delay_minutes,
+                          );
+                          return (
+                            <div
+                              key={`${delayed.schedule_id}-${idx}`}
+                              className="rounded-xl border border-red-800/60 bg-slate-900/80 p-4 shadow-lg"
+                            >
+                              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h3 className="text-lg font-semibold text-slate-100">
+                                      {delayed.barangay_name}
+                                    </h3>
+                                    <span
+                                      className={`px-2 py-1 rounded text-xs font-semibold ${delayStatus.bg} ${delayStatus.text}`}
+                                    >
+                                      {delayStatus.label}
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-slate-300">
+                                    <p>
+                                      <span className="text-slate-500">
+                                        Scheduled:
+                                      </span>{" "}
+                                      {delayed.scheduled_date} at{" "}
+                                      {delayed.scheduled_time}
+                                    </p>
+                                    <p>
+                                      <span className="text-slate-500">
+                                        Delay:
+                                      </span>{" "}
+                                      <span className="text-red-400 font-semibold">
+                                        {delayed.delay_minutes} minutes
+                                      </span>
+                                    </p>
+                                    <p>
+                                      <span className="text-slate-500">
+                                        GCP:
+                                      </span>{" "}
+                                      {delayed.gcp_name}
+                                    </p>
+                                    <p>
+                                      <span className="text-slate-500">
+                                        Status:
+                                      </span>{" "}
+                                      {delayed.status}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                  <Button
+                                    onClick={async () => {
+                                      // Notify residents in the barangay
+                                      if (
+                                        !confirm(
+                                          `Send delay notification to residents in ${delayed.barangay_name}?`,
+                                        )
+                                      )
+                                        return;
+
+                                      setSendingSMS(true);
+                                      try {
+                                        // Fetch residents in this barangay
+                                        const { data: residents, error } =
+                                          await supabase
+                                            .from("users")
+                                            .select(
+                                              "first_name, last_name, contact_number",
+                                            )
+                                            .eq("role", "Resident")
+                                            .eq(
+                                              "barangay_id",
+                                              delayed.barangay_id,
+                                            )
+                                            .eq("status", "approved");
+
+                                        if (error) throw error;
+
+                                        // Send SMS to each resident
+                                        for (const resident of residents ||
+                                          []) {
+                                          await notifyCollectionDelay(
+                                            {
+                                              name: `${resident.first_name} ${resident.last_name}`,
+                                              phoneNumber:
+                                                resident.contact_number,
+                                            },
+                                            delayed.barangay_name,
+                                            delayed.delay_minutes,
+                                          );
+                                        }
+
+                                        alert(
+                                          `Delay notifications sent to ${residents?.length || 0} residents`,
+                                        );
+                                      } catch (error) {
+                                        console.error(
+                                          "Error sending notifications:",
+                                          error,
+                                        );
+                                        alert(
+                                          "Failed to send notifications. Check console for details.",
+                                        );
+                                      } finally {
+                                        setSendingSMS(false);
+                                      }
+                                    }}
+                                    variant="outline"
+                                    className="text-sm h-auto"
+                                    disabled={sendingSMS}
+                                  >
+                                    📱 Notify Residents
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </section>
+                )}
+
+                {/* Map Section with Toggle Button */}
+                <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
+                  <div className="dashboard-section overflow-hidden">
+                    <div className="dashboard-section-glow" />
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
+                          Live Truck Tracking{" "}
+                        </h2>
+                      </div>
+                      <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[500px] md:h-[600px] relative z-10">
+                        <LeafletMap />
+                      </div>
                     </div>
                   </div>
                 </section>
-              )}
+              </>
+            )}
 
-              {/* Map Section with Toggle Button */}
-              <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
-                <div className="dashboard-section overflow-hidden">
-                  <div className="dashboard-section-glow" />
-                  <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">
-                        Live Truck Tracking{" "}
-                      </h2>
-                    </div>
-                    <div className="rounded-2xl overflow-hidden border border-green-800/50 bg-slate-900/50 h-[500px] md:h-[600px] relative z-10">
-                      <LeafletMap />
-                    </div>
+            {activeTab === "pendingAccounts" && (
+              <section className="my-8 space-y-4 px-2 md:px-10">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div>
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent">
+                      Pending Resident Accounts
+                    </h2>
+                    <p className="text-sm md:text-base text-slate-300">
+                      Review and approve or reject new resident registrations.
+                    </p>
                   </div>
                 </div>
-              </section>
-            </>
-          )}
 
-          {activeTab === "pendingAccounts" && (
-            <section className="my-8 space-y-4 px-2 md:px-10">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div>
-                  <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent">
-                    Pending Resident Accounts
-                  </h2>
-                  <p className="text-sm md:text-base text-slate-300">
-                    Review and approve or reject new resident registrations.
-                  </p>
-                </div>
-              </div>
-
-              {loadingPending ? (
-                <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/80 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl p-6">
-                  <TruckLoader />
-                </div>
-              ) : pendingRequests.length === 0 ? (
-                <div className="mt-4 p-6 rounded-3xl border border-slate-700/80 bg-slate-900/80 text-center text-slate-300 shadow-xl shadow-slate-900/40">
-                  No pending accounts.
-                </div>
-              ) : (
-                <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl overflow-hidden">
-                  <div className="px-5 py-3 border-b border-emerald-700/60 bg-slate-900/95 flex items-center justify-between">
-                    <span className="text-emerald-200 font-semibold text-lg">
-                      Pending Accounts
-                    </span>
-                    <span className="text-sm text-emerald-300">
-                      Total {pendingRequests.length}
-                    </span>
+                {loadingPending ? (
+                  <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/80 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl p-6">
+                    <TruckLoader />
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-emerald-900/80 text-emerald-100">
-                        <tr>
-                          <th className="px-3 py-2 text-left font-semibold">
-                            Name
-                          </th>
-                          <th className="px-3 py-2 text-left font-semibold">
-                            Email
-                          </th>
-                          <th className="px-3 py-2 text-left font-semibold">
-                            Contact
-                          </th>
-                          <th className="px-3 py-2 text-left font-semibold">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pendingRequests.map((user, idx) => (
-                          <tr
-                            key={user.user_id}
-                            className={
-                              idx % 2 === 0
-                                ? "bg-slate-900/80"
-                                : "bg-slate-800/80"
-                            }
-                          >
-                            <td className="px-3 py-2 text-slate-100">
-                              {user.first_name} {user.last_name}
-                            </td>
-                            <td className="px-3 py-2 text-slate-200">
-                              {user.email}
-                            </td>
-                            <td className="px-3 py-2 text-slate-200">
-                              {user.contact_number}
-                            </td>
-                            <td className="px-3 py-2 text-slate-100">
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => {
-                                    const confirmed = window.confirm(
-                                      "Are you sure you want to APPROVE this account?",
-                                    );
-                                    if (!confirmed) return;
-                                    handleApproveReject(
-                                      user.user_id,
-                                      "approved",
-                                    );
-                                  }}
-                                  className="px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 text-xs font-semibold shadow-md shadow-emerald-600/40 hover:from-emerald-500 hover:to-teal-500"
-                                >
-                                  Approve
-                                </button>
-
-                                <button
-                                  onClick={() => {
-                                    const confirmed = window.confirm(
-                                      "Are you sure you want to REJECT this account?",
-                                    );
-                                    if (!confirmed) return;
-                                    setSelectedUserId(user.user_id);
-                                    setRejectAccountReason("");
-                                    setRejectAccountModalOpen(true);
-                                  }}
-                                  className="px-3 py-1 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 text-xs font-semibold shadow-md shadow-red-600/40 hover:from-red-500 hover:to-rose-500"
-                                >
-                                  Reject
-                                </button>
-                              </div>
-                            </td>
+                ) : pendingRequests.length === 0 ? (
+                  <div className="mt-4 p-6 rounded-3xl border border-slate-700/80 bg-slate-900/80 text-center text-slate-300 shadow-xl shadow-slate-900/40">
+                    No pending accounts.
+                  </div>
+                ) : (
+                  <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl overflow-hidden">
+                    <div className="px-5 py-3 border-b border-emerald-700/60 bg-slate-900/95 flex items-center justify-between">
+                      <span className="text-emerald-200 font-semibold text-lg">
+                        Pending Accounts
+                      </span>
+                      <span className="text-sm text-emerald-300">
+                        Total {pendingRequests.length}
+                      </span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-emerald-900/80 text-emerald-100">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-semibold">
+                              Name
+                            </th>
+                            <th className="px-3 py-2 text-left font-semibold">
+                              Email
+                            </th>
+                            <th className="px-3 py-2 text-left font-semibold">
+                              Contact
+                            </th>
+                            <th className="px-3 py-2 text-left font-semibold">
+                              Actions
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+                        </thead>
+                        <tbody>
+                          {pendingRequests.map((user, idx) => (
+                            <tr
+                              key={user.user_id}
+                              className={
+                                idx % 2 === 0
+                                  ? "bg-slate-900/80"
+                                  : "bg-slate-800/80"
+                              }
+                            >
+                              <td className="px-3 py-2 text-slate-100">
+                                {user.first_name} {user.last_name}
+                              </td>
+                              <td className="px-3 py-2 text-slate-200">
+                                {user.email}
+                              </td>
+                              <td className="px-3 py-2 text-slate-200">
+                                {user.contact_number}
+                              </td>
+                              <td className="px-3 py-2 text-slate-100">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => {
+                                      const confirmed = window.confirm(
+                                        "Are you sure you want to APPROVE this account?",
+                                      );
+                                      if (!confirmed) return;
+                                      handleApproveReject(
+                                        user.user_id,
+                                        "approved",
+                                      );
+                                    }}
+                                    className="px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-slate-50 text-xs font-semibold shadow-md shadow-emerald-600/40 hover:from-emerald-500 hover:to-teal-500"
+                                  >
+                                    Approve
+                                  </button>
 
-              {rejectAccountModalOpen && selectedUserId && (
-                <div
-                  className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center"
-                  onClick={() => setRejectAccountModalOpen(false)}
-                >
-                  <div
-                    className="relative max-w-md w-full text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-red-700/80 bg-slate-900/95"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {/* Title bar */}
-                    <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 px-4 py-2 border-b border-red-700/70">
-                      <div className="flex items-center gap-2">
-                        <span className="flex gap-1">
-                          <span className="h-2.5 w-2.5 rounded-full bg-red-500/90 shadow-sm shadow-red-900" />
-                          <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80 shadow-sm shadow-amber-900" />
-                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80 shadow-sm shadow-emerald-900" />
-                        </span>
-                        <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
-                          Reject Resident Account
-                        </span>
-                      </div>
-
-                      <button
-                        onClick={() => setRejectAccountModalOpen(false)}
-                        className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
-                        aria-label="Close"
-                      >
-                        ✕
-                      </button>
+                                  <button
+                                    onClick={() => {
+                                      const confirmed = window.confirm(
+                                        "Are you sure you want to REJECT this account?",
+                                      );
+                                      if (!confirmed) return;
+                                      setSelectedUserId(user.user_id);
+                                      setRejectAccountReason("");
+                                      setRejectAccountModalOpen(true);
+                                    }}
+                                    className="px-3 py-1 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 text-xs font-semibold shadow-md shadow-red-600/40 hover:from-red-500 hover:to-rose-500"
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
+                  </div>
+                )}
 
-                    {/* Content */}
-                    <div className="p-5">
-                      <p className="text-xs uppercase tracking-[0.18em] text-red-400/80 mb-1">
-                        REJECTION REASON
-                      </p>
-                      <p className="text-sm mb-3 text-slate-200">
-                        Please provide a clear explanation for rejecting this
-                        resident&apos;s account request.
-                      </p>
+                {rejectAccountModalOpen && selectedUserId && (
+                  <div
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center"
+                    onClick={() => setRejectAccountModalOpen(false)}
+                  >
+                    <div
+                      className="relative max-w-md w-full text-slate-100 shadow-[0_18px_45px_rgba(0,0,0,0.65)] rounded-2xl border border-red-700/80 bg-slate-900/95"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Title bar */}
+                      <div className="flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 px-4 py-2 border-b border-red-700/70">
+                        <div className="flex items-center gap-2">
+                          <span className="flex gap-1">
+                            <span className="h-2.5 w-2.5 rounded-full bg-red-500/90 shadow-sm shadow-red-900" />
+                            <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80 shadow-sm shadow-amber-900" />
+                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80 shadow-sm shadow-emerald-900" />
+                          </span>
+                          <span className="ml-2 text-xs font-semibold tracking-wide text-slate-100">
+                            Reject Resident Account
+                          </span>
+                        </div>
 
-                      <textarea
-                        className="w-full border border-slate-700 rounded-xl px-2.5 py-2 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
-                        rows={3}
-                        value={rejectAccountReason}
-                        onChange={(e) => setRejectAccountReason(e.target.value)}
-                        placeholder="Reason for rejection..."
-                        required
-                      />
-
-                      {/* Footer */}
-                      <div className="flex justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
                         <button
                           onClick={() => setRejectAccountModalOpen(false)}
-                          className="px-3 py-1.5 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 transition-colors"
+                          className="text-sm font-semibold text-slate-400 hover:text-red-400 px-1"
+                          aria-label="Close"
                         >
-                          Cancel
+                          ✕
                         </button>
-                        <button
-                          onClick={async () => {
-                            if (!selectedUserId) return;
-                            if (!rejectAccountReason.trim()) {
-                              alert("Please enter a reason for rejection.");
-                              return;
-                            }
-                            await handleApproveReject(
-                              selectedUserId,
-                              "rejected",
-                              rejectAccountReason.trim(),
-                            );
-                            setRejectAccountModalOpen(false);
-                            setSelectedUserId(null);
-                            setRejectAccountReason("");
-                          }}
-                          className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 border border-red-500/80 shadow-sm shadow-red-700/60 hover:from-red-500 hover:to-rose-500 transition-colors"
-                        >
-                          Submit rejection
-                        </button>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-5">
+                        <p className="text-xs uppercase tracking-[0.18em] text-red-400/80 mb-1">
+                          REJECTION REASON
+                        </p>
+                        <p className="text-sm mb-3 text-slate-200">
+                          Please provide a clear explanation for rejecting this
+                          resident&apos;s account request.
+                        </p>
+
+                        <textarea
+                          className="w-full border border-slate-700 rounded-xl px-2.5 py-2 text-sm mb-4 text-slate-100 bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                          rows={3}
+                          value={rejectAccountReason}
+                          onChange={(e) =>
+                            setRejectAccountReason(e.target.value)
+                          }
+                          placeholder="Reason for rejection..."
+                          required
+                        />
+
+                        {/* Footer */}
+                        <div className="flex justify-end gap-2 pt-1 border-t border-slate-800/80 mt-2">
+                          <button
+                            onClick={() => setRejectAccountModalOpen(false)}
+                            className="px-3 py-1.5 text-sm rounded-lg border border-slate-600 text-slate-200 bg-slate-900/60 hover:bg-slate-800/80 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!selectedUserId) return;
+                              if (!rejectAccountReason.trim()) {
+                                alert("Please enter a reason for rejection.");
+                                return;
+                              }
+                              await handleApproveReject(
+                                selectedUserId,
+                                "rejected",
+                                rejectAccountReason.trim(),
+                              );
+                              setRejectAccountModalOpen(false);
+                              setSelectedUserId(null);
+                              setRejectAccountReason("");
+                            }}
+                            className="px-4 py-1.5 text-sm rounded-lg bg-gradient-to-r from-red-600 to-rose-600 text-slate-50 border border-red-500/80 shadow-sm shadow-red-700/60 hover:from-red-500 hover:to-rose-500 transition-colors"
+                          >
+                            Submit rejection
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
+                )}
+              </section>
+            )}
+
+            {activeTab === "viewReports" && <ViewReportsSection />}
+
+            {activeTab === "processedAccounts" && (
+              <section className="space-y-6">
+                {/* Header */}
+                <div className="glass-panel rounded-2xl p-6 card-glow">
+                  <h2 className="text-2xl font-bold gradient-text mb-2">
+                    Processed Resident Accounts
+                  </h2>
+                  <p className="text-slate-400 text-sm">
+                    Review residents whose registrations have already been
+                    approved or rejected.
+                  </p>
                 </div>
-              )}
-            </section>
-          )}
 
-          {activeTab === "viewReports" && <ViewReportsSection />}
-
-          {activeTab === "processedAccounts" && (
-            <section className="space-y-6">
-              {/* Header */}
-              <div className="glass-panel rounded-2xl p-6 card-glow">
-                <h2 className="text-2xl font-bold gradient-text mb-2">
-                  Processed Resident Accounts
-                </h2>
-                <p className="text-slate-400 text-sm">
-                  Review residents whose registrations have already been
-                  approved or rejected.
-                </p>
-              </div>
-
-              {loadingProcessed ? (
-                <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-12 flex items-center justify-center">
-                  <TruckLoader />
-                </div>
-              ) : (
-                <>
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* Approved */}
-                    <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-5">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                            Total Approved
-                          </p>
-                          <h3 className="text-3xl font-bold text-emerald-400">
-                            {approvedAccounts.length}
-                          </h3>
-                          <p className="text-slate-500 text-xs mt-1">
-                            Active residents
-                          </p>
+                {loadingProcessed ? (
+                  <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-12 flex items-center justify-center">
+                    <TruckLoader />
+                  </div>
+                ) : (
+                  <>
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Approved */}
+                      <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-5">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
+                              Total Approved
+                            </p>
+                            <h3 className="text-3xl font-bold text-emerald-400">
+                              {approvedAccounts.length}
+                            </h3>
+                            <p className="text-slate-500 text-xs mt-1">
+                              Active residents
+                            </p>
+                          </div>
+                          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                            <svg
+                              className="w-5 h-5 text-emerald-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M5 13l4 4L19 7"
+                              ></path>
+                            </svg>
+                          </div>
                         </div>
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                      </div>
+
+                      {/* Rejected */}
+                      <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-5">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
+                              Total Rejected
+                            </p>
+                            <h3 className="text-3xl font-bold text-red-400">
+                              {rejectedAccounts.length}
+                            </h3>
+                            <p className="text-slate-500 text-xs mt-1">
+                              Declined
+                            </p>
+                          </div>
+                          <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                            <svg
+                              className="w-5 h-5 text-red-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M6 18L18 6M6 6l12 12"
+                              ></path>
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Processed */}
+                      <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-5">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
+                              Total Processed
+                            </p>
+                            <h3 className="text-3xl font-bold text-blue-400">
+                              {approvedAccounts.length +
+                                rejectedAccounts.length}
+                            </h3>
+                            <p className="text-slate-500 text-xs mt-1">
+                              Applications
+                            </p>
+                          </div>
+                          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                            <svg
+                              className="w-5 h-5 text-blue-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                              ></path>
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Approval Rate */}
+                      <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-5">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
+                              Approval Rate
+                            </p>
+                            <h3 className="text-3xl font-bold text-purple-400">
+                              {approvedAccounts.length +
+                                rejectedAccounts.length >
+                              0
+                                ? Math.round(
+                                    (approvedAccounts.length /
+                                      (approvedAccounts.length +
+                                        rejectedAccounts.length)) *
+                                      100,
+                                  )
+                                : 0}
+                              %
+                            </h3>
+                            <p className="text-slate-500 text-xs mt-1">
+                              Success rate
+                            </p>
+                          </div>
+                          <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                            <svg
+                              className="w-5 h-5 text-purple-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                              ></path>
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tables Grid with Pagination */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 ">
+                      {/* Approved Accounts */}
+                      <ProcessedAccountsTable
+                        title="Approved Accounts"
+                        subtitle="Active registrations"
+                        icon={
                           <svg
                             className="w-5 h-5 text-emerald-400"
                             fill="none"
@@ -3274,25 +3443,16 @@ export default function BWMCdashboard() {
                               d="M5 13l4 4L19 7"
                             ></path>
                           </svg>
-                        </div>
-                      </div>
-                    </div>
+                        }
+                        accounts={approvedAccounts}
+                        bgColor="emerald"
+                      />
 
-                    {/* Rejected */}
-                    <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-5">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                            Total Rejected
-                          </p>
-                          <h3 className="text-3xl font-bold text-red-400">
-                            {rejectedAccounts.length}
-                          </h3>
-                          <p className="text-slate-500 text-xs mt-1">
-                            Declined
-                          </p>
-                        </div>
-                        <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                      {/* Rejected Accounts */}
+                      <ProcessedAccountsTable
+                        title="Rejected Accounts"
+                        subtitle="Declined registrations"
+                        icon={
                           <svg
                             className="w-5 h-5 text-red-400"
                             fill="none"
@@ -3306,170 +3466,50 @@ export default function BWMCdashboard() {
                               d="M6 18L18 6M6 6l12 12"
                             ></path>
                           </svg>
-                        </div>
-                      </div>
+                        }
+                        accounts={rejectedAccounts}
+                        bgColor="red"
+                      />
                     </div>
-
-                    {/* Processed */}
-                    <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-5">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                            Total Processed
-                          </p>
-                          <h3 className="text-3xl font-bold text-blue-400">
-                            {approvedAccounts.length + rejectedAccounts.length}
-                          </h3>
-                          <p className="text-slate-500 text-xs mt-1">
-                            Applications
-                          </p>
-                        </div>
-                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                          <svg
-                            className="w-5 h-5 text-blue-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                            ></path>
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Approval Rate */}
-                    <div className="rounded-2xl border border-gray-700 bg-slate-900/70 p-5">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">
-                            Approval Rate
-                          </p>
-                          <h3 className="text-3xl font-bold text-purple-400">
-                            {approvedAccounts.length + rejectedAccounts.length >
-                            0
-                              ? Math.round(
-                                  (approvedAccounts.length /
-                                    (approvedAccounts.length +
-                                      rejectedAccounts.length)) *
-                                    100,
-                                )
-                              : 0}
-                            %
-                          </h3>
-                          <p className="text-slate-500 text-xs mt-1">
-                            Success rate
-                          </p>
-                        </div>
-                        <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                          <svg
-                            className="w-5 h-5 text-purple-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                            ></path>
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tables Grid with Pagination */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 ">
-                    {/* Approved Accounts */}
-                    <ProcessedAccountsTable
-                      title="Approved Accounts"
-                      subtitle="Active registrations"
-                      icon={
-                        <svg
-                          className="w-5 h-5 text-emerald-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M5 13l4 4L19 7"
-                          ></path>
-                        </svg>
-                      }
-                      accounts={approvedAccounts}
-                      bgColor="emerald"
-                    />
-
-                    {/* Rejected Accounts */}
-                    <ProcessedAccountsTable
-                      title="Rejected Accounts"
-                      subtitle="Declined registrations"
-                      icon={
-                        <svg
-                          className="w-5 h-5 text-red-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M6 18L18 6M6 6l12 12"
-                          ></path>
-                        </svg>
-                      }
-                      accounts={rejectedAccounts}
-                      bgColor="red"
-                    />
-                  </div>
-                </>
-              )}
-            </section>
-          )}
-
-          {activeTab === "schedules" && (
-            <section className="my-6">
-              <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent ">
-                Collection Schedules
-              </h2>
-              <BWMCCollectionSchedulesFeature
-                defaultBarangayId={defaultBarangayId}
-              />
-            </section>
-          )}
-
-          {activeTab === "generateReports" &&
-            currentUser?.barangay?.barangay_id && (
-              <BarangayConcernsAnalytics
-                barangayId={currentUser.barangay.barangay_id}
-              />
+                  </>
+                )}
+              </section>
             )}
 
-          {activeTab === "manageAccount" && (
-            <div className="dashboard-section max-w-2xl mx-auto">
-              <div className="dashboard-section-glow" />
-              <div className="relative z-10">
-                <ManageAccountSection
-                  form={manageAccountForm}
-                  loading={manageAccountLoading}
-                  error={manageAccountError}
-                  success={manageAccountSuccess}
-                  onChange={handleManageAccountFormChange}
-                  onSubmit={handleManageAccountSubmit}
+            {activeTab === "schedules" && (
+              <section className="my-6">
+                <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent ">
+                  Collection Schedules
+                </h2>
+                <BWMCCollectionSchedulesFeature
+                  defaultBarangayId={defaultBarangayId}
                 />
+              </section>
+            )}
+
+            {activeTab === "generateReports" &&
+              currentUser?.barangay?.barangay_id && (
+                <BarangayConcernsAnalytics
+                  barangayId={currentUser.barangay.barangay_id}
+                />
+              )}
+
+            {activeTab === "manageAccount" && (
+              <div className="dashboard-section max-w-2xl mx-auto">
+                <div className="dashboard-section-glow" />
+                <div className="relative z-10">
+                  <ManageAccountSection
+                    form={manageAccountForm}
+                    loading={manageAccountLoading}
+                    error={manageAccountError}
+                    success={manageAccountSuccess}
+                    onChange={handleManageAccountFormChange}
+                    onSubmit={handleManageAccountSubmit}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </main>
       </div>
     </div>
