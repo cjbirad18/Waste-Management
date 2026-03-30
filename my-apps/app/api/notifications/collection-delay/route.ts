@@ -25,10 +25,14 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
     // Staff message (Secretary + BWMC)
-    const staffMessage = `DELAY ALERT: Collection in ${barangayName} is delayed. Reason: ${delayReason}.${delayNotes ? ` Notes: ${delayNotes}.` : ""}\n.${gcpName ? ` GCP: ${gcpName}.` : ""}\n\n - Track the Truck`;
+    const staffMessage =
+      `DELIVERY UPDATE: Scheduled collection service for ${barangayName} has been delayed. Reason: ${delayReason}.` +
+      (delayNotes ? ` Additional notes: ${delayNotes}.` : "") +
+      (gcpName ? ` GCP: ${gcpName}.` : "") +
+      ` Please expect further updates from Track the Truck.\n\n -Track the Truck`;
 
     // Resident message
-    const residentMessage = `NOTICE: The scheduled garbage collection for ${barangayName} is delayed.\n Reason: ${delayReason}.\n We apologize for the inconvenience.\n\n - Track the Truck`;
+    const residentMessage = `NOTICE: Scheduled garbage collection for ${barangayName} is delayed. Reason: ${delayReason}. We apologize for the inconvenience and appreciate your patience.\n\n -Track the Truck`;
 
     // 1. Notify Secretary
     const { data: secretaries } = await supabase

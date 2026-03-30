@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const message = `New incident report submitted by ${reporterName}.\nLocation: ${location}.\nReport ID: #${reportId}.\nPlease review and take action.\n\n - Track the Truck`;
+    const message = `OFFICIAL INCIDENT NOTICE: A new report has been received from ${reporterName}.\nLocation: ${location}.\nReport ID: #${reportId}.\nPlease review immediately and initiate appropriate response procedures.\n\n - Track the Truck`;
 
     let smsResult;
     try {

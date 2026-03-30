@@ -1937,6 +1937,9 @@ export default function ResidentDashboard() {
   >("newest");
   const [myReportsSearch, setMyReportsSearch] = useState("");
 
+  const [myReportsPage, setMyReportsPage] = useState(1);
+  const [myReportsPerPage, setMyReportsPerPage] = useState(8);
+
   // Delayed collections state
   const [delayedCollections, setDelayedCollections] = useState<
     DelayedCollection[]
@@ -2163,6 +2166,10 @@ export default function ResidentDashboard() {
     };
   }, []);
 
+  useEffect(() => {
+    setMyReportsPage(1);
+  }, [myReportsFilterTab, myReportsDateSort, myReportsSearch, userReports]);
+
   const handleViewHistory = async (report: any) => {
     const reportId = report.report_id;
     const reportTitle = report.location || report.description || "Report";
@@ -2245,7 +2252,18 @@ export default function ResidentDashboard() {
   }, [residentBarangayId]);
 
   // Form Handlers
+  const nameRegex = /^[A-Za-z\s]+$/;
+  const sanitizeNameField = (value: string) =>
+    value.replace(/[^A-Za-z\s]/g, "");
+
   const handleManageAccountFormChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.name === "first_name" || e.target.name === "last_name") {
+      setManageAccountForm({
+        ...manageAccountForm,
+        [e.target.name]: sanitizeNameField(e.target.value),
+      });
+      return;
+    }
     setManageAccountForm({
       ...manageAccountForm,
       [e.target.name]: e.target.value,
@@ -2276,6 +2294,12 @@ export default function ResidentDashboard() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(manageAccountForm.email)) {
       return "Invalid email format.";
+    }
+    if (
+      !nameRegex.test(manageAccountForm.first_name) ||
+      !nameRegex.test(manageAccountForm.last_name)
+    ) {
+      return "First and last names can only contain letters and spaces.";
     }
     if (
       manageAccountForm.password.length > 0 &&
@@ -2914,6 +2938,18 @@ export default function ResidentDashboard() {
                     : dateA - dateB;
                 });
 
+                const totalReports = sortedReports.length;
+                const totalPages = Math.max(
+                  1,
+                  Math.ceil(totalReports / myReportsPerPage),
+                );
+                const startIndex = (myReportsPage - 1) * myReportsPerPage;
+                const endIndex = startIndex + myReportsPerPage;
+                const paginatedReports = sortedReports.slice(
+                  startIndex,
+                  endIndex,
+                );
+
                 return (
                   <section className="dashboard-section max-w-8xl mx-auto">
                     <div className="dashboard-section-glow" />
@@ -2994,107 +3030,166 @@ export default function ResidentDashboard() {
                     {!reportsLoading &&
                       !reportsError &&
                       userReports.length > 0 && (
-                        <div className="overflow-x-auto rounded-2xl border border-emerald-800/30 bg-slate-900/70 shadow-lg">
-                          <table className="min-w-full text-sm">
-                            <thead>
-                              <tr className="bg-slate-900/80">
-                                <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                                  Report ID
-                                </th>
-                                <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                                  Location
-                                </th>
-                                <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                                  Status
-                                </th>
-                                <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                                  Date
-                                </th>
-                                <th className="px-4 py-3 text-left text-slate-400 font-semibold">
-                                  Actions
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {sortedReports.length === 0 ? (
-                                <tr>
-                                  <td
-                                    colSpan={5}
-                                    className="px-4 py-6 text-center text-slate-400"
-                                  >
-                                    No reports match your filters.
-                                  </td>
+                        <>
+                          <div className="overflow-x-auto rounded-2xl border border-emerald-800/30 bg-slate-900/70 shadow-lg">
+                            <table className="min-w-full text-sm">
+                              <thead>
+                                <tr className="bg-slate-900/80">
+                                  <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                    Report ID
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                    Location
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                    Status
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                    Date
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-slate-400 font-semibold">
+                                    Actions
+                                  </th>
                                 </tr>
-                              ) : (
-                                sortedReports.map((report) => (
-                                  <tr
-                                    key={report.report_id}
-                                    className="text-md border-b border-emerald-800/20 hover:bg-slate-800/60 transition-colors"
-                                  >
-                                    <td className="px-4 py-2 font-bold text-emerald-200">
-                                      RP-{report.report_id}
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-200 max-w-[160px] truncate">
-                                      {report.location || "N/A"}
-                                    </td>
-                                    <td className="px-4 py-2">
-                                      <span
-                                        className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${
-                                          report.current_status === "Resolved"
-                                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                                            : report.current_status ===
-                                                  "Ongoing" ||
-                                                report.current_status ===
-                                                  "In Progress"
-                                              ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                                              : report.current_status ===
-                                                  "Rejected"
-                                                ? "bg-red-500/20 text-red-300 border-red-500/40"
-                                                : "bg-slate-500/30 text-slate-200 border-slate-500/60"
-                                        }`}
-                                      >
-                                        {report.current_status || "Unknown"}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-2 text-slate-300 whitespace-nowrap">
-                                      {report.date_submitted
-                                        ? new Date(
-                                            report.date_submitted,
-                                          ).toLocaleString()
-                                        : "N/A"}
-                                    </td>
-                                    <td className="px-4 py-2">
-                                      <button
-                                        onClick={() => {
-                                          setSelectedMessage(
-                                            report.description,
-                                          );
-                                          setModalOpen(true);
-                                        }}
-                                        className="text-emerald-400 hover:underline mr-3"
-                                      >
-                                        View
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          handleViewHistory(report)
-                                        }
-                                        className="text-slate-400 hover:underline"
-                                      >
-                                        History
-                                      </button>
+                              </thead>
+                              <tbody>
+                                {paginatedReports.length === 0 ? (
+                                  <tr>
+                                    <td
+                                      colSpan={5}
+                                      className="px-4 py-6 text-center text-slate-400"
+                                    >
+                                      No reports match your filters.
                                     </td>
                                   </tr>
-                                ))
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                                ) : (
+                                  paginatedReports.map((report) => (
+                                    <tr
+                                      key={report.report_id}
+                                      className="text-md border-b border-emerald-800/20 hover:bg-slate-800/60 transition-colors"
+                                    >
+                                      <td className="px-4 py-2 font-bold text-emerald-200">
+                                        RP-{report.report_id}
+                                      </td>
+                                      <td className="px-4 py-2 text-slate-200 max-w-[160px] truncate">
+                                        {report.location || "N/A"}
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        <span
+                                          className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${
+                                            report.current_status === "Resolved"
+                                              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                              : report.current_status ===
+                                                    "Ongoing" ||
+                                                  report.current_status ===
+                                                    "In Progress"
+                                                ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                                                : report.current_status ===
+                                                    "Rejected"
+                                                  ? "bg-red-500/20 text-red-300 border-red-500/40"
+                                                  : "bg-slate-500/30 text-slate-200 border-slate-500/60"
+                                          }`}
+                                        >
+                                          {report.current_status || "Unknown"}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-2 text-slate-300 whitespace-nowrap">
+                                        {report.date_submitted
+                                          ? new Date(
+                                              report.date_submitted,
+                                            ).toLocaleString()
+                                          : "N/A"}
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        <button
+                                          onClick={() => {
+                                            setSelectedMessage(
+                                              report.description,
+                                            );
+                                            setModalOpen(true);
+                                          }}
+                                          className="text-emerald-400 hover:underline mr-3"
+                                        >
+                                          View
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            handleViewHistory(report)
+                                          }
+                                          className="text-slate-400 hover:underline"
+                                        >
+                                          History
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {totalReports > 0 && (
+                            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 px-3 py-2">
+                              <div className="text-sm text-slate-300">
+                                Showing {Math.min(startIndex + 1, totalReports)}
+                                -{Math.min(endIndex, totalReports)} of{" "}
+                                {totalReports}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() =>
+                                    setMyReportsPage((p) => Math.max(1, p - 1))
+                                  }
+                                  disabled={myReportsPage === 1}
+                                  className={`px-3 py-1 rounded-md text-sm font-semibold transition ${
+                                    myReportsPage === 1
+                                      ? "bg-slate-700 text-slate-500 cursor-not-allowed"
+                                      : "bg-slate-800 text-white hover:bg-slate-700"
+                                  }`}
+                                >
+                                  Previous
+                                </button>
+                                <span className="text-sm text-slate-300">
+                                  Page {myReportsPage} of {totalPages}
+                                </span>
+                                <button
+                                  onClick={() =>
+                                    setMyReportsPage((p) =>
+                                      Math.min(totalPages, p + 1),
+                                    )
+                                  }
+                                  disabled={myReportsPage >= totalPages}
+                                  className={`px-3 py-1 rounded-md text-sm font-semibold transition ${
+                                    myReportsPage >= totalPages
+                                      ? "bg-slate-700 text-slate-500 cursor-not-allowed"
+                                      : "bg-slate-800 text-white hover:bg-slate-700"
+                                  }`}
+                                >
+                                  Next
+                                </button>
+                                <select
+                                  value={myReportsPerPage}
+                                  onChange={(e) => {
+                                    setMyReportsPerPage(Number(e.target.value));
+                                    setMyReportsPage(1);
+                                  }}
+                                  className="rounded-lg bg-slate-900/80 border border-green-800/50 px-2 py-1 text-sm text-slate-200"
+                                >
+                                  {[5, 10, 20, 50].map((size) => (
+                                    <option key={size} value={size}>
+                                      {size} per page
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
 
                     {modalOpen && (
                       <div
-                        className="pt-50 fixed inset-0 backdrop-blur-sm z-50 flex justify-center items-center"
+                        className="fixed inset-0 backdrop-blur-sm z-50 flex justify-center items-center"
                         onClick={() => setModalOpen(false)}
                         onKeyDown={(e) =>
                           e.key === "Escape" && setModalOpen(false)

@@ -26,25 +26,25 @@ export async function POST(req: NextRequest) {
     switch (status) {
       case "started":
         message =
-          "Garbage collection has started in your area! The truck is now in your barangay. Please prepare your waste.\n\n - Track the Truck";
+          "NOTICE: Garbage collection has commenced in your barangay. Please ensure your waste is ready for collection.\n\n - Track the Truck";
         break;
       case "ongoing":
         message =
-          "Garbage collection is now ongoing in your barangay. You can track the truck's location in real-time through the app.\n\n - Track the Truck";
+          "UPDATE: Garbage collection is currently in progress in your barangay. You may monitor the truck's location via the app.\n\n - Track the Truck";
         break;
       case "delayed":
-        message = `The garbage collection truck is delayed. ${reason ? `Reason: ${reason}.` : ""} We apologize for the inconvenience.\n\n - Track the Truck`;
+        message = `NOTICE: Garbage collection is delayed. ${reason ? `Reason: ${reason}.` : "The reason is being reviewed."} We apologize for the inconvenience and will provide updates shortly.\n\n - Track the Truck`;
         break;
       case "missed":
         message =
-          "The garbage collection for your barangay was missed today. You will be notified of the rescheduled collection time. We apologize for the inconvenience.\n\n - Track the Truck";
+          "NOTICE: Scheduled garbage collection in your barangay was not completed today. We apologize for the inconvenience and will communicate the rescheduled collection time as soon as possible.\n\n - Track the Truck";
         break;
       case "completed":
         message =
-          "Garbage collection in your barangay has been completed. Thank you for your cooperation!\n\n - Track the Truck";
+          "CONFIRMATION: Garbage collection in your barangay is complete. Thank you for your cooperation.\n\n - Track the Truck";
         break;
       default:
-        message = `Garbage collection status update: ${status}.\n\n - Track the Truck`;
+        message = `NOTICE: Garbage collection status update: ${status}.\n\n - Track the Truck`;
     }
 
     const notifications = [];

@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const message = `Incident Report #${reportId} requires your action.\nLocation: ${location}.\nDescription: ${description}.\nPlease respond accordingly.\n\n - Track the Truck`;
+    const message = `INCIDENT UPDATE: Report #${reportId} requires immediate attention.\nLocation: ${location}.\nDetails: ${description}.\nPlease acknowledge receipt and act according to standard operating procedures.\n\n - Track the Truck`;
 
     // Send SMS
     const smsResponse = await fetch(

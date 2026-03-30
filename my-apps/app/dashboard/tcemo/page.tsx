@@ -797,6 +797,10 @@ export default function TcemoDashboard() {
   ];
 
   // ---------- Helpers ----------
+  const nameRegex = /^[A-Za-z\s]+$/;
+  const sanitizeNameField = (value: string) =>
+    value.replace(/[^A-Za-z\s]/g, "");
+
   const validateUserForm = () => {
     if (
       !userForm.first_name.trim() ||
@@ -808,6 +812,11 @@ export default function TcemoDashboard() {
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userForm.email)) return "Invalid email format";
+    if (
+      !nameRegex.test(userForm.first_name) ||
+      !nameRegex.test(userForm.last_name)
+    )
+      return "First and last names can only contain letters and spaces.";
     return null;
   };
 
@@ -821,6 +830,11 @@ export default function TcemoDashboard() {
     ) {
       return "All fields except password fields are required.";
     }
+    if (
+      !nameRegex.test(manageAccountForm.first_name) ||
+      !nameRegex.test(manageAccountForm.last_name)
+    )
+      return "First and last names can only contain letters and spaces.";
     if (manageAccountForm.password || manageAccountForm.confirm_password) {
       if (manageAccountForm.password.length < 6)
         return "New password must be at least 6 characters.";
@@ -831,6 +845,13 @@ export default function TcemoDashboard() {
   };
 
   const handleManageAccountFormChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.name === "first_name" || e.target.name === "last_name") {
+      setManageAccountForm({
+        ...manageAccountForm,
+        [e.target.name]: sanitizeNameField(e.target.value),
+      });
+      return;
+    }
     setManageAccountForm({
       ...manageAccountForm,
       [e.target.name]: e.target.value,
@@ -881,6 +902,13 @@ export default function TcemoDashboard() {
   }, []);
 
   const handleUserFormChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.name === "first_name" || e.target.name === "last_name") {
+      setUserForm({
+        ...userForm,
+        [e.target.name]: sanitizeNameField(e.target.value),
+      });
+      return;
+    }
     setUserForm({ ...userForm, [e.target.name]: e.target.value });
   };
 

@@ -130,16 +130,16 @@ export async function POST(req: NextRequest) {
 
       let changes = "";
       if (patternChanged && timeChanged) {
-        changes = `Collection days are now ${newDays} (${newPattern}) instead of ${oldDays} (${oldPattern}).\nDeparture time changed from ${formatTime(oldStartTime)} to ${formatTime(newStartTime)}.`;
+        changes = `The collection schedule has been revised: Days are now ${newDays} (${newPattern}) instead of ${oldDays} (${oldPattern}), and departure time is updated from ${formatTime(oldStartTime)} to ${formatTime(newStartTime)}.`;
       } else if (patternChanged) {
-        changes = `Collection days are now ${newDays} (${newPattern}) instead of ${oldDays} (${oldPattern}).`;
+        changes = `The collection schedule has been revised: Days are now ${newDays} (${newPattern}) instead of ${oldDays} (${oldPattern}).`;
       } else if (timeChanged) {
-        changes = `Departure time has been changed from ${formatTime(oldStartTime)} to ${formatTime(newStartTime)}.\nCollection days remain ${newDays} (${newPattern}).`;
+        changes = `The collection schedule has been revised: Departure time is updated from ${formatTime(oldStartTime)} to ${formatTime(newStartTime)}. Collection days remain ${newDays} (${newPattern}).`;
       } else {
-        changes = `Collection schedule has been updated. Days: ${newDays} (${newPattern}), Departure: ${formatTime(newStartTime || scheduleTime)}.`;
+        changes = `The collection schedule has been updated to Days: ${newDays} (${newPattern}) and Departure: ${formatTime(newStartTime || scheduleTime)}.`;
       }
 
-      message = `Garbage Collection Updated!!\n${changes}\nKindly place your trash out on the new schedule. Thank you!\n\n - Track the Truck`;
+      message = `NOTICE: Garbage collection schedule update. ${changes} Please place your waste according to the revised schedule.\n\n - Track the Truck`;
     }
 
     console.log("Total recipients to notify:", recipients.length, recipients);

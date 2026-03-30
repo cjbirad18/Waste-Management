@@ -24,22 +24,22 @@ export async function POST(req: NextRequest) {
 
     switch (status) {
       case "acknowledged":
-        message = `Your incident report #${reportId} has been acknowledged and is under review. Thank you for reporting!\n\n - Track the Truck`;
+        message = `INCIDENT REPORT UPDATE: #${reportId} has been acknowledged and is currently under review. Thank you for your submission.\n\n - Track the Truck`;
         break;
       case "needs_action":
-        message = `Your incident report #${reportId} has been validated and forwarded to SWMO for action. You will be notified of updates.\n\n - Track the Truck`;
+        message = `INCIDENT REPORT UPDATE: #${reportId} has been validated and escalated to SWMO for intervention. You will receive further updates shortly.\n\n - Track the Truck`;
         break;
       case "ongoing":
-        message = `Action is being taken on your incident report #${reportId}. Our team is working to resolve the issue. \n\n - Track the Truck`;
+        message = `INCIDENT REPORT UPDATE: #${reportId} is being actively addressed by our team. We are working to resolve the matter promptly.\n\n - Track the Truck`;
         break;
       case "resolved":
-        message = `Your incident report #${reportId} has been resolved. ${actionTaken ? `\nAction taken: ${actionTaken}.` : ""} \nThank you for your report! \n\n - Track the Truck`;
+        message = `INCIDENT REPORT UPDATE: #${reportId} has been resolved.${actionTaken ? ` Action taken: ${actionTaken}.` : ""} Thank you for your cooperation.\n\n - Track the Truck`;
         break;
       case "rejected":
-        message = `Your incident report #${reportId} has been rejected. ${reason ? `\nReason: ${reason}.` : "\nAdditional evidence may be required."} \n\n - Track the Truck`;
+        message = `INCIDENT REPORT UPDATE: #${reportId} cannot be processed as submitted.${reason ? ` Reason: ${reason}.` : " Additional evidence may be required."} Please follow up with SWMO for next steps.\n\n - Track the Truck`;
         break;
       default:
-        message = `Update on incident report #${reportId}\n: Status changed to ${status}.\n\n - Track the Truck`;
+        message = `INCIDENT REPORT UPDATE: #${reportId} status changed to ${status}.\n\n - Track the Truck`;
     }
 
     // Send SMS

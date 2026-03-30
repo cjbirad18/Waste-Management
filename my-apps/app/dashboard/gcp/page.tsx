@@ -2815,11 +2815,54 @@ export default function GCPDashboard() {
     }
   }, [activeTab]);
 
+  const nameRegex = /^[A-Za-z\s]+$/;
+  const sanitizeNameField = (value: string) =>
+    value.replace(/[^A-Za-z\s]/g, "");
+
   const handleManageAccountFormChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.name === "first_name" || e.target.name === "last_name") {
+      setManageAccountForm({
+        ...manageAccountForm,
+        [e.target.name]: sanitizeNameField(e.target.value),
+      });
+      return;
+    }
     setManageAccountForm({
       ...manageAccountForm,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const validateManageAccountForm = () => {
+    if (
+      !manageAccountForm.first_name.trim() ||
+      !manageAccountForm.last_name.trim() ||
+      !manageAccountForm.username.trim() ||
+      !manageAccountForm.email.trim() ||
+      !manageAccountForm.contact_number.trim()
+    ) {
+      return "All fields except password are required.";
+    }
+    if (
+      !nameRegex.test(manageAccountForm.first_name) ||
+      !nameRegex.test(manageAccountForm.last_name)
+    ) {
+      return "First and last names can only contain letters and spaces.";
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(manageAccountForm.email)) {
+      return "Invalid email format.";
+    }
+    if (manageAccountForm.password && manageAccountForm.password.length < 6) {
+      return "Password must be at least 6 characters.";
+    }
+    if (manageAccountForm.password !== manageAccountForm.confirm_password) {
+      return "Passwords do not match.";
+    }
+    if (!/^09\d{9}$/.test(manageAccountForm.contact_number)) {
+      return "Contact number must start with 09 and be 11 digits.";
+    }
+    return null;
   };
 
   const handleManageAccountSubmit = async (e: FormEvent) => {
@@ -2830,6 +2873,11 @@ export default function GCPDashboard() {
     if (!confirmed) return;
     setManageAccountError(null);
     setManageAccountSuccess(null);
+    const validationErr = validateManageAccountForm();
+    if (validationErr) {
+      setManageAccountError(validationErr);
+      return;
+    }
     try {
       const { data: authUserData, error: authError } =
         await supabase.auth.getUser();

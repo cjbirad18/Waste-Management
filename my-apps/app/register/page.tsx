@@ -213,6 +213,11 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!/^[A-Za-z\s]+$/.test(firstName) || !/^[A-Za-z\s]+$/.test(lastName)) {
+      setError("Name fields can only contain letters and spaces.");
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
@@ -270,6 +275,26 @@ export default function RegisterPage() {
       if (profileError) {
         setError(`Profile error: ${profileError.message}`);
         return;
+      }
+
+      // Notify BWMC in selected barangay about new registration
+      try {
+        await fetch("/api/notifications/resident-registration", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: data.user.id,
+            residentName: `${firstName} ${lastName}`,
+            barangayId,
+          }),
+        });
+      } catch (notifyError) {
+        console.warn(
+          "Resident registration BWMC notification failed:",
+          notifyError,
+        );
       }
     }
 
@@ -335,7 +360,9 @@ export default function RegisterPage() {
               type="text"
               className="w-full px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/70"
               value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
+              onChange={(e) =>
+                setFirstName(e.target.value.replace(/[^A-Za-z\s]/g, ""))
+              }
               required
               placeholder="First name"
             />
@@ -352,7 +379,9 @@ export default function RegisterPage() {
               type="text"
               className="w-full px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/70"
               value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
+              onChange={(e) =>
+                setLastName(e.target.value.replace(/[^A-Za-z\s]/g, ""))
+              }
               required
               placeholder="Last name"
             />

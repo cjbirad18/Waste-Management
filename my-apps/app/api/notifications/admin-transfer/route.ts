@@ -97,7 +97,8 @@ export async function POST(request: NextRequest) {
       prevAdminMessage += `New Admin: ${newAdmin.name}\n`;
       prevAdminMessage += `Transferred by: ${transferredBy}\n\n`;
       prevAdminMessage += `Your previous account has been deactivated. Thank you for your service.\n\n`;
-      prevAdminMessage += `If you have any questions, please contact the TCEMO Head.`;
+      prevAdminMessage += `If you have any questions, please contact the TCEMO Head.\n\n`;
+      prevAdminMessage += ` -Track the Truck`;
 
       const prevAdminSMS = await sendSMS(prevAdmin.phone, prevAdminMessage);
       results.prevAdmin = {

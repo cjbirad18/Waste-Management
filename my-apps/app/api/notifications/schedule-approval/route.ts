@@ -67,9 +67,9 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    let message = `Track the Truck - Schedule ${status === "approved" ? "Approved" : "Rejected"}\n\n`;
+    let message = `TRACK THE TRUCK - Schedule ${status === "approved" ? "Approved" : "Rejected"}\n\n`;
     message += `Dear ${secretary.name},\n\n`;
-    message += `The garbage collection schedule you submitted has been ${status} by ${approvedBy}.\n\n`;
+    message += `Your garbage collection schedule submission has been ${status} by ${approvedBy}.\n\n`;
     message += `Schedule Details:\n`;
     message += `- Barangay: ${barangay?.name || "N/A"}\n`;
     message += `- Date: ${scheduleDate}\n`;
@@ -80,9 +80,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (status === "approved") {
-      message += `\nThe schedule is now active and visible to GCP and residents.`;
+      message += `\nThe schedule is now active and has been published to GCP and residents.`;
     } else {
-      message += `\nPlease review and resubmit the schedule with necessary corrections.`;
+      message += `\nAction required: Please review the comments and resubmit the schedule with necessary corrections.`;
     }
 
     // Send SMS

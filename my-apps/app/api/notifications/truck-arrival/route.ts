@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
 
       const phoneNumber = resident.contact_number;
       const name = `${resident.first_name} ${resident.last_name}`;
-      const message = `Hi ${name}! The garbage truck assigned to your barangay is now arriving. Please prepare your waste for collection.\n\n - Track the Truck`;
+      const message = `NOTICE: ${name}, the garbage collection vehicle assigned to your barangay has arrived. Please ensure your waste is prepared for immediate collection.\n\n - Track the Truck`;
 
       // Check if notification was already sent recently (avoid spam)
       const { data: recentNotif } = await supabase

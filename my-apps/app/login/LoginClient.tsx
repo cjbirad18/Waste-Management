@@ -259,8 +259,8 @@ export default function LoginClient() {
       )}
 
       <div className="w-full max-w-md px-6 relative z-10">
-        <div className="text-center mb-8">
-          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30 mx-auto mb-4 hover:scale-110 transition-all duration-300">
+        <div className="text-center mb-8 pt-1">
+          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-green-500/90 to-emerald-600/90 text-2xl shadow-2xl shadow-green-500/30  mx-auto mb-4 hover:scale-110 transition-all duration-300">
             🚛
           </div>
           <p className="text-xs uppercase tracking-[0.3em] bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-bold">
@@ -431,7 +431,7 @@ export default function LoginClient() {
             <p className="text-xs text-slate-400 mb-2">No account yet?</p>
             <Link
               href="/register"
-              className=" block w-full rounded-2xl bg-emerald-500/20 px-4 py-3 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/30 hover:text-emerald-200 transition-all duration-300 backdrop-blur-sm border border-emerald-500/40 hover:border-emerald-400/60 cursor-pointer touch-manipulation"
+              className="block w-full rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition-all duration-300 backdrop-blur-sm border border-emerald-500/80 hover:border-emerald-400 cursor-pointer touch-manipulation"
             >
               Create Resident Account
             </Link>

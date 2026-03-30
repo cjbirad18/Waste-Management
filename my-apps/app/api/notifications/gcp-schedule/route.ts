@@ -64,13 +64,14 @@ export async function POST(req: Request) {
     // Format departure time
     const formattedTime = start_time || "TBA";
 
-    // Compose SMS message (avoid spam words)
-    let message = `TTruck: Hey ${gcp.first_name}! You've been assigned to Brgy. ${barangay.barangay_name}.`;
-    message += ` Schedule: ${schedule_pattern}, departure at ${formattedTime}.`;
+    // Compose SMS message (formal style)
+    let message = `TRACK THE TRUCK: Mr./Ms. ${gcp.first_name}, you have been assigned to Barangay ${barangay.barangay_name}.`;
+    message += ` Schedule pattern: ${schedule_pattern}.`;
+    message += ` Planned departure time: ${formattedTime}.`;
     if (truck_code) {
-      message += ` Truck: ${truck_code}.`;
+      message += ` Assigned vehicle code: ${truck_code}.`;
     }
-    message += ` Stay ready! -TrackTheTruck`;
+    message += ` Please prepare to depart as scheduled.\n\n - Track the Truck`;
 
     // Send SMS directly
     let smsResult: { success: boolean; error?: string } = { success: false };

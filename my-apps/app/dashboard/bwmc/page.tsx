@@ -847,7 +847,18 @@ export default function BWMCdashboard() {
     }
   };
 
+  const nameRegex = /^[A-Za-z\s]+$/;
+  const sanitizeNameField = (value: string) =>
+    value.replace(/[^A-Za-z\s]/g, "");
+
   const handleManageAccountFormChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.name === "first_name" || e.target.name === "last_name") {
+      setManageAccountForm({
+        ...manageAccountForm,
+        [e.target.name]: sanitizeNameField(e.target.value),
+      });
+      return;
+    }
     setManageAccountForm({
       ...manageAccountForm,
       [e.target.name]: e.target.value,
@@ -867,6 +878,12 @@ export default function BWMCdashboard() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(manageAccountForm.email)) {
       return "Invalid email format.";
+    }
+    if (
+      !nameRegex.test(manageAccountForm.first_name) ||
+      !nameRegex.test(manageAccountForm.last_name)
+    ) {
+      return "First and last names can only contain letters and spaces.";
     }
     if (
       manageAccountForm.password.length > 0 &&

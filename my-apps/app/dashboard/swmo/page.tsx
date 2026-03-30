@@ -1415,13 +1415,31 @@ export default function AdminDashboard() {
     }
   };
 
+  const nameRegex = /^[A-Za-z\s]+$/;
+
+  const sanitizeNameField = (value: string) =>
+    value.replace(/[^A-Za-z\s]/g, "");
+
   const handleUserFormChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
+    if (e.target.name === "first_name" || e.target.name === "last_name") {
+      const safeValue = sanitizeNameField(e.target.value);
+      setUserForm({ ...userForm, [e.target.name]: safeValue });
+      return;
+    }
     setUserForm({ ...userForm, [e.target.name]: e.target.value });
   };
 
   const handleManageAccountFormChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.name === "first_name" || e.target.name === "last_name") {
+      setManageAccountForm({
+        ...manageAccountForm,
+        [e.target.name]: sanitizeNameField(e.target.value),
+      });
+      return;
+    }
+
     setManageAccountForm({
       ...manageAccountForm,
       [e.target.name]: e.target.value,
@@ -1441,6 +1459,11 @@ export default function AdminDashboard() {
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userForm.email)) return "Invalid email format";
+    if (
+      !nameRegex.test(userForm.first_name) ||
+      !nameRegex.test(userForm.last_name)
+    )
+      return "First name and last name can only contain letters and spaces";
     if (userForm.role === "BWMC" && !userForm.barangay_id)
       return "Barangay is required for BWMC role";
     // phone must start with 09 and exactly 11 digits
@@ -1586,6 +1609,14 @@ export default function AdminDashboard() {
     ) {
       return "All fields except password are required.";
     }
+
+    if (
+      !nameRegex.test(manageAccountForm.first_name) ||
+      !nameRegex.test(manageAccountForm.last_name)
+    ) {
+      return "First and last names can only contain letters and spaces.";
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(manageAccountForm.email)) {
       return "Invalid email format.";
@@ -1728,6 +1759,16 @@ export default function AdminDashboard() {
       !editingUserForm.contact_number.trim()
     ) {
       setOtherUsersError("All fields are required.");
+      return;
+    }
+
+    if (
+      !nameRegex.test(editingUserForm.first_name) ||
+      !nameRegex.test(editingUserForm.last_name)
+    ) {
+      setOtherUsersError(
+        "First and last names can only contain letters and spaces.",
+      );
       return;
     }
 
@@ -3989,7 +4030,7 @@ export default function AdminDashboard() {
                           onChange={(e) =>
                             setEditingUserForm({
                               ...editingUserForm,
-                              first_name: e.target.value,
+                              first_name: sanitizeNameField(e.target.value),
                             })
                           }
                           disabled={isViewOnly}
@@ -4005,7 +4046,7 @@ export default function AdminDashboard() {
                           onChange={(e) =>
                             setEditingUserForm({
                               ...editingUserForm,
-                              last_name: e.target.value,
+                              last_name: sanitizeNameField(e.target.value),
                             })
                           }
                           disabled={isViewOnly}

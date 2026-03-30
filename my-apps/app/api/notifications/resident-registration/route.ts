@@ -1,6 +1,7 @@
 // Notify BWMC when resident registers
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import { sendSMS } from "@/lib/sms";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,39 +23,61 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const message = `New resident registration pending approval: ${residentName}. Please log in to the system to review and approve.\n\n - Track the Truck`;
+    const message = `OFFICIAL NOTICE: A new resident registration has been submitted by ${residentName} and is awaiting your approval. Please log in to the system to review and complete the approval process.\n\n - Track the Truck`;
 
-    // Send SMS
-    const smsResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-sms`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: bwmc.contact_number,
+    try {
+      const smsResult = await sendSMS(bwmc.contact_number, message);
+
+      if (smsResult?.success || smsResult?.status === "success") {
+        await supabase.from("sms_notifications").insert({
+          user_id: userId,
+          notification_type: "resident_registration",
           message,
-        }),
-      },
-    );
+          phone_number: bwmc.contact_number,
+          sent_at: new Date().toISOString(),
+          status: "sent",
+        });
 
-    const smsResult = await smsResponse.json();
+        return NextResponse.json({
+          success: true,
+          message: "BWMC notified successfully",
+        });
+      }
 
-    if (smsResult.success) {
-      // Log notification
       await supabase.from("sms_notifications").insert({
         user_id: userId,
         notification_type: "resident_registration",
         message,
         phone_number: bwmc.contact_number,
         sent_at: new Date().toISOString(),
-        status: "sent",
+        status: "failed",
+        error_message: smsResult?.error || "Unknown SMS send failure",
       });
-    }
 
-    return NextResponse.json({
-      success: true,
-      message: "BWMC notified successfully",
-    });
+      return NextResponse.json(
+        {
+          success: false,
+          error: smsResult?.error || "Failed to send SMS notification",
+        },
+        { status: 502 },
+      );
+    } catch (smsErr: any) {
+      console.error("Registration notification error (sendSMS):", smsErr);
+      await supabase.from("sms_notifications").insert({
+        user_id: userId,
+        notification_type: "resident_registration",
+        message,
+        phone_number: bwmc.contact_number,
+        sent_at: new Date().toISOString(),
+        status: "failed",
+        error_message: smsErr?.message || String(smsErr),
+      });
+
+      return NextResponse.json(
+        { success: false, error: smsErr?.message || "SMS provider error" },
+        { status: 500 },
+      );
+    }
   } catch (error: any) {
     console.error("Registration notification error:", error);
     return NextResponse.json(
