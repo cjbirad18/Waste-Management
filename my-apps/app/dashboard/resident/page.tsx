@@ -424,7 +424,7 @@ function ResidentSchedulesFeature({
   const endIndex = startIndex + detailsPageSize;
 
   return (
-    <section className="max-w-6xl mx-auto space-y-8">
+    <section className="max-w-8xl mx-auto space-y-8">
       {/* Modern Header */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div>
@@ -1193,7 +1193,7 @@ function SubmitReportSection({
   };
 
   return (
-    <section className="max-w-3xl mx-auto">
+    <section className="max-w-8xl mx-auto">
       <div className="glass-panel rounded-2xl p-8 card-glow">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
@@ -1806,6 +1806,10 @@ export default function ResidentDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState("");
+  const [selectedReport, setSelectedReport] = useState<any | null>(null);
+  const [selectedReportPhotos, setSelectedReportPhotos] = useState<string[]>(
+    [],
+  );
   const [historyModal, setHistoryModal] = useState<{
     title: string;
     entries: { time: string; status: string; remarks: string }[];
@@ -2169,6 +2173,32 @@ export default function ResidentDashboard() {
   useEffect(() => {
     setMyReportsPage(1);
   }, [myReportsFilterTab, myReportsDateSort, myReportsSearch, userReports]);
+
+  useEffect(() => {
+    if (!modalOpen || !selectedReport) {
+      setSelectedReportPhotos([]);
+      return;
+    }
+
+    const fetchReportPhotos = async () => {
+      const { data, error } = await supabase
+        .from("report_photos")
+        .select("photo_path")
+        .eq("report_id", selectedReport.report_id);
+
+      if (error) {
+        console.error("Error fetching report photos", error);
+        setSelectedReportPhotos([]);
+        return;
+      }
+
+      setSelectedReportPhotos(
+        (data || []).map((item: { photo_path: string }) => item.photo_path),
+      );
+    };
+
+    fetchReportPhotos();
+  }, [modalOpen, selectedReport]);
 
   const handleViewHistory = async (report: any) => {
     const reportId = report.report_id;
@@ -3103,6 +3133,7 @@ export default function ResidentDashboard() {
                                       <td className="px-4 py-2">
                                         <button
                                           onClick={() => {
+                                            setSelectedReport(report);
                                             setSelectedMessage(
                                               report.description,
                                             );
@@ -3236,6 +3267,28 @@ export default function ResidentDashboard() {
                               <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed break-words">
                                 {selectedMessage || "No message available."}
                               </p>
+                            </div>
+
+                            <div className="mt-4">
+                              <p className="text-xs uppercase tracking-[0.18em] text-emerald-400/80 mb-2">
+                                PHOTO
+                              </p>
+                              {selectedReportPhotos.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {selectedReportPhotos.map((url, index) => (
+                                    <img
+                                      key={index}
+                                      src={url}
+                                      alt={`Incident photo ${index + 1}`}
+                                      className="w-full h-36 object-cover rounded-lg border border-slate-700"
+                                    />
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="rounded-lg bg-slate-900/80 border border-slate-700/70 px-4 py-3 text-slate-400">
+                                  No photo was attached to this report.
+                                </div>
+                              )}
                             </div>
 
                             <div className="mt-5 flex justify-end">

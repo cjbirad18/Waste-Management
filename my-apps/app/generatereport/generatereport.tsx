@@ -182,7 +182,81 @@ export default function ReportsAnalytics({
           }
         }
 
-        const periodKeys = Object.keys(byPeriod).sort();
+        const monthNames = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+
+        if (timePeriod === "monthly" && selectedMonth === -1) {
+          monthNames.forEach((month) => {
+            if (!byPeriod[month]) {
+              byPeriod[month] = {
+                tons: 0,
+                done: 0,
+                missed: 0,
+                delayed: 0,
+                total: 0,
+              };
+            }
+          });
+        }
+
+        if (timePeriod === "weekly" && selectedMonth === -1) {
+          const now = new Date();
+          const monthIndex = now.getMonth();
+          const year = now.getFullYear();
+          const firstDay = new Date(year, monthIndex, 1);
+          const lastDay = new Date(year, monthIndex + 1, 0);
+
+          const getWeekStart = (date: Date) => {
+            const d = new Date(date);
+            const day = d.getDay();
+            d.setDate(d.getDate() - day + (day === 0 ? -6 : 1));
+            return d;
+          };
+
+          let weekStart = getWeekStart(firstDay);
+          while (weekStart <= lastDay) {
+            const weekKey = `Week of ${weekStart.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}`;
+            if (!byPeriod[weekKey]) {
+              byPeriod[weekKey] = {
+                tons: 0,
+                done: 0,
+                missed: 0,
+                delayed: 0,
+                total: 0,
+              };
+            }
+            weekStart = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+          }
+        }
+
+        const periodKeys = Object.keys(byPeriod).sort((a, b) => {
+          const weekPrefix = "Week of ";
+          if (a.startsWith(weekPrefix) && b.startsWith(weekPrefix)) {
+            const aDate = new Date(a.replace(weekPrefix, ""));
+            const bDate = new Date(b.replace(weekPrefix, ""));
+            return aDate.getTime() - bDate.getTime();
+          }
+
+          const aIndex = monthNames.indexOf(a);
+          const bIndex = monthNames.indexOf(b);
+          if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+          return a.localeCompare(b);
+        });
 
         const wasteData: WasteCollectionPoint[] = periodKeys.map((key) => ({
           month: key,
@@ -308,7 +382,79 @@ export default function ReportsAnalytics({
           }
         }
 
-        const periodKeys = Object.keys(byPeriod).sort();
+        const monthNames = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+
+        if (timePeriod === "monthly" && selectedMonth === -1) {
+          monthNames.forEach((month) => {
+            if (!byPeriod[month]) {
+              byPeriod[month] = {
+                total: 0,
+                needsAction: 0,
+                ongoing: 0,
+                resolved: 0,
+              };
+            }
+          });
+        }
+
+        if (timePeriod === "weekly" && selectedMonth === -1) {
+          const now = new Date();
+          const monthIndex = now.getMonth();
+          const year = now.getFullYear();
+          const firstDay = new Date(year, monthIndex, 1);
+          const lastDay = new Date(year, monthIndex + 1, 0);
+
+          const getWeekStart = (date: Date) => {
+            const d = new Date(date);
+            const day = d.getDay();
+            d.setDate(d.getDate() - day + (day === 0 ? -6 : 1));
+            return d;
+          };
+
+          let weekStart = getWeekStart(firstDay);
+          while (weekStart <= lastDay) {
+            const weekKey = `Week of ${weekStart.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}`;
+            if (!byPeriod[weekKey]) {
+              byPeriod[weekKey] = {
+                total: 0,
+                needsAction: 0,
+                ongoing: 0,
+                resolved: 0,
+              };
+            }
+            weekStart = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+          }
+        }
+
+        const periodKeys = Object.keys(byPeriod).sort((a, b) => {
+          const weekPrefix = "Week of ";
+          if (a.startsWith(weekPrefix) && b.startsWith(weekPrefix)) {
+            const aDate = new Date(a.replace(weekPrefix, ""));
+            const bDate = new Date(b.replace(weekPrefix, ""));
+            return aDate.getTime() - bDate.getTime();
+          }
+
+          const aIndex = monthNames.indexOf(a);
+          const bIndex = monthNames.indexOf(b);
+          if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+          return a.localeCompare(b);
+        });
 
         const stats: ConcernStatsPoint[] = periodKeys.map((key) => ({
           month: key,
@@ -441,11 +587,11 @@ export default function ReportsAnalytics({
   ];
 
   return (
-    <section className="print-report-page space-y-6">
+    <section className="print-report-page space-y-8 px-1 py-8 xl:px-1">
       <div className="print-only print-brand">Track the Truck</div>
       {/* Header Section */}
-      <div className="rounded-2xl bg-slate-900/80 border border-slate-700/60 p-6 sm:p-8">
-        <div className="flex flex-col gap-6">
+      <div className="rounded-2xl bg-slate-900/80 border border-slate-700/60 p-8 sm:p-10">
+        <div className="flex flex-col gap-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
               <h2 className="print-report-title text-2xl sm:text-3xl font-semibold text-emerald-200">
@@ -479,8 +625,8 @@ export default function ReportsAnalytics({
           </div>
 
           {/* Controls */}
-          <div className="no-print grid grid-cols-1 lg:grid-cols-[1fr_auto] items-start gap-4">
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="no-print grid grid-cols-1 lg:grid-cols-[1fr_auto] items-start gap-6">
+            <div className="flex flex-wrap items-center gap-4">
               <div className="inline-flex rounded-lg bg-slate-950/60 border border-slate-700/60 p-1 text-sm">
                 <button
                   onClick={() => setActiveReportOption("wasteCollection")}
@@ -569,7 +715,7 @@ export default function ReportsAnalytics({
           ) : (
             <>
               {/* Summary Stats Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {wasteStatCards.map((card, idx) => (
                   <div
                     key={idx}
@@ -594,7 +740,7 @@ export default function ReportsAnalytics({
               </div>
 
               {/* Charts Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Waste Collection Chart */}
                 <div className="bg-slate-900/60 border border-slate-700/50 rounded-2xl shadow-xl backdrop-blur-xl overflow-hidden">
                   <div className="bg-gradient-to-r from-emerald-600/20 to-teal-600/20 border-b border-slate-700/50 p-5">
@@ -963,7 +1109,7 @@ export default function ReportsAnalytics({
           ) : (
             <>
               {/* Summary Stats Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {concernStatCards.map((card, idx) => (
                   <div
                     key={idx}

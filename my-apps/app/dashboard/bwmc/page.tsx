@@ -1313,7 +1313,7 @@ export default function BWMCdashboard() {
     );
 
     return (
-      <section className="w-full max-w-5xl mx-auto mt-6 md:mt-10 rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 px-4 py-5 md:p-8 backdrop-blur-xl space-y-5">
+      <section className="w-full max-w-8xl mx-auto mt-6 md:mt-10 rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 px-4 py-5 md:p-8 backdrop-blur-xl space-y-5">
         {/* Top row: text + select */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
           <p className="text-xs md:text-sm text-slate-300">

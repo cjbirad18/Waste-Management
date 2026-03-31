@@ -11,6 +11,7 @@ import {
   YAxis,
   Tooltip,
   Legend,
+  LabelList,
 } from "recharts";
 import TruckLoader from "../loading/TruckLoader";
 import { BarangayConcernsPDFDownload } from "./BarangayConcernsPDF";
@@ -30,6 +31,7 @@ type ConcernStatsPoint = {
   needsAction: number;
   ongoing: number;
   resolved: number;
+  year?: number;
 };
 
 type StatCard = {
@@ -63,6 +65,9 @@ export default function BarangayConcernsAnalytics({
   statusFilter,
 }: Props) {
   const [allStats, setAllStats] = useState<ConcernStatsPoint[]>([]);
+  const [dayDataMap, setDayDataMap] = useState<
+    Record<string, Omit<ConcernStatsPoint, "month" | "year">>
+  >({});
   const [stats, setStats] = useState<ConcernStatsPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -103,6 +108,16 @@ export default function BarangayConcernsAnalytics({
             year: number;
           }
         > = {};
+
+        const byDayInMonth: Record<
+          string,
+          {
+            total: number;
+            needsAction: number;
+            ongoing: number;
+            resolved: number;
+          }
+        > = {};
         const yearsSet = new Set<number>();
 
         for (const row of data ?? []) {
@@ -114,7 +129,9 @@ export default function BarangayConcernsAnalytics({
 
           const monthKey = d.toLocaleString("en-US", { month: "short" });
           const year = d.getFullYear();
+          const dayOfMonth = d.getDate();
           const key = `${monthKey}-${year}`;
+          const dayKey = `${year}-${monthKey}-${dayOfMonth}`;
 
           yearsSet.add(year);
 
@@ -128,6 +145,15 @@ export default function BarangayConcernsAnalytics({
             };
           }
 
+          if (!byDayInMonth[dayKey]) {
+            byDayInMonth[dayKey] = {
+              total: 0,
+              needsAction: 0,
+              ongoing: 0,
+              resolved: 0,
+            };
+          }
+
           const status = row.current_status as ConcernStatus;
 
           if (statusFilter && !statusFilter.includes(status)) {
@@ -135,16 +161,20 @@ export default function BarangayConcernsAnalytics({
           }
 
           byMonthAndYear[key].total += 1;
+          byDayInMonth[dayKey].total += 1;
 
           switch (status) {
             case "Needs Action":
               byMonthAndYear[key].needsAction += 1;
+              byDayInMonth[dayKey].needsAction += 1;
               break;
             case "Ongoing":
               byMonthAndYear[key].ongoing += 1;
+              byDayInMonth[dayKey].ongoing += 1;
               break;
             case "Resolved":
               byMonthAndYear[key].resolved += 1;
+              byDayInMonth[dayKey].resolved += 1;
               break;
             default:
               break;
@@ -155,6 +185,9 @@ export default function BarangayConcernsAnalytics({
         const sortedYears = Array.from(yearsSet).sort((a, b) => b - a);
         setAvailableYears(sortedYears);
 
+        // Keep per-day data to recalc when selectedMonth changes
+        setDayDataMap(byDayInMonth);
+
         // Update selected year if it's not in available years
         if (sortedYears.length > 0 && !sortedYears.includes(selectedYear)) {
           setSelectedYear(sortedYears[0]);
@@ -164,18 +197,40 @@ export default function BarangayConcernsAnalytics({
         const allStatsArr: ConcernStatsPoint[] = Object.keys(
           byMonthAndYear,
         ).map((key) => {
-          const [month] = key.split("-");
+          const [month, yearStr] = key.split("-");
           const data = byMonthAndYear[key];
+          const year = Number(yearStr);
           return {
             month: month,
             total: data.total,
             needsAction: data.needsAction,
             ongoing: data.ongoing,
             resolved: data.resolved,
+            year,
           };
         });
 
         setAllStats(allStatsArr);
+
+        // Build daily stats for the selected month/year (include empty days)
+        const monthIndex = MONTHS.indexOf(selectedMonth);
+        const daysInMonth = new Date(selectedYear, monthIndex + 1, 0).getDate();
+        const currentMonthDayStats = Array.from(
+          { length: daysInMonth },
+          (_, idx) => {
+            const day = idx + 1;
+            const dayKey = `${selectedYear}-${selectedMonth}-${day}`;
+            const entry = byDayInMonth[dayKey];
+
+            return {
+              month: day.toString(),
+              total: entry?.total || 0,
+              needsAction: entry?.needsAction || 0,
+              ongoing: entry?.ongoing || 0,
+              resolved: entry?.resolved || 0,
+            };
+          },
+        );
 
         // Filter stats by current selected year for yearly view
         const currentYearStats = MONTHS.map((m) => {
@@ -217,29 +272,85 @@ export default function BarangayConcernsAnalytics({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [barangayId, statusFilter, selectedYear]);
 
-  useEffect(() => {
-    if (!allStats.length) return;
-    const filtered = allStats.filter((s) => s.month === selectedMonth);
-    setStats(filtered.length ? filtered : []);
-  }, [selectedMonth, allStats]);
-
   // Get stats for the selected year
   const yearlyStats = useMemo(() => {
-    // This would need to be recalculated based on selectedYear
-    // For now, showing allStats, but ideally filter by year
-    return allStats;
-  }, [allStats]);
+    const monthMap = new Map<string, ConcernStatsPoint>();
+    allStats
+      .filter((s) => s.year === selectedYear)
+      .forEach((s) => monthMap.set(s.month, s));
 
-  const availableMonths = MONTHS.filter((m) =>
-    allStats.some((s) => s.month === m),
-  );
+    return MONTHS.map((m) => {
+      const existing = monthMap.get(m);
+      return (
+        existing ?? {
+          month: m,
+          total: 0,
+          needsAction: 0,
+          ongoing: 0,
+          resolved: 0,
+          year: selectedYear,
+        }
+      );
+    });
+  }, [allStats, selectedYear]);
 
-  // Calculate summary statistics
-  const currentData = stats.length > 0 ? stats[0] : null;
-  const totalConcerns = currentData?.total || 0;
-  const needsActionCount = currentData?.needsAction || 0;
-  const ongoingCount = currentData?.ongoing || 0;
-  const resolvedCount = currentData?.resolved || 0;
+  const monthlyDayStats = useMemo(() => {
+    if (!selectedMonth || !selectedYear) return [];
+
+    const selectedMonthIndex = MONTHS.indexOf(selectedMonth);
+    if (selectedMonthIndex === -1) return [];
+
+    const daysInMonth = new Date(
+      selectedYear,
+      selectedMonthIndex + 1,
+      0,
+    ).getDate();
+
+    return Array.from({ length: daysInMonth }, (_, index) => {
+      const day = index + 1;
+      const key = `${selectedYear}-${selectedMonth}-${day}`;
+      const data = dayDataMap[key];
+      return {
+        month: day.toString(),
+        total: data?.total ?? 0,
+        needsAction: data?.needsAction ?? 0,
+        ongoing: data?.ongoing ?? 0,
+        resolved: data?.resolved ?? 0,
+      };
+    });
+  }, [dayDataMap, selectedMonth, selectedYear]);
+
+  useEffect(() => {
+    if (viewMode === "monthly") {
+      setStats(monthlyDayStats);
+    } else {
+      const filtered = yearlyStats.filter((s) => s.month === selectedMonth);
+      setStats(filtered.length ? filtered : yearlyStats);
+    }
+  }, [viewMode, selectedMonth, monthlyDayStats, yearlyStats]);
+
+  const availableMonths = MONTHS;
+
+  // Calculate summary statistics for the current view
+  const isMonthlyView = viewMode === "monthly";
+  const currentData = isMonthlyView
+    ? stats.reduce(
+        (acc, item) => ({
+          total: acc.total + item.total,
+          needsAction: acc.needsAction + item.needsAction,
+          ongoing: acc.ongoing + item.ongoing,
+          resolved: acc.resolved + item.resolved,
+        }),
+        { total: 0, needsAction: 0, ongoing: 0, resolved: 0 },
+      )
+    : stats.length > 0
+      ? stats[0]
+      : { total: 0, needsAction: 0, ongoing: 0, resolved: 0 };
+
+  const totalConcerns = currentData.total;
+  const needsActionCount = currentData.needsAction;
+  const ongoingCount = currentData.ongoing;
+  const resolvedCount = currentData.resolved;
 
   // Calculate yearly totals based on the filtered year data
   const yearlyTotals = yearlyStats.reduce(
@@ -466,7 +577,8 @@ export default function BarangayConcernsAnalytics({
             </div>
 
             <div className="p-5">
-              {viewMode === "monthly" && stats.length > 0 ? (
+              {viewMode === "monthly" &&
+              stats.length > 0 /*@@MONTHLY_CHART@@*/ ? (
                 <div className="h-80 bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
@@ -539,11 +651,39 @@ export default function BarangayConcernsAnalytics({
                         stroke="#64748b"
                         tick={{ fill: "#94a3b8", fontSize: 11 }}
                         axisLine={{ stroke: "#334155" }}
+                        interval={0}
+                        tickCount={Math.min(31, stats.length)}
+                        label={{
+                          value: "Day",
+                          position: "insideBottomRight",
+                          offset: -5,
+                          fill: "#94a3b8",
+                        }}
                       />
                       <YAxis
+                        yAxisId="left"
                         stroke="#64748b"
                         tick={{ fill: "#94a3b8", fontSize: 11 }}
                         axisLine={{ stroke: "#334155" }}
+                        domain={[0, "dataMax + 5"]}
+                        allowDecimals={false}
+                        tickCount={6}
+                        label={{
+                          value: "Count",
+                          angle: -90,
+                          position: "insideLeft",
+                          offset: 10,
+                          fill: "#94a3b8",
+                        }}
+                      />
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        stroke="#38bdf8"
+                        tick={{ fill: "#38bdf8", fontSize: 11 }}
+                        axisLine={{ stroke: "#334155" }}
+                        domain={[0, 100]}
+                        tickFormatter={(value) => `${value}%`}
                       />
                       <Tooltip
                         contentStyle={{
@@ -570,19 +710,40 @@ export default function BarangayConcernsAnalytics({
                         fill="url(#needsActionGrad)"
                         name="Needs Action"
                         radius={[4, 4, 0, 0]}
-                      />
+                      >
+                        <LabelList
+                          dataKey="needsAction"
+                          position="top"
+                          fill="#f59e0b"
+                          style={{ fontSize: 10 }}
+                        />
+                      </Bar>
                       <Bar
                         dataKey="ongoing"
                         fill="url(#ongoingGrad)"
                         name="Ongoing"
                         radius={[4, 4, 0, 0]}
-                      />
+                      >
+                        <LabelList
+                          dataKey="ongoing"
+                          position="top"
+                          fill="#60a5fa"
+                          style={{ fontSize: 10 }}
+                        />
+                      </Bar>
                       <Bar
                         dataKey="resolved"
                         fill="url(#resolvedGrad)"
                         name="Resolved"
                         radius={[4, 4, 0, 0]}
-                      />
+                      >
+                        <LabelList
+                          dataKey="resolved"
+                          position="top"
+                          fill="#34d399"
+                          style={{ fontSize: 10 }}
+                        />
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -659,11 +820,41 @@ export default function BarangayConcernsAnalytics({
                         stroke="#64748b"
                         tick={{ fill: "#94a3b8", fontSize: 11 }}
                         axisLine={{ stroke: "#334155" }}
+                        interval={0}
+                        tickCount={12}
+                        label={{
+                          value: "Month",
+                          position: "insideBottomRight",
+                          offset: -5,
+                          fill: "#94a3b8",
+                        }}
                       />
                       <YAxis
+                        yAxisId="left"
                         stroke="#64748b"
                         tick={{ fill: "#94a3b8", fontSize: 11 }}
+                        tickLine={{ stroke: "#334155" }}
                         axisLine={{ stroke: "#334155" }}
+                        domain={[0, "dataMax + 5"]}
+                        allowDecimals={false}
+                        tickCount={6}
+                        label={{
+                          value: "Count",
+                          angle: -90,
+                          position: "insideLeft",
+                          offset: 10,
+                          fill: "#94a3b8",
+                        }}
+                      />
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        stroke="#38bdf8"
+                        tick={{ fill: "#38bdf8", fontSize: 11 }}
+                        tickLine={{ stroke: "#334155" }}
+                        axisLine={{ stroke: "#334155" }}
+                        domain={[0, 100]}
+                        tickFormatter={(value) => `${value}%`}
                       />
                       <Tooltip
                         contentStyle={{
@@ -690,19 +881,40 @@ export default function BarangayConcernsAnalytics({
                         fill="url(#needsActionGradYearly)"
                         name="Needs Action"
                         radius={[4, 4, 0, 0]}
-                      />
+                      >
+                        <LabelList
+                          dataKey="needsAction"
+                          position="top"
+                          fill="#f59e0b"
+                          style={{ fontSize: 10 }}
+                        />
+                      </Bar>
                       <Bar
                         dataKey="ongoing"
                         fill="url(#ongoingGradYearly)"
                         name="Ongoing"
                         radius={[4, 4, 0, 0]}
-                      />
+                      >
+                        <LabelList
+                          dataKey="ongoing"
+                          position="top"
+                          fill="#60a5fa"
+                          style={{ fontSize: 10 }}
+                        />
+                      </Bar>
                       <Bar
                         dataKey="resolved"
                         fill="url(#resolvedGradYearly)"
                         name="Resolved"
                         radius={[4, 4, 0, 0]}
-                      />
+                      >
+                        <LabelList
+                          dataKey="resolved"
+                          position="top"
+                          fill="#34d399"
+                          style={{ fontSize: 10 }}
+                        />
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

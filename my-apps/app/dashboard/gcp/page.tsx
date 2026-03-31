@@ -1892,7 +1892,7 @@ function GCPScheduleSection() {
   }, []);
 
   return (
-    <section className="dashboard-section max-w-4xl mx-auto overflow-hidden">
+    <section className="dashboard-section max-w-8xl mx-auto overflow-hidden">
       <div className="dashboard-section-glow" />
       <div className="relative z-10">
         <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-slate-100 to-emerald-300 bg-clip-text text-transparent drop-shadow-lg">

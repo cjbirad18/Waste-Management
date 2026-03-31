@@ -2433,7 +2433,7 @@ export default function AdminDashboard() {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-10 py-10 space-y-10 relative z-10 md:ml-64 bg-slate-900/40">
+        <main className="flex-1 overflow-y-auto px-6 sm:px-8 md:px-10 lg:px-12 py-12 space-y-12 relative z-10 md:ml-64 bg-slate-900/40">
           <div
             className={`transition-opacity duration-300 ease-in-out ${
               tabFadeIn ? "opacity-100" : "opacity-0"
@@ -2443,8 +2443,8 @@ export default function AdminDashboard() {
             {/* DASHBOARD */}
             {activeTab === "dashboard" && (
               <>
-                <section className="space-y-6">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <section className="space-y-8">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
                       <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
                         Dashboard
@@ -2469,7 +2469,7 @@ export default function AdminDashboard() {
                   </div>
 
                   {statsVisible && (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                       {dashboardStats.map((card) => (
                         <div
                           key={card.label}
@@ -2498,7 +2498,7 @@ export default function AdminDashboard() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                     {isUserTableExpanded ? (
                       <div className="lg:col-span-5">
                         {/* User list maximized: full width, hide map and reports */}
@@ -3874,8 +3874,8 @@ export default function AdminDashboard() {
             )}
             {/* REPORTS */}
             {activeTab === "reports" && (
-              <section className="space-y-6">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <section className="space-y-8">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-emerald-600 font-semibold">
                       Analytics
@@ -3886,7 +3886,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-4">
                   <Button
                     onClick={() => setActiveReportOption("wasteCollection")}
                     variant={

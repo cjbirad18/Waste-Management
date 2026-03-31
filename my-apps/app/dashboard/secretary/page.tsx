@@ -468,12 +468,12 @@ function ScheduleFormWithCalendar({
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 items-stretch min-h-[700px] p-4 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/30">
+    <div className="rounded-[2rem] flex flex-col lg:flex-row gap-8 items-stretch max-h-screen p-8 max-w-9xl mx-auto bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/30">
       {/* Schedule Input Form - Glassmorphism Card */}
       <form
         onSubmit={handleSubmit}
-        className="group relative flex-1 rounded-[2rem] bg-slate-900/40 border border-emerald-500/10 p-8 backdrop-blur-2xl transition-all duration-500 overflow-hidden shadow-2xl shadow-black/40 hover:shadow-emerald-900/20 hover:border-emerald-500/20"
-        style={{ maxWidth: 420 }}
+        className="group relative flex-1 h-[700px] max-h-[700px] rounded-[2rem] bg-slate-900/40 border border-emerald-500/10 p-6 backdrop-blur-2xl transition-all duration-500 overflow-hidden shadow-2xl shadow-black/40 hover:shadow-emerald-900/20 hover:border-emerald-500/20"
+        style={{ maxWidth: 500 }}
       >
         {/* Animated background gradient */}
         <div className="absolute -inset-[100%] bg-[radial-gradient(circle_at_50%_50%,rgba(16,185,129,0.08),transparent_50%)] animate-pulse-slow pointer-events-none" />
@@ -797,7 +797,7 @@ function ScheduleFormWithCalendar({
       </form>
 
       {/* Calendar View - Immersive Display */}
-      <div className="group relative flex-1 rounded-[2rem] bg-slate-900/40 border border-slate-700/20 shadow-2xl shadow-black/40 p-8 backdrop-blur-2xl transition-all duration-500 overflow-hidden min-w-[350px] max-h-[700px] hover:border-emerald-500/10">
+      <div className="group relative flex-1 h-[700px] max-h-[700px] rounded-[2rem] bg-slate-900/40 border border-slate-700/20 shadow-2xl shadow-black/40 p-8 backdrop-blur-2xl transition-all duration-500 overflow-hidden min-w-[350px] hover:border-emerald-500/10">
         {/* Subtle grid background */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
 
@@ -3087,11 +3087,11 @@ function SecretaryGcpResponsesSection() {
   if (error) return <div className="text-red-700">{error}</div>;
 
   return (
-    <section className="dashboard-section max-w-6xl mx-auto overflow-hidden">
+    <section className="dashboard-section max-w-9xl mx-auto overflow-hidden">
       <div className="dashboard-section-glow" />
 
       <div className="relative z-10">
-        <h2 className="text-2xl font-black mb-6 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
+        <h2 className="text-2xl font-black mb-10 bg-gradient-to-r from-slate-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-2xl tracking-tight">
           GCP Responses
         </h2>
 
@@ -4633,7 +4633,7 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
   };
 
   return (
-    <section className="max-w-4xl mx-auto space-y-6 p-6">
+    <section className="max-w-8xl mx-auto space-y-6 p-6">
       <div className="bg-slate-900/60 border border-slate-700/50 rounded-2xl shadow-xl backdrop-blur-xl overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600/20 to-teal-600/20 border-b border-slate-700/50 p-6">
@@ -6060,7 +6060,7 @@ export default function SecretaryDashboard() {
 
             {/* Schedules */}
             {activeTab === "schedules" && (
-              <div className="dashboard-section max-w-6xl mx-auto overflow-hidden">
+              <div className="dashboard-section max-w-8xl mx-auto overflow-hidden">
                 <div className="dashboard-section-glow" />
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-8">
