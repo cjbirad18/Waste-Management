@@ -9,9 +9,11 @@ const friendlyRole = (role: string): string => {
   switch (role.toLowerCase()) {
     case "swmo":
     case "swmo head":
+    case "swmohead":
       return "SWMO Head";
     case "tcemo":
     case "tcemo head":
+    case "tcemohead":
       return "TCEMO Head";
     case "bwmc":
       return "BWMC";
@@ -28,8 +30,18 @@ const friendlyRole = (role: string): string => {
 
 const normalizeRole = (role: string): string => {
   const lower = role.toLowerCase().trim();
-  if (lower === "swmo head" || lower === "swmo") return "swmo";
-  if (lower === "tcemo head" || lower === "tcemo") return "tcemo";
+  if (
+    lower === "swmo head" ||
+    lower === "swmo" ||
+    lower === "swmohead"
+  )
+    return "swmo";
+  if (
+    lower === "tcemo head" ||
+    lower === "tcemo" ||
+    lower === "tcemohead"
+  )
+    return "tcemo";
   return lower;
 };
 
@@ -160,19 +172,42 @@ export default function LoginClient() {
     if (data.user) {
       const { data: userProfile, error: profileError } = await supabase
         .from("users")
-        .select("role, status")
+        .select("role, status, user_id")
         .eq("user_id", data.user.id)
-        .single();
+        .maybeSingle();
 
-      if (profileError || !userProfile?.role) {
+      let profile = userProfile;
+      let userProfileError = profileError;
+
+      if (!profile) {
+        const { data: emailProfile, error: emailProfileError } = await supabase
+          .from("users")
+          .select("role, status, user_id")
+          .eq("email", data.user.email)
+          .maybeSingle();
+
+        if (emailProfile) {
+          profile = emailProfile;
+          userProfileError = emailProfileError;
+
+          if (!emailProfile.user_id) {
+            await supabase
+              .from("users")
+              .update({ user_id: data.user.id })
+              .eq("email", data.user.email);
+          }
+        }
+      }
+
+      if (userProfileError || !profile?.role) {
         setErrorMessage(
-          "Your account profile is incomplete. Please contact the administrator.",
+          "Your account is not linked to a complete app profile. Ask the administrator to add your user record to the app's users table.",
         );
         await supabase.auth.signOut();
         return;
       }
 
-      const userRole = normalizeRole(userProfile.role);
+      const userRole = normalizeRole(profile.role);
 
       if (userRole !== expectedRole) {
         setErrorMessage(
@@ -188,8 +223,8 @@ export default function LoginClient() {
 
       // disallow login if the account has been marked inactive or archived
       if (
-        userProfile.status &&
-        ["inactive", "archived"].includes(userProfile.status.toLowerCase())
+        profile.status &&
+        ["inactive", "archived"].includes(profile.status.toLowerCase())
       ) {
         setErrorMessage(
           "Your account has been deactivated or archived. Please contact the system administrator.",
@@ -200,10 +235,10 @@ export default function LoginClient() {
 
       if (
         userRole === "resident" &&
-        userProfile.status?.toLowerCase() !== "approved"
+        profile.status?.toLowerCase() !== "approved"
       ) {
         setErrorMessage(
-          userProfile.status?.toLowerCase() === "pending"
+          profile.status?.toLowerCase() === "pending"
             ? "Your account is pending approval by the BWMC. Please wait for activation."
             : "Your account is not approved for login.",
         );
@@ -211,14 +246,14 @@ export default function LoginClient() {
         return;
       } else if (
         userRole !== "resident" &&
-        userProfile.status?.toLowerCase() === "rejected"
+        profile.status?.toLowerCase() === "rejected"
       ) {
         setErrorMessage("Your account has been rejected.");
         await supabase.auth.signOut();
         return;
       }
 
-      router.push(`/dashboard/${routeFromRole(userProfile.role)}`);
+      router.push(`/dashboard/${routeFromRole(profile.role)}`);
     }
   };
 
