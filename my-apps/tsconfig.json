@@ -14,7 +14,6 @@
     "jsx": "react-jsx",
     "incremental": true,
     "baseUrl": ".", // Important for absolute imports
-    "ignoreDeprecations": "6.0",
     "paths": {
       "@/*": ["./*"]
     },
