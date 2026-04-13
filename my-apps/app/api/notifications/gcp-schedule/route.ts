@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     const formattedTime = start_time || "TBA";
 
     // Compose SMS message (formal style)
-    let message = `TRACK THE TRUCK: Mr./Ms. ${gcp.first_name}, you have been assigned to Barangay ${barangay.barangay_name}.`;
+    let message = `TTruck: Mr. ${gcp.first_name}, you have been assigned to Barangay ${barangay.barangay_name}.`;
     message += ` Schedule pattern: ${schedule_pattern}.`;
     message += ` Planned departure time: ${formattedTime}.`;
     if (truck_code) {

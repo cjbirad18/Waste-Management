@@ -24,22 +24,22 @@ export async function POST(req: NextRequest) {
 
     switch (status) {
       case "acknowledged":
-        message = `INCIDENT REPORT UPDATE: #${reportId} has been acknowledged and is currently under review. Thank you for your submission.\n\n - Track the Truck`;
+        message = `TTruck: INCIDENT REPORT UPDATE: #${reportId} has been acknowledged and is currently under review. Thank you for your submission.\n\n - Track the Truck`;
         break;
       case "needs_action":
-        message = `INCIDENT REPORT UPDATE: #${reportId} has been validated and escalated to SWMO for intervention. You will receive further updates shortly.\n\n - Track the Truck`;
+        message = `TTruck: INCIDENT REPORT UPDATE: #${reportId} has been validated and escalated to SWMO for intervention. You will receive further updates shortly.\n\n - Track the Truck`;
         break;
       case "ongoing":
-        message = `INCIDENT REPORT UPDATE: #${reportId} is being actively addressed by our team. We are working to resolve the matter promptly.\n\n - Track the Truck`;
+        message = `TTruck: INCIDENT REPORT UPDATE: #${reportId} is being actively addressed by our team. We are working to resolve the matter promptly.\n\n - Track the Truck`;
         break;
       case "resolved":
-        message = `INCIDENT REPORT UPDATE: #${reportId} has been resolved.${actionTaken ? ` Action taken: ${actionTaken}.` : ""} Thank you for your cooperation.\n\n - Track the Truck`;
+        message = `TTruck: INCIDENT REPORT UPDATE: #${reportId} has been resolved.${actionTaken ? ` Action taken: ${actionTaken}.` : ""} Thank you for your cooperation.\n\n - Track the Truck`;
         break;
       case "rejected":
-        message = `INCIDENT REPORT UPDATE: #${reportId} cannot be processed as submitted.${reason ? ` Reason: ${reason}.` : " Additional evidence may be required."} Please follow up with SWMO for next steps.\n\n - Track the Truck`;
+        message = `TTruck: INCIDENT REPORT UPDATE: #${reportId} cannot be processed as submitted.${reason ? ` Reason: ${reason}.` : " Additional evidence may be required."} Please follow up with SWMO for next steps.\n\n - Track the Truck`;
         break;
       default:
-        message = `INCIDENT REPORT UPDATE: #${reportId} status changed to ${status}.\n\n - Track the Truck`;
+        message = `TTruck: INCIDENT REPORT UPDATE: #${reportId} status changed to ${status}.\n\n - Track the Truck`;
     }
 
     // Send SMS

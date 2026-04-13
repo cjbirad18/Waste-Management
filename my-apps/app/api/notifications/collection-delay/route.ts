@@ -26,13 +26,13 @@ export async function POST(req: NextRequest) {
 
     // Staff message (Secretary + BWMC)
     const staffMessage =
-      `DELIVERY UPDATE: Scheduled collection service for ${barangayName} has been delayed. Reason: ${delayReason}.` +
+      `TTruck: DELIVERY UPDATE: Scheduled collection service for ${barangayName} has been delayed. Reason: ${delayReason}.` +
       (delayNotes ? ` Additional notes: ${delayNotes}.` : "") +
       (gcpName ? ` GCP: ${gcpName}.` : "") +
       ` Please expect further updates from Track the Truck.\n\n -Track the Truck`;
 
     // Resident message
-    const residentMessage = `NOTICE: Scheduled garbage collection for ${barangayName} is delayed. Reason: ${delayReason}. We apologize for the inconvenience and appreciate your patience.\n\n -Track the Truck`;
+    const residentMessage = `TTruck: Scheduled garbage collection for ${barangayName} is delayed. Reason: ${delayReason}. We apologize for the inconvenience and appreciate your patience.\n\n -Track the Truck`;
 
     // 1. Notify Secretary
     const { data: secretaries } = await supabase

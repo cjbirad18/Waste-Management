@@ -101,6 +101,7 @@ function InputField({
   onChange,
   required = false,
   placeholder = "",
+  minLength,
 }: {
   label: string;
   name: string;
@@ -109,6 +110,7 @@ function InputField({
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
   placeholder?: string;
+  minLength?: number;
 }): React.JSX.Element {
   return (
     <div className="mb-4 space-y-2">
@@ -123,6 +125,7 @@ function InputField({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
+        minLength={minLength}
       />
     </div>
   );
@@ -1464,6 +1467,11 @@ export default function AdminDashboard() {
       !nameRegex.test(userForm.last_name)
     )
       return "First name and last name can only contain letters and spaces";
+    if (
+      userForm.first_name.replace(/\s/g, "").length < 2 ||
+      userForm.last_name.replace(/\s/g, "").length < 2
+    )
+      return "First name and last name must each be at least 2 letters";
     if (userForm.role === "BWMC" && !userForm.barangay_id)
       return "Barangay is required for BWMC role";
     // phone must start with 09 and exactly 11 digits
@@ -2863,6 +2871,7 @@ export default function AdminDashboard() {
                           value={userForm.first_name}
                           onChange={handleUserFormChange}
                           required
+                          minLength={2}
                           placeholder="e.g. Juan"
                         />
                         <InputField
@@ -2872,6 +2881,7 @@ export default function AdminDashboard() {
                           value={userForm.last_name}
                           onChange={handleUserFormChange}
                           required
+                          minLength={2}
                           placeholder="e.g. Dela Cruz"
                         />
                       </div>

@@ -2190,7 +2190,7 @@ function GCPAssignedTasksSection() {
             (schedule.barangay as unknown as { barangay_name: string } | null)
               ?.barangay_name || "Unknown";
           const truckCode = truck.truck_code || "Unassigned";
-          const message = `Waste collected recorded. Barangay: ${barangayName}. Truck: ${truckCode}. Date: ${collectionDate}. Weight: ${weightValue} kg. - Track the Truck`;
+          const message = `TTruck: Waste collection has been recorded successfully. Barangay: ${barangayName}. Truck: ${truckCode}. Date: ${collectionDate}. Weight: ${weightValue} kg.\n\n - Track the Truck`;
 
           await Promise.all(
             secretaries.map((secretary) =>

@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Send SMS
-    const smsMessage = `Your new password is: ${newPassword}\nPlease log in and change it immediately.`;
+    const smsMessage = `TTruck: Your password has been reset. Your new temporary password is ${newPassword}. Please log in and update your password immediately after signing in. Thank you.\n\n -Track the Truck.`;
     try {
       await sendSMS(user.contact_number, smsMessage);
     } catch (smsError) {

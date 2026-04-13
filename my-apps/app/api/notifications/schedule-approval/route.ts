@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    let message = `TRACK THE TRUCK - Schedule ${status === "approved" ? "Approved" : "Rejected"}\n\n`;
+    let message = `TTruck: Schedule ${status === "approved" ? "Approved" : "Rejected"}\n\n`;
     message += `Dear ${secretary.name},\n\n`;
     message += `Your garbage collection schedule submission has been ${status} by ${approvedBy}.\n\n`;
     message += `Schedule Details:\n`;

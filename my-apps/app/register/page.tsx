@@ -218,6 +218,14 @@ export default function RegisterPage() {
       return;
     }
 
+    if (
+      firstName.replace(/\s/g, "").length < 2 ||
+      lastName.replace(/\s/g, "").length < 2
+    ) {
+      setError("First name and last name must be at least 2 letters.");
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
@@ -363,6 +371,7 @@ export default function RegisterPage() {
               onChange={(e) =>
                 setFirstName(e.target.value.replace(/[^A-Za-z\s]/g, ""))
               }
+              minLength={2}
               required
               placeholder="First name"
             />
@@ -382,6 +391,7 @@ export default function RegisterPage() {
               onChange={(e) =>
                 setLastName(e.target.value.replace(/[^A-Za-z\s]/g, ""))
               }
+              minLength={2}
               required
               placeholder="Last name"
             />

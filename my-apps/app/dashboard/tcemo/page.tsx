@@ -61,6 +61,7 @@ function InputField({
   required = false,
   placeholder = "",
   disabled = false,
+  minLength,
 }: {
   label: string;
   name: string;
@@ -70,6 +71,7 @@ function InputField({
   required?: boolean;
   placeholder?: string;
   disabled?: boolean;
+  minLength?: number;
 }) {
   return (
     <div className="mb-4 space-y-2">
@@ -87,6 +89,7 @@ function InputField({
         autoComplete="off"
         disabled={disabled}
         readOnly={disabled}
+        minLength={minLength}
         className={disabled ? "cursor-not-allowed opacity-60" : undefined}
       />
     </div>
@@ -800,6 +803,8 @@ export default function TcemoDashboard() {
   const nameRegex = /^[A-Za-z\s]+$/;
   const sanitizeNameField = (value: string) =>
     value.replace(/[^A-Za-z\s]/g, "");
+  const isValidNameLength = (value: string) =>
+    value.replace(/\s/g, "").length >= 2;
 
   const validateUserForm = () => {
     if (
@@ -817,6 +822,10 @@ export default function TcemoDashboard() {
       !nameRegex.test(userForm.last_name)
     )
       return "First and last names can only contain letters and spaces.";
+    if (!isValidNameLength(userForm.first_name))
+      return "First name must be at least 2 letters.";
+    if (!isValidNameLength(userForm.last_name))
+      return "Last name must be at least 2 letters.";
     return null;
   };
 
@@ -1892,6 +1901,7 @@ export default function TcemoDashboard() {
                           value={userForm.first_name}
                           onChange={handleUserFormChange}
                           required
+                          minLength={2}
                         />
                         <InputField
                           label="Last Name"
@@ -1900,6 +1910,7 @@ export default function TcemoDashboard() {
                           value={userForm.last_name}
                           onChange={handleUserFormChange}
                           required
+                          minLength={2}
                         />
                         <InputField
                           label="Contact Number"
@@ -1987,6 +1998,7 @@ export default function TcemoDashboard() {
                                   {user.status.toLowerCase() === "active" ? (
                                     <Button
                                       variant="destructive"
+                                      className="bg-red-600 text-white hover:bg-red-700"
                                       onClick={() =>
                                         handleDeactivateSWMOHead(user.user_id)
                                       }
@@ -1995,6 +2007,7 @@ export default function TcemoDashboard() {
                                     </Button>
                                   ) : (
                                     <Button
+                                      className="bg-emerald-600 text-white hover:bg-emerald-700"
                                       onClick={() =>
                                         handleActivateSWMOHead(user.user_id)
                                       }

@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
     };
 
     if (updateType === "archived") {
-      message = `NOTICE: The garbage collection schedule for ${scheduleDate} has been cancelled. You will be notified of the new schedule.\n\n - Track the Truck`;
+      message = `TTruck: NOTICE: The garbage collection schedule for ${scheduleDate} has been cancelled. You will be notified of the new schedule.\n\n - Track the Truck`;
     } else if (updateType === "updated" && oldPattern && newPattern) {
       const newDays = getFullDayNames(newPattern);
       const oldDays = getFullDayNames(oldPattern);

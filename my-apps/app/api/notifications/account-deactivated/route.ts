@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let message = `Track the Truck - Account Deactivation Notice\n\n`;
+    let message = `TTruck: Account Deactivation Notice\n\n`;
     message += `Dear ${user.name},\n\n`;
     message += `Your account has been deactivated by ${deactivatedBy}.\n`;
 
@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
 
     message += `\nYou will no longer have access to the system. `;
     message += `If you believe this is an error, please contact the administrator.`;
+    message += `\n\n - Track the Truck`;
 
     // Send SMS
     const smsResult = await sendSMS(user.phone, message);

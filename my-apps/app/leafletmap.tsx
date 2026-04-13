@@ -30,7 +30,7 @@ import {
   Activity,
 } from "lucide-react";
 
-const mapCenter: [number, number] = [9.6556, 123.8521];
+const mapCenter: [number, number] = [9.6611, 123.8699];
 
 const createBarangayIcon = () =>
   new L.Icon({
@@ -914,15 +914,6 @@ function LeafletMap({
     return () => clearInterval(id);
   }, []);
 
-  const currentCenter: [number, number] =
-    role === "GCP" && landfillCenter
-      ? [landfillCenter.lat, landfillCenter.lng]
-      : residentGps?.lat != null && residentGps?.lng != null
-        ? [residentGps.lat, residentGps.lng]
-        : landfillCenter
-          ? [landfillCenter.lat, landfillCenter.lng]
-          : mapCenter;
-
   if (isLoading) {
     return (
       <div className="w-full h-[50vh] flex items-center justify-center bg-slate-900/50 rounded-3xl border border-slate-800/50">
@@ -1008,7 +999,7 @@ function LeafletMap({
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-white">
-                    Arrival Time
+                    Approximate Time
                   </h3>
                   <p className="text-md text-slate-400">Next collection</p>
                 </div>
@@ -1075,8 +1066,8 @@ function LeafletMap({
         {/* Map */}
         <div className="w-full h-[60vh] min-h-[400px] relative bg-slate-900">
           <MapContainer
-            center={currentCenter}
-            zoom={14}
+            center={mapCenter}
+            zoom={13}
             className="w-full h-full"
             zoomControl={false}
           >

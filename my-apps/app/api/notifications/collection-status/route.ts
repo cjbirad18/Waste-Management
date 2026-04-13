@@ -26,25 +26,25 @@ export async function POST(req: NextRequest) {
     switch (status) {
       case "started":
         message =
-          "NOTICE: Garbage collection has commenced in your barangay. Please ensure your waste is ready for collection.\n\n - Track the Truck";
+          "TTruck: NOTICE: Garbage collection has commenced in your barangay. Please ensure your waste is ready for collection.\n\n - Track the Truck";
         break;
       case "ongoing":
         message =
-          "UPDATE: Garbage collection is currently in progress in your barangay. You may monitor the truck's location via the app.\n\n - Track the Truck";
+          "TTruck: UPDATE: Garbage collection is currently in progress in your barangay. You may monitor the truck's location via the app.\n\n - Track the Truck";
         break;
       case "delayed":
-        message = `NOTICE: Garbage collection is delayed. ${reason ? `Reason: ${reason}.` : "The reason is being reviewed."} We apologize for the inconvenience and will provide updates shortly.\n\n - Track the Truck`;
+        message = `TTruck: NOTICE: Garbage collection is delayed. ${reason ? `Reason: ${reason}.` : "The reason is being reviewed."} We apologize for the inconvenience and will provide updates shortly.\n\n - Track the Truck`;
         break;
       case "missed":
         message =
-          "NOTICE: Scheduled garbage collection in your barangay was not completed today. We apologize for the inconvenience and will communicate the rescheduled collection time as soon as possible.\n\n - Track the Truck";
+          "TTruck: NOTICE: Scheduled garbage collection in your barangay was not completed today. We apologize for the inconvenience and will communicate the rescheduled collection time as soon as possible.\n\n - Track the Truck";
         break;
       case "completed":
         message =
-          "CONFIRMATION: Garbage collection in your barangay is complete. Thank you for your cooperation.\n\n - Track the Truck";
+          "TTruck: CONFIRMATION: Garbage collection in your barangay is complete. Thank you for your cooperation.\n\n - Track the Truck";
         break;
       default:
-        message = `NOTICE: Garbage collection status update: ${status}.\n\n - Track the Truck`;
+        message = `TTruck: NOTICE: Garbage collection status update: ${status}.\n\n - Track the Truck`;
     }
 
     const notifications = [];

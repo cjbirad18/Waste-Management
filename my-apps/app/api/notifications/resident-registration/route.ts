@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const message = `OFFICIAL NOTICE: A new resident registration has been submitted by ${residentName} and is awaiting your approval. Please log in to the system to review and complete the approval process.\n\n - Track the Truck`;
+    const message = `TTruck: OFFICIAL NOTICE: A new resident registration has been submitted by ${residentName} and is awaiting your approval. Please log in to the system to review and complete the approval process.\n\n - Track the Truck`;
 
     try {
       const smsResult = await sendSMS(bwmc.contact_number, message);

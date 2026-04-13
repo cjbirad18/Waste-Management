@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const message = `You have been assigned to a garbage collection schedule. \nBarangay: ${barangayName}.\nDate: ${scheduleDate}.\nTime: ${scheduleTime}.\nPlease check the system for details.\n\n - Track the Truck`;
+    const message = `TTruck: You have been assigned to a garbage collection schedule. \nBarangay: ${barangayName}.\nDate: ${scheduleDate}.\nTime: ${scheduleTime}.\nPlease check the system for details.\n\n - Track the Truck`;
 
     // Send SMS
     const smsResponse = await fetch(

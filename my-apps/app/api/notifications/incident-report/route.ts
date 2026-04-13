@@ -32,9 +32,9 @@ export async function POST(req: NextRequest) {
       console.error("Failed to fetch secretaries:", secretaryError);
     }
 
-    const bwmcMessage = `OFFICIAL INCIDENT NOTICE: A new report has been received from ${reporterName}.\nLocation: ${location}.\nReport ID: #${reportId}.\nPlease review immediately and initiate appropriate response procedures.\n\n - Track the Truck`;
+    const bwmcMessage = `TTruck: OFFICIAL INCIDENT NOTICE: A new report has been received from ${reporterName}.\nLocation: ${location}.\nReport ID: #${reportId}.\nPlease review immediately and initiate appropriate response procedures.\n\n - Track the Truck`;
 
-    const secretaryMessage = `NOTICE: A resident incident report was submitted by ${reporterName}.\nLocation: ${location}.\nReport ID: #${reportId}.\nThis report is being shared for administrative awareness and follow-up.\n\n - Track the Truck`;
+    const secretaryMessage = `TTruck: NOTICE: A resident incident report was submitted by ${reporterName}.\nLocation: ${location}.\nReport ID: #${reportId}.\nThis report is being shared for administrative awareness and follow-up.\n\n - Track the Truck`;
 
     try {
       await sendSMS(bwmc.contact_number, bwmcMessage);
