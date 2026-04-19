@@ -62,6 +62,7 @@ function InputField({
   placeholder = "",
   disabled = false,
   minLength,
+  maxLength,
 }: {
   label: string;
   name: string;
@@ -72,6 +73,7 @@ function InputField({
   placeholder?: string;
   disabled?: boolean;
   minLength?: number;
+  maxLength?: number;
 }) {
   return (
     <div className="mb-4 space-y-2">
@@ -90,6 +92,7 @@ function InputField({
         disabled={disabled}
         readOnly={disabled}
         minLength={minLength}
+        maxLength={maxLength}
         className={disabled ? "cursor-not-allowed opacity-60" : undefined}
       />
     </div>
@@ -261,6 +264,17 @@ export default function TcemoDashboard() {
     "Scheduled",
     "Action Ongoing",
   ];
+
+  const reportStatusClasses: Record<string, string> = {
+    Submitted: "bg-blue-500/15 text-blue-300 border border-blue-500/30",
+    Validated: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+    Rejected: "bg-rose-500/15 text-rose-300 border border-rose-500/30",
+    "Under Review": "bg-amber-500/15 text-amber-300 border border-amber-500/30",
+    Scheduled: "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30",
+    "Action Ongoing": "bg-orange-500/15 text-orange-300 border border-orange-500/30",
+    Resolved: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+  };
+
   const reportsPerPage = 5;
 
   const fetchIncidentReports = useCallback(async () => {
@@ -826,6 +840,8 @@ export default function TcemoDashboard() {
       return "First name must be at least 2 letters.";
     if (!isValidNameLength(userForm.last_name))
       return "Last name must be at least 2 letters.";
+    if (!/^09\d{9}$/.test(userForm.contact_number))
+      return "Contact number must start with 09 and be exactly 11 digits.";
     return null;
   };
 
@@ -844,6 +860,8 @@ export default function TcemoDashboard() {
       !nameRegex.test(manageAccountForm.last_name)
     )
       return "First and last names can only contain letters and spaces.";
+    if (!/^09\d{9}$/.test(manageAccountForm.contact_number))
+      return "Contact number must start with 09 and be exactly 11 digits.";
     if (manageAccountForm.password || manageAccountForm.confirm_password) {
       if (manageAccountForm.password.length < 6)
         return "New password must be at least 6 characters.";
@@ -858,6 +876,14 @@ export default function TcemoDashboard() {
       setManageAccountForm({
         ...manageAccountForm,
         [e.target.name]: sanitizeNameField(e.target.value),
+      });
+      return;
+    }
+    if (e.target.name === "contact_number") {
+      const sanitized = String(e.target.value).replace(/\D/g, "").slice(0, 11);
+      setManageAccountForm({
+        ...manageAccountForm,
+        contact_number: sanitized,
       });
       return;
     }
@@ -916,6 +942,11 @@ export default function TcemoDashboard() {
         ...userForm,
         [e.target.name]: sanitizeNameField(e.target.value),
       });
+      return;
+    }
+    if (e.target.name === "contact_number") {
+      const sanitized = String(e.target.value).replace(/\D/g, "").slice(0, 11);
+      setUserForm({ ...userForm, contact_number: sanitized });
       return;
     }
     setUserForm({ ...userForm, [e.target.name]: e.target.value });
@@ -1584,37 +1615,42 @@ export default function TcemoDashboard() {
                                   {report.description || "Untitled"}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
-                                  {report.location}
+                                  {report.location || report.landmark || "N/A"}
+                                  {report.barangay?.barangay_name
+                                    ? `, ${report.barangay.barangay_name}`
+                                    : ""}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
-                                  {report.current_status}
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span
+                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                                      reportStatusClasses[report.current_status] ??
+                                      "bg-slate-800 text-slate-200 border border-slate-700"
+                                    }`}
+                                  >
+                                    {report.current_status || "Submitted"}
+                                  </span>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
                                   {report.date_submitted
-                                    ? new Date(
-                                        report.date_submitted,
-                                      ).toLocaleString()
-                                    : "N/A"}
+                                    ? new Date(report.date_submitted).toLocaleString()
+                                    : "-"}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-200">
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedReport(report);
-                                        setShowReportModal(true);
-                                      }}
-                                    >
-                                      View
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleViewHistory(report)}
-                                    >
-                                      History
-                                    </Button>
-                                  </div>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedReport(report);
+                                      setShowReportModal(true);
+                                    }}
+                                    className="text-emerald-300 hover:text-emerald-200 mr-4"
+                                  >
+                                    View
+                                  </button>
+                                  <button
+                                    onClick={() => handleViewHistory(report)}
+                                    className="text-slate-300 hover:text-slate-100"
+                                  >
+                                    History
+                                  </button>
                                 </td>
                               </tr>
                             ))}
@@ -1625,26 +1661,36 @@ export default function TcemoDashboard() {
 
                     {totalReportPages > 1 && (
                       <div className="flex justify-center items-center gap-3 mt-4">
-                        <Button
+                        <button
+                          type="button"
+                          onClick={() => setReportPage((prev) => Math.max(1, prev - 1))}
                           disabled={currentReportPage === 1}
-                          onClick={() => setReportPage(currentReportPage - 1)}
-                          variant="outline"
-                          className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                          className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
                         >
                           Previous
-                        </Button>
-                        <span className="text-xs text-slate-300">
-                          Page {currentReportPage} of {totalReportPages} (
-                          {filteredIncidentReports.length} total)
-                        </span>
-                        <Button
+                        </button>
+                        {visibleReportPages.map((page) => (
+                          <button
+                            key={page}
+                            type="button"
+                            onClick={() => setReportPage(page)}
+                            className={`rounded-lg px-3 py-1 text-sm ${
+                              page === currentReportPage
+                                ? "bg-emerald-600 text-white"
+                                : "bg-slate-800 text-slate-200"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setReportPage((prev) => Math.min(totalReportPages, prev + 1))}
                           disabled={currentReportPage === totalReportPages}
-                          onClick={() => setReportPage(currentReportPage + 1)}
-                          variant="outline"
-                          className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 hover:border-emerald-500/50"
+                          className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
                         >
                           Next
-                        </Button>
+                        </button>
                       </div>
                     )}
                   </div>
@@ -1900,6 +1946,7 @@ export default function TcemoDashboard() {
                           type="text"
                           value={userForm.first_name}
                           onChange={handleUserFormChange}
+                          placeholder="First Name"
                           required
                           minLength={2}
                         />
@@ -1909,6 +1956,7 @@ export default function TcemoDashboard() {
                           type="text"
                           value={userForm.last_name}
                           onChange={handleUserFormChange}
+                          placeholder="Last Name"
                           required
                           minLength={2}
                         />
@@ -1919,6 +1967,8 @@ export default function TcemoDashboard() {
                           value={userForm.contact_number}
                           onChange={handleUserFormChange}
                           required
+                          placeholder="09xxxxxxxxx"
+                          maxLength={11}
                         />
                         <InputField
                           label="Email"
@@ -1926,6 +1976,7 @@ export default function TcemoDashboard() {
                           type="email"
                           value={userForm.email}
                           onChange={handleUserFormChange}
+                          placeholder="Email Address"
                           required
                         />
 
@@ -2257,6 +2308,8 @@ function ManageAccountSection({
           value={form.contact_number}
           onChange={onChange}
           required
+          placeholder="09xxxxxxxxx"
+          maxLength={11}
         />
         <InputField
           label="New Password"

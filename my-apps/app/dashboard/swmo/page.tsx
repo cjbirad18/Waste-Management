@@ -102,6 +102,7 @@ function InputField({
   required = false,
   placeholder = "",
   minLength,
+  maxLength,
 }: {
   label: string;
   name: string;
@@ -111,6 +112,7 @@ function InputField({
   required?: boolean;
   placeholder?: string;
   minLength?: number;
+  maxLength?: number;
 }): React.JSX.Element {
   return (
     <div className="mb-4 space-y-2">
@@ -126,6 +128,7 @@ function InputField({
         required={required}
         placeholder={placeholder}
         minLength={minLength}
+        maxLength={maxLength}
       />
     </div>
   );
@@ -1431,6 +1434,11 @@ export default function AdminDashboard() {
       setUserForm({ ...userForm, [e.target.name]: safeValue });
       return;
     }
+    if (e.target.name === "contact_number") {
+      const sanitized = String(e.target.value).replace(/\D/g, "").slice(0, 11);
+      setUserForm({ ...userForm, contact_number: sanitized });
+      return;
+    }
     setUserForm({ ...userForm, [e.target.name]: e.target.value });
   };
 
@@ -1439,6 +1447,15 @@ export default function AdminDashboard() {
       setManageAccountForm({
         ...manageAccountForm,
         [e.target.name]: sanitizeNameField(e.target.value),
+      });
+      return;
+    }
+
+    if (e.target.name === "contact_number") {
+      const sanitized = String(e.target.value).replace(/\D/g, "").slice(0, 11);
+      setManageAccountForm({
+        ...manageAccountForm,
+        contact_number: sanitized,
       });
       return;
     }
@@ -1885,7 +1902,30 @@ export default function AdminDashboard() {
       }
 
       setOtherUsersSuccess(`${userName} account archived successfully!`);
-      fetchOtherUsers();
+      await Promise.all([fetchOtherUsers(), fetchUsers()]);
+    } catch (err) {
+      setOtherUsersError(`Unexpected error: ${(err as Error).message}`);
+    }
+  };
+
+  const handleUnarchiveUser = async (userId: string, userName: string) => {
+    if (!window.confirm(`Unarchive account for ${userName}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("users")
+        .update({ status: "active" })
+        .eq("user_id", userId);
+
+      if (error) {
+        setOtherUsersError(`Unarchive failed: ${error.message}`);
+        return;
+      }
+
+      setOtherUsersSuccess(`${userName} account unarchived successfully!`);
+      await Promise.all([fetchOtherUsers(), fetchUsers()]);
     } catch (err) {
       setOtherUsersError(`Unexpected error: ${(err as Error).message}`);
     }
@@ -2129,6 +2169,7 @@ export default function AdminDashboard() {
                 onChange={onChange}
                 required
                 placeholder="09123456789"
+                maxLength={11}
               />
             </div>
             <div className="space-y-2">
@@ -2909,6 +2950,7 @@ export default function AdminDashboard() {
                             onChange={handleUserFormChange}
                             required
                             placeholder="09xx-xxx-xxxx"
+                            maxLength={11}
                           />
                           {userForm.contact_number &&
                             !/^09\d{9}$/.test(userForm.contact_number) && (
@@ -3332,19 +3374,33 @@ export default function AdminDashboard() {
                                       "Secretary",
                                       "BWMC",
                                       "GCP",
-                                    ].includes(user.role) && (
-                                      <button
-                                        onClick={() =>
-                                          handleArchiveUser(
-                                            String(user.user_id ?? ""),
-                                            `${user.first_name} ${user.last_name}`,
-                                          )
-                                        }
-                                        className="text-rose-300 hover:text-rose-200 text-xs"
-                                      >
-                                        Archive
-                                      </button>
-                                    )}
+                                    ].includes(user.role) &&
+                                      (user.status?.toLowerCase() ===
+                                      "archived" ? (
+                                        <button
+                                          onClick={() =>
+                                            handleUnarchiveUser(
+                                              String(user.user_id ?? ""),
+                                              `${user.first_name} ${user.last_name}`,
+                                            )
+                                          }
+                                          className="text-emerald-300 hover:text-emerald-200 text-xs"
+                                        >
+                                          Unarchive
+                                        </button>
+                                      ) : (
+                                        <button
+                                          onClick={() =>
+                                            handleArchiveUser(
+                                              String(user.user_id ?? ""),
+                                              `${user.first_name} ${user.last_name}`,
+                                            )
+                                          }
+                                          className="text-rose-300 hover:text-rose-200 text-xs"
+                                        >
+                                          Archive
+                                        </button>
+                                      ))}
                                   </td>
                                 </tr>
                               );
@@ -4090,10 +4146,13 @@ export default function AdminDashboard() {
                         onChange={(e) =>
                           setEditingUserForm({
                             ...editingUserForm,
-                            contact_number: e.target.value,
+                            contact_number: String(e.target.value)
+                              .replace(/\D/g, "")
+                              .slice(0, 11),
                           })
                         }
                         disabled={isViewOnly}
+                        maxLength={11}
                       />
                       {editingUserForm.contact_number &&
                         !/^09\d{9}$/.test(editingUserForm.contact_number) && (
