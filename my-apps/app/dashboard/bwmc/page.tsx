@@ -361,9 +361,8 @@ export default function BWMCdashboard() {
   const [loadingDelays, setLoadingDelays] = useState(false);
   const [sendingSMS, setSendingSMS] = useState(false);
 
-  const [sortOption, setSortOption] = useState<
-    "latest" | "oldest" | "status" | "ongoing" | "needs" | "resolved"
-  >("latest");
+  const [sortOption, setSortOption] = useState<"latest" | "oldest">("latest");
+  const [reportDate, setReportDate] = useState<string>("");
 
   const [activeTab, setActiveTab] = useState<
     | "dashboard"
@@ -1830,16 +1829,19 @@ export default function BWMCdashboard() {
         return;
       }
 
-      if (selectedReport.user_id) {
+      const reporterUserId =
+        selectedReport.user_id || selectedReport.reporter?.user_id;
+
+      if (reporterUserId) {
         try {
           await fetch("/api/notifications/incident-status", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               reportId: selectedReport.report_id,
-              userId: selectedReport.user_id,
+              userId: reporterUserId,
               status: "resolved",
-              actionTaken: actionRemarks || undefined,
+              actionTaken: actionRemarks.trim() || undefined,
             }),
           });
         } catch (notifyError) {
@@ -1848,6 +1850,10 @@ export default function BWMCdashboard() {
             notifyError,
           );
         }
+      } else {
+        console.warn(
+          "Cannot notify resident about resolution: reporter user ID missing",
+        );
       }
 
       setReports((prev: any[]) =>
@@ -1902,13 +1908,32 @@ export default function BWMCdashboard() {
         });
       }
 
-      // Sort by most recent
-      return filtered.sort(
-        (a, b) =>
-          new Date(b.date_submitted).getTime() -
-          new Date(a.date_submitted).getTime(),
-      );
-    }, [reports, reportTab, searchQuery]);
+      // Filter by selected date
+      if (reportDate) {
+        const selected = new Date(reportDate);
+        selected.setHours(0, 0, 0, 0);
+        const nextDay = new Date(selected);
+        nextDay.setDate(nextDay.getDate() + 1);
+
+        filtered = filtered.filter((r) => {
+          const submitted = new Date(r.date_submitted).getTime();
+          return (
+            submitted >= selected.getTime() && submitted < nextDay.getTime()
+          );
+        });
+      }
+
+      // Sort by selected date order
+      return filtered.sort((a, b) => {
+        const aDate = new Date(a.date_submitted).getTime();
+        const bDate = new Date(b.date_submitted).getTime();
+
+        if (sortOption === "oldest") {
+          return aDate - bDate;
+        }
+        return bDate - aDate;
+      });
+    }, [reports, reportTab, searchQuery, reportDate, sortOption]);
 
     const totalPages = Math.max(
       1,
@@ -1962,14 +1987,55 @@ export default function BWMCdashboard() {
               Monitor reported incidents for {barangayName || "Your Barangay"}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-end">
             <Input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search users..."
-              className="w-full md:w-64"
+              placeholder="Search reports..."
+              className="w-full sm:w-80"
             />
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 w-full sm:w-auto">
+              <div className="min-w-[150px]">
+                <label htmlFor="reportDate" className="sr-only">
+                  Select date
+                </label>
+                <input
+                  id="reportDate"
+                  type="date"
+                  value={reportDate}
+                  onChange={(e) => setReportDate(e.target.value)}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+              <div className="min-w-[185px]">
+                <label htmlFor="sortReports" className="sr-only">
+                  Sort reports by date
+                </label>
+                <select
+                  id="sortReports"
+                  value={sortOption}
+                  onChange={(e) =>
+                    setSortOption(e.target.value as "latest" | "oldest")
+                  }
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  <option value="latest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                </select>
+              </div>
+            </div>
+            {reportDate && (
+              <button
+                type="button"
+                onClick={() => {
+                  setReportDate("");
+                }}
+                className="h-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 hover:border-emerald-400 hover:text-emerald-300 transition"
+              >
+                Clear date
+              </button>
+            )}
           </div>
         </div>
 
@@ -2132,23 +2198,35 @@ export default function BWMCdashboard() {
                                 </button>
                               </>
                             ) : (
-                              <button
-                                onClick={() => {
-                                  setViewRemarkTitle(
-                                    report.current_status === "Rejected"
-                                      ? "Reject Remark"
-                                      : "Response Remark",
-                                  );
-                                  setViewRemarkText(
-                                    report.latest_remarks ||
-                                      "No remarks provided.",
-                                  );
-                                  setViewRemarkModalOpen(true);
-                                }}
-                                className="text-slate-300 hover:text-slate-100"
-                              >
-                                Remark
-                              </button>
+                              <>
+                                {report.current_status === "Ongoing" && (
+                                  <button
+                                    onClick={() =>
+                                      handleOpenActionReport(report)
+                                    }
+                                    className="text-emerald-300 hover:text-emerald-200 mr-4"
+                                  >
+                                    Resolve
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    setViewRemarkTitle(
+                                      report.current_status === "Rejected"
+                                        ? "Reject Remark"
+                                        : "Response Remark",
+                                    );
+                                    setViewRemarkText(
+                                      report.latest_remarks ||
+                                        "No remarks provided.",
+                                    );
+                                    setViewRemarkModalOpen(true);
+                                  }}
+                                  className="text-slate-300 hover:text-slate-100"
+                                >
+                                  Remark
+                                </button>
+                              </>
                             )}
                           </td>
                         </tr>

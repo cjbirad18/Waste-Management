@@ -16,10 +16,18 @@ type ConcernStatsPoint = {
   needsAction: number;
   ongoing: number;
   resolved: number;
+  rejected?: number;
+};
+
+type RecurringIssue = {
+  label: string;
+  details: string;
+  count: number;
 };
 
 interface BarangayConcernsPDFProps {
   concernData: ConcernStatsPoint[];
+  recurringIssues?: RecurringIssue[];
   barangayName?: string;
   viewMode?: string;
   selectedYear?: number;
@@ -199,6 +207,7 @@ const styles = StyleSheet.create({
 // PDF Document Component
 export const BarangayConcernsDocument = ({
   concernData,
+  recurringIssues = [],
   barangayName,
   viewMode,
   selectedYear,
@@ -211,6 +220,10 @@ export const BarangayConcernsDocument = ({
   const totalOngoing = concernData.reduce((sum, item) => sum + item.ongoing, 0);
   const totalResolved = concernData.reduce(
     (sum, item) => sum + item.resolved,
+    0,
+  );
+  const totalRejected = concernData.reduce(
+    (sum, item) => sum + (item.rejected ?? 0),
     0,
   );
   const resolutionRate =
@@ -266,6 +279,10 @@ export const BarangayConcernsDocument = ({
             <Text style={styles.statLabel}>Resolved</Text>
             <Text style={styles.statValue}>{totalResolved}</Text>
           </View>
+          <View style={[styles.statCard, styles.statCardNeedsAction]}>
+            <Text style={styles.statLabel}>Rejected</Text>
+            <Text style={styles.statValue}>{totalRejected}</Text>
+          </View>
         </View>
 
         {/* Summary Information */}
@@ -310,30 +327,35 @@ export const BarangayConcernsDocument = ({
               <Text style={styles.tableCellBold}>Needs Action</Text>
               <Text style={styles.tableCellBold}>Ongoing</Text>
               <Text style={styles.tableCellBold}>Resolved</Text>
-              <Text style={styles.tableCellBold}>Status</Text>
+              <Text style={styles.tableCellBold}>Rejected</Text>
             </View>
-            {concernData.map((item, index) => {
-              const monthResolutionRate =
-                item.total > 0
-                  ? ((item.resolved / item.total) * 100).toFixed(0)
-                  : "0";
-              return (
-                <View key={index} style={styles.tableRow}>
-                  <Text style={styles.tableCell}>{item.month}</Text>
-                  <Text style={styles.tableCell}>{item.total}</Text>
-                  <Text style={styles.tableCell}>{item.needsAction}</Text>
-                  <Text style={styles.tableCell}>{item.ongoing}</Text>
-                  <Text style={styles.tableCell}>{item.resolved}</Text>
-                  <Text style={styles.tableCell}>
-                    {Number(monthResolutionRate) >= 70
-                      ? "Good"
-                      : Number(monthResolutionRate) >= 40
-                        ? "Fair"
-                        : "Needs Attention"}
-                  </Text>
-                </View>
-              );
-            })}
+            {concernData.length === 0 ? (
+              <View style={styles.tableRow}>
+                <Text style={styles.tableCellBold}>No data available</Text>
+                <Text style={styles.tableCell} />
+                <Text style={styles.tableCell} />
+                <Text style={styles.tableCell} />
+                <Text style={styles.tableCell} />
+                <Text style={styles.tableCell} />
+              </View>
+            ) : (
+              concernData.map((item, index) => {
+                const monthResolutionRate =
+                  item.total > 0
+                    ? ((item.resolved / item.total) * 100).toFixed(0)
+                    : "0";
+                return (
+                  <View key={index} style={styles.tableRow}>
+                    <Text style={styles.tableCell}>{item.month}</Text>
+                    <Text style={styles.tableCell}>{item.total}</Text>
+                    <Text style={styles.tableCell}>{item.needsAction}</Text>
+                    <Text style={styles.tableCell}>{item.ongoing}</Text>
+                    <Text style={styles.tableCell}>{item.resolved}</Text>
+                    <Text style={styles.tableCell}>{item.rejected ?? 0}</Text>
+                  </View>
+                );
+              })
+            )}
           </View>
         </View>
 
@@ -376,7 +398,40 @@ export const BarangayConcernsDocument = ({
                 %
               </Text>
             </View>
+            <View style={styles.tableRow}>
+              <Text style={styles.tableCell}>Rejected</Text>
+              <Text style={styles.tableCell}>{totalRejected}</Text>
+              <Text style={styles.tableCell}>
+                {totalConcerns > 0
+                  ? ((totalRejected / totalConcerns) * 100).toFixed(1)
+                  : "0"}
+                %
+              </Text>
+            </View>
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recurring Issues</Text>
+          {recurringIssues.length === 0 ? (
+            <Text style={styles.summaryValue}>
+              No recurring issue data was detected from the current report
+              dataset.
+            </Text>
+          ) : (
+            <View style={styles.table}>
+              <View style={[styles.tableRow, styles.tableHeader]}>
+                <Text style={styles.tableCellBold}>Issue</Text>
+                <Text style={styles.tableCellBold}>Reports</Text>
+              </View>
+              {recurringIssues.map((issue, index) => (
+                <View key={index} style={styles.tableRow}>
+                  <Text style={styles.tableCell}>{issue.label}</Text>
+                  <Text style={styles.tableCell}>{issue.count}</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Footer */}
@@ -394,6 +449,7 @@ export const BarangayConcernsDocument = ({
 // Download Button Component
 export const BarangayConcernsPDFDownload = ({
   concernData,
+  recurringIssues,
   barangayName,
   viewMode,
   selectedYear,
@@ -405,6 +461,7 @@ export const BarangayConcernsPDFDownload = ({
       document={
         <BarangayConcernsDocument
           concernData={concernData}
+          recurringIssues={recurringIssues}
           barangayName={barangayName}
           viewMode={viewMode}
           selectedYear={selectedYear}

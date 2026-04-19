@@ -130,16 +130,16 @@ export async function POST(req: NextRequest) {
 
       let changes = "";
       if (patternChanged && timeChanged) {
-        changes = `The collection schedule has been revised: Days are now ${newDays} (${newPattern}) instead of ${oldDays} (${oldPattern}), and departure time is updated from ${formatTime(oldStartTime)} to ${formatTime(newStartTime)}.`;
+        changes = `TTruck: NOTICE:The collection schedule has been revised: Days are now ${newDays} (${newPattern}) instead of ${oldDays} (${oldPattern}), and departure time is updated from ${formatTime(oldStartTime)} to ${formatTime(newStartTime)}.\n\n - Track the Truck`;
       } else if (patternChanged) {
-        changes = `The collection schedule has been revised: Days are now ${newDays} (${newPattern}) instead of ${oldDays} (${oldPattern}).`;
+        changes = `TTruck: NOTICE:The collection schedule has been revised: Days are now ${newDays} (${newPattern}) instead of ${oldDays} (${oldPattern}).\n\n - Track the Truck`;
       } else if (timeChanged) {
-        changes = `The collection schedule has been revised: Departure time is updated from ${formatTime(oldStartTime)} to ${formatTime(newStartTime)}. Collection days remain ${newDays} (${newPattern}).`;
+        changes = `TTruck: NOTICE:The collection schedule has been revised: Departure time is updated from ${formatTime(oldStartTime)} to ${formatTime(newStartTime)}. Collection days remain ${newDays} (${newPattern}).\n\n - Track the Truck`;
       } else {
-        changes = `The collection schedule has been updated to Days: ${newDays} (${newPattern}) and Departure: ${formatTime(newStartTime || scheduleTime)}.`;
+        changes = `TTruck: NOTICE:The collection schedule has been updated to Days: ${newDays} (${newPattern}) and Departure: ${formatTime(newStartTime || scheduleTime)}.\n\n - Track the Truck`;
       }
 
-      message = `NOTICE: Garbage collection schedule update. ${changes} Please place your waste according to the revised schedule.\n\n - Track the Truck`;
+      message = `TTruck: NOTICE: Garbage collection schedule update. ${changes} Please place your waste according to the revised schedule.\n\n - Track the Truck`;
     }
 
     console.log("Total recipients to notify:", recipients.length, recipients);

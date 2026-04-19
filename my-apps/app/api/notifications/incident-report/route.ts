@@ -7,16 +7,32 @@ import { sendSMS } from "@/lib/sms";
 export async function POST(req: NextRequest) {
   try {
     const { reportId, barangayId, location, reporterName } = await req.json();
+    const barangayIdNumber = Number(barangayId);
 
-    // Get BWMC for the barangay
-    const { data: bwmc, error: bwmcError } = await supabase
+    // Get BWMC users for the barangay.
+    const bwmcQuery = supabase
       .from("users")
       .select("first_name, last_name, contact_number, user_id")
-      .eq("role", "BWMC")
-      .eq("barangay_id", barangayId)
-      .maybeSingle();
+      .eq("role", "BWMC");
 
-    if (bwmcError || !bwmc) {
+    if (!Number.isNaN(barangayIdNumber)) {
+      bwmcQuery.eq("barangay_id", barangayIdNumber);
+    } else {
+      bwmcQuery.eq("barangay_id", barangayId);
+    }
+
+    const { data: bwmcData, error: bwmcError } = await bwmcQuery;
+    const bwmcRecipients = Array.isArray(bwmcData)
+      ? bwmcData.filter((user) => user.contact_number)
+      : [];
+
+    if (bwmcError || bwmcRecipients.length === 0) {
+      console.error("BWMC lookup failed", {
+        bwmcError,
+        barangayId,
+        barangayIdNumber,
+        bwmcCount: Array.isArray(bwmcData) ? bwmcData.length : 0,
+      });
       return NextResponse.json(
         { success: false, error: "BWMC not found" },
         { status: 404 },
@@ -36,58 +52,57 @@ export async function POST(req: NextRequest) {
 
     const secretaryMessage = `TTruck: NOTICE: A resident incident report was submitted by ${reporterName}.\nLocation: ${location}.\nReport ID: #${reportId}.\nThis report is being shared for administrative awareness and follow-up.\n\n - Track the Truck`;
 
-    try {
-      await sendSMS(bwmc.contact_number, bwmcMessage);
-      await supabase.from("sms_notifications").insert({
-        user_id: bwmc.user_id,
-        notification_type: "incident_report_submitted",
-        message: bwmcMessage,
-        phone_number: bwmc.contact_number,
-        sent_at: new Date().toISOString(),
-        status: "sent",
-      });
-    } catch (error: any) {
-      console.error("Failed to send SMS to BWMC:", error);
-      await supabase.from("sms_notifications").insert({
-        user_id: bwmc.user_id,
-        notification_type: "incident_report_submitted",
-        message: bwmcMessage,
-        phone_number: bwmc.contact_number,
-        sent_at: new Date().toISOString(),
-        status: "failed",
-        error_message:
-          (error && typeof error === "object" && "message" in error
-            ? (error as { message?: string }).message
-            : undefined) || String(error),
-      });
-      return NextResponse.json(
-        { success: false, error: "Failed to send SMS to BWMC" },
-        { status: 500 },
-      );
+    const uniqueRecipients = new Map<
+      string,
+      {
+        user_id: string;
+        message: string;
+        notification_type: string;
+      }
+    >();
+
+    for (const bwmc of bwmcRecipients) {
+      if (!uniqueRecipients.has(bwmc.contact_number)) {
+        uniqueRecipients.set(bwmc.contact_number, {
+          user_id: bwmc.user_id,
+          message: bwmcMessage,
+          notification_type: "incident_report_submitted",
+        });
+      }
     }
 
     const secretaryRecipients = Array.isArray(secretaries) ? secretaries : [];
     for (const secretary of secretaryRecipients) {
-      try {
-        await sendSMS(secretary.contact_number, secretaryMessage);
-        await supabase.from("sms_notifications").insert({
+      if (!uniqueRecipients.has(secretary.contact_number)) {
+        uniqueRecipients.set(secretary.contact_number, {
           user_id: secretary.user_id,
-          notification_type: "incident_report_submitted",
           message: secretaryMessage,
-          phone_number: secretary.contact_number,
+          notification_type: "incident_report_submitted",
+        });
+      }
+    }
+
+    for (const [phone_number, recipient] of uniqueRecipients.entries()) {
+      try {
+        await sendSMS(phone_number, recipient.message);
+        await supabase.from("sms_notifications").insert({
+          user_id: recipient.user_id,
+          notification_type: recipient.notification_type,
+          message: recipient.message,
+          phone_number,
           sent_at: new Date().toISOString(),
           status: "sent",
         });
       } catch (error: any) {
-        console.error(
-          `Failed to send SMS to secretary ${secretary.user_id}:`,
-          error,
-        );
+        console.error("Failed to send SMS to recipient:", error, {
+          phone_number,
+          user_id: recipient.user_id,
+        });
         await supabase.from("sms_notifications").insert({
-          user_id: secretary.user_id,
-          notification_type: "incident_report_submitted",
-          message: secretaryMessage,
-          phone_number: secretary.contact_number,
+          user_id: recipient.user_id,
+          notification_type: recipient.notification_type,
+          message: recipient.message,
+          phone_number,
           sent_at: new Date().toISOString(),
           status: "failed",
           error_message:

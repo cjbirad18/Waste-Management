@@ -1,6 +1,7 @@
 // Notify resident about incident report status updates
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import { sendSMS } from "@/lib/sms";
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,28 +37,15 @@ export async function POST(req: NextRequest) {
         message = `TTruck: INCIDENT REPORT UPDATE: #${reportId} has been resolved.${actionTaken ? ` Action taken: ${actionTaken}.` : ""} Thank you for your cooperation.\n\n - Track the Truck`;
         break;
       case "rejected":
-        message = `TTruck: INCIDENT REPORT UPDATE: #${reportId} cannot be processed as submitted.${reason ? ` Reason: ${reason}.` : " Additional evidence may be required."} Please follow up with SWMO for next steps.\n\n - Track the Truck`;
+        message = `TTruck: INCIDENT REPORT UPDATE: #${reportId} cannot be processed as resolved.${reason ? ` Reason: ${reason}.` : " Additional evidence may be required."} Please follow up with SWMO for next steps.\n\n - Track the Truck`;
         break;
       default:
         message = `TTruck: INCIDENT REPORT UPDATE: #${reportId} status changed to ${status}.\n\n - Track the Truck`;
     }
 
-    // Send SMS
-    const smsResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-sms`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: resident.contact_number,
-          message,
-        }),
-      },
-    );
-
-    const smsResult = await smsResponse.json();
-
-    if (smsResult.success) {
+    // Send SMS directly using the helper
+    try {
+      await sendSMS(resident.contact_number, message);
       await supabase.from("sms_notifications").insert({
         user_id: userId,
         notification_type: "incident_status_update",
@@ -65,6 +53,23 @@ export async function POST(req: NextRequest) {
         phone_number: resident.contact_number,
         sent_at: new Date().toISOString(),
         status: "sent",
+      });
+    } catch (smsError: any) {
+      console.error("Incident status SMS send failed:", smsError);
+      await supabase.from("sms_notifications").insert({
+        user_id: userId,
+        notification_type: "incident_status_update",
+        message,
+        phone_number: resident.contact_number,
+        sent_at: new Date().toISOString(),
+        status: "failed",
+        error_message:
+          smsError?.message ||
+          (typeof smsError === "string" ? smsError : "SMS send failed"),
+      });
+      return NextResponse.json({
+        success: true,
+        message: "Resident notification failed but status update is recorded",
       });
     }
 

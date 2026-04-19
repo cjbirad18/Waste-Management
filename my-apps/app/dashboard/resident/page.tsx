@@ -931,6 +931,12 @@ function ResidentSchedulesFeature({
 
 const BUCKET = "report-photo";
 
+const isMobileDevice = () =>
+  typeof navigator !== "undefined" &&
+  /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent,
+  );
+
 function SubmitReportSection({
   barangays,
   onReportSubmit,
@@ -946,9 +952,9 @@ function SubmitReportSection({
   const [fieldError, setFieldError] = useState("");
   const [loading, setLoading] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
-  const [cameraFacing, setCameraFacing] = useState<"user" | "environment">(
-    "environment",
-  ); // back camera by default
+  const [cameraFacing, setCameraFacing] = useState<
+    "user" | "environment" | undefined
+  >(isMobileDevice() ? "environment" : undefined); // default back camera on mobile, default available camera on desktop
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -964,18 +970,24 @@ function SubmitReportSection({
       }
 
       const constraints: MediaStreamConstraints = {
-        video: { facingMode: cameraFacing }, // "user" or "environment"
         audio: false,
+        video: cameraFacing ? { facingMode: cameraFacing } : true,
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
+      setCameraActive(true);
+
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
       if (videoRef.current) {
+        videoRef.current.muted = true;
+        videoRef.current.playsInline = true;
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
-      setCameraActive(true);
-    } catch {
+    } catch (err) {
+      console.error("startCamera error", err);
       setFieldError("Cannot access camera");
       setCameraActive(false);
     }
@@ -1077,12 +1089,6 @@ function SubmitReportSection({
       return;
     }
 
-    // NEW: require a captured photo
-    if (!form.photoFile) {
-      setFieldError("Please capture a photo before submitting.");
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -1131,16 +1137,23 @@ function SubmitReportSection({
       }
 
       try {
-        await fetch("/api/notifications/incident-report", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            reportId: reportData.report_id,
-            barangayId: form.barangay_id,
-            location: form.location,
-            reporterName,
-          }),
-        });
+        const notifyResponse = await fetch(
+          "/api/notifications/incident-report",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              reportId: reportData.report_id,
+              barangayId: form.barangay_id,
+              location: form.location,
+              reporterName,
+            }),
+          },
+        );
+        const notifyResult = await notifyResponse.json();
+        if (!notifyResponse.ok || !notifyResult.success) {
+          console.error("Failed to notify BWMC about new report", notifyResult);
+        }
       } catch (notifyError) {
         console.error("Failed to notify BWMC about new report", notifyError);
       }
@@ -1223,7 +1236,7 @@ function SubmitReportSection({
               Submit Incident Report
             </h2>
             <p className="text-slate-400 text-sm">
-              All fields are required. Photo evidence mandatory.
+              All fields are required. Photo evidence is optional.
             </p>
           </div>
         </div>
@@ -1296,11 +1309,9 @@ function SubmitReportSection({
                 </label>
                 <Select
                   name="barangay_id"
-                  value={form.barangay_id}
+                  value={String(form.barangay_id)}
                   onValueChange={(value: string) =>
-                    handleChange({
-                      target: { name: "barangay_id", value },
-                    } as ChangeEvent<HTMLSelectElement>)
+                    setForm((prev) => ({ ...prev, barangay_id: value }))
                   }
                   required
                 >
@@ -1310,8 +1321,8 @@ function SubmitReportSection({
                   <SelectContent>
                     {barangays.map((brgy) => (
                       <SelectItem
-                        key={brgy.barangay_id}
-                        value={brgy.barangay_id}
+                        key={String(brgy.barangay_id)}
+                        value={String(brgy.barangay_id)}
                       >
                         {brgy.barangay_name}
                       </SelectItem>
@@ -1394,7 +1405,7 @@ function SubmitReportSection({
               <span className="text-xs font-semibold uppercase tracking-wider">
                 Photo Evidence
               </span>
-              <span className="text-xs text-red-400 ml-auto">*Required</span>
+              <span className="text-xs text-emerald-300 ml-auto">Optional</span>
             </div>
 
             {!cameraActive && !photoUrl && (
@@ -1431,7 +1442,11 @@ function SubmitReportSection({
                   variant="outline"
                   className="border-slate-600 text-slate-300 hover:bg-slate-800"
                 >
-                  Use {cameraFacing === "user" ? "Back" : "Front"} Camera
+                  {cameraFacing === "user"
+                    ? "Use Back Camera"
+                    : cameraFacing === "environment"
+                      ? "Use Front Camera"
+                      : "Switch Camera"}
                 </Button>
               </div>
             )}
@@ -1442,6 +1457,8 @@ function SubmitReportSection({
                   <video
                     ref={videoRef}
                     autoPlay
+                    muted
+                    playsInline
                     className="w-full aspect-video object-cover"
                   />
                   <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
@@ -1526,7 +1543,7 @@ function SubmitReportSection({
           {/* Submit Button */}
           <Button
             type="submit"
-            disabled={loading || !form.photoFile}
+            disabled={loading}
             className="w-full py-4 text-base font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all"
           >
             {loading ? (
