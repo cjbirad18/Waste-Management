@@ -52,6 +52,201 @@ type SidebarItemProps = {
   className?: string;
 };
 
+type ManageAccountForm = {
+  username: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  contact_number: string;
+  password: string;
+  confirm_password: string;
+};
+
+type ManageAccountSectionProps = {
+  form: ManageAccountForm;
+  loading: boolean;
+  error: string | null;
+  passwordError: string | null;
+  success: string | null;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onSubmit: (e: FormEvent) => void;
+};
+
+function ManageAccountSection(props: ManageAccountSectionProps) {
+  const { form, loading, error, passwordError, success, onChange, onSubmit } =
+    props;
+
+  if (loading) return <TruckLoader />;
+
+  return (
+    <section className="max-w-5xl mx-auto rounded-lg bg-slate-900 border border-slate-800 px-6 py-6">
+      <h2 className="text-lg font-bold mb-1 text-slate-100">Manage Account</h2>
+      <p className="text-xs text-slate-400 mb-6">
+        Update your profile details and sign-in credentials.
+      </p>
+
+      {error && (
+        <div
+          role="alert"
+          className="mb-4 rounded-lg bg-red-500/10 border border-red-500/50 px-4 py-2 text-xs text-red-200"
+        >
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div
+          role="status"
+          className="mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/50 px-4 py-2 text-xs text-emerald-200"
+        >
+          {success}
+        </div>
+      )}
+
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        {/* Username */}
+        <div className="space-y-2">
+          <Label
+            htmlFor="username"
+            className="text-xs font-medium text-slate-300"
+          >
+            Username
+          </Label>
+          <Input
+            id="username"
+            name="username"
+            type="text"
+            value={form.username}
+            onChange={onChange}
+            required
+            placeholder="Enter your username"
+          />
+        </div>
+
+        {/* First / Last */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label
+              htmlFor="first_name"
+              className="text-xs font-medium text-slate-300"
+            >
+              First Name
+            </Label>
+            <Input
+              id="first_name"
+              name="first_name"
+              type="text"
+              value={form.first_name}
+              onChange={onChange}
+              required
+              placeholder="Enter your first name"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label
+              htmlFor="last_name"
+              className="text-xs font-medium text-slate-300"
+            >
+              Last Name
+            </Label>
+            <Input
+              id="last_name"
+              name="last_name"
+              type="text"
+              value={form.last_name}
+              onChange={onChange}
+              required
+              placeholder="Enter your last name"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label
+              htmlFor="contact_number"
+              className="text-xs font-medium text-slate-300"
+            >
+              Contact Number
+            </Label>
+            <Input
+              id="contact_number"
+              name="contact_number"
+              type="tel"
+              value={form.contact_number}
+              onChange={onChange}
+              required
+              placeholder="09123456789"
+              maxLength={11}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label
+              htmlFor="email"
+              className="text-xs font-medium text-slate-300"
+            >
+              Email
+            </Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={onChange}
+              required
+              disabled
+              readOnly
+              placeholder="user@tagbilaran.gov.ph"
+              className="cursor-not-allowed opacity-60"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label
+            htmlFor="password"
+            className="text-xs font-medium text-slate-300"
+          >
+            Password
+          </Label>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            value={form.password}
+            onChange={onChange}
+            placeholder="Leave blank to keep current password"
+          />
+          {passwordError ? (
+            <p className="text-xs text-red-400 mt-1">{passwordError}</p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <Label
+            htmlFor="confirm_password"
+            className="text-xs font-medium text-slate-300"
+          >
+            Confirm Password
+          </Label>
+          <Input
+            id="confirm_password"
+            name="confirm_password"
+            type="password"
+            value={form.confirm_password}
+            onChange={onChange}
+            placeholder="Confirm your new password"
+          />
+        </div>
+
+        <div className="flex justify-end pt-3">
+          <Button type="submit">Update Account</Button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
 function SidebarItem({
   label,
   icon,
@@ -371,19 +566,24 @@ export default function AdminDashboard() {
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const [manageAccountForm, setManageAccountForm] = useState({
-    username: "",
-    first_name: "",
-    last_name: "",
-    email: "",
-    contact_number: "",
-    password: "",
-    confirm_password: "",
-  });
+  const [manageAccountForm, setManageAccountForm] = useState<ManageAccountForm>(
+    {
+      username: "",
+      first_name: "",
+      last_name: "",
+      email: "",
+      contact_number: "",
+      password: "",
+      confirm_password: "",
+    },
+  );
   const [manageAccountLoading, setManageAccountLoading] = useState(true);
   const [manageAccountError, setManageAccountError] = useState<string | null>(
     null,
   );
+  const [manageAccountPasswordError, setManageAccountPasswordError] = useState<
+    string | null
+  >(null);
   const [manageAccountSuccess, setManageAccountSuccess] = useState<
     string | null
   >(null);
@@ -1443,27 +1643,45 @@ export default function AdminDashboard() {
   };
 
   const handleManageAccountFormChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.name === "first_name" || e.target.name === "last_name") {
-      setManageAccountForm({
-        ...manageAccountForm,
-        [e.target.name]: sanitizeNameField(e.target.value),
-      });
+    const { name, value } = e.target;
+    if (name === "first_name" || name === "last_name") {
+      setManageAccountForm((prev) => ({
+        ...prev,
+        [name]: sanitizeNameField(value),
+      }));
       return;
     }
 
-    if (e.target.name === "contact_number") {
-      const sanitized = String(e.target.value).replace(/\D/g, "").slice(0, 11);
-      setManageAccountForm({
-        ...manageAccountForm,
+    if (name === "contact_number") {
+      const sanitized = String(value).replace(/\D/g, "").slice(0, 11);
+      setManageAccountForm((prev) => ({
+        ...prev,
         contact_number: sanitized,
+      }));
+      return;
+    }
+
+    if (name === "password" || name === "confirm_password") {
+      setManageAccountForm((prev) => {
+        const updatedForm = {
+          ...prev,
+          [name]: value,
+        };
+        setManageAccountPasswordError(
+          validateManageAccountPasswordFields(
+            updatedForm.password,
+            updatedForm.confirm_password,
+          ),
+        );
+        return updatedForm;
       });
       return;
     }
 
-    setManageAccountForm({
-      ...manageAccountForm,
-      [e.target.name]: e.target.value,
-    });
+    setManageAccountForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const validateUserForm = () => {
@@ -1624,6 +1842,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const validateManageAccountPasswordFields = (
+    password: string,
+    confirmPassword: string,
+  ) => {
+    if (!password && !confirmPassword) return null;
+    if (password.length > 0 && password.length < 6)
+      return "Password must be at least 6 characters.";
+    if (password.length > 0 && !/[A-Z]/.test(password))
+      return "Password must include at least one uppercase letter.";
+    if (password.length > 0 && !/[^A-Za-z0-9]/.test(password))
+      return "Password must include at least one special character.";
+    if (password !== confirmPassword) return "Passwords do not match.";
+    return null;
+  };
+
   const validateManageAccountForm = () => {
     if (
       !manageAccountForm.first_name.trim() ||
@@ -1646,15 +1879,11 @@ export default function AdminDashboard() {
     if (!emailRegex.test(manageAccountForm.email)) {
       return "Invalid email format.";
     }
-    if (
-      manageAccountForm.password.length > 0 &&
-      manageAccountForm.password.length < 6
-    ) {
-      return "Password must be at least 6 characters.";
-    }
-    if (manageAccountForm.password !== manageAccountForm.confirm_password) {
-      return "Passwords do not match.";
-    }
+    const passwordError = validateManageAccountPasswordFields(
+      manageAccountForm.password,
+      manageAccountForm.confirm_password,
+    );
+    if (passwordError) return passwordError;
     // validate contact starts with 09 and exactly 11 digits
     if (!/^09\d{9}$/.test(manageAccountForm.contact_number)) {
       return "Contact number must start with 09 and be 11 digits.";
@@ -1671,10 +1900,15 @@ export default function AdminDashboard() {
     if (!confirmed) return;
 
     setManageAccountError(null);
+    setManageAccountPasswordError(null);
     setManageAccountSuccess(null);
     const error = validateManageAccountForm();
     if (error) {
-      setManageAccountError(error);
+      if (error.toLowerCase().includes("password")) {
+        setManageAccountPasswordError(error);
+      } else {
+        setManageAccountError(error);
+      }
       return;
     }
     try {
@@ -2048,193 +2282,6 @@ export default function AdminDashboard() {
       }
     }
   };
-
-  // SWMO ManageAccountSection – copy of the TCEMO design
-  // SWMO ManageAccountSection – make this card identical to TCEMO's inner card
-  function ManageAccountSection({
-    form,
-    loading,
-    error,
-    success,
-    onChange,
-    onSubmit,
-  }: {
-    form: typeof manageAccountForm;
-    loading: boolean;
-    error: string | null;
-    success: string | null;
-    onChange: (e: ChangeEvent<HTMLInputElement>) => void;
-    onSubmit: (e: FormEvent) => void;
-  }) {
-    if (loading) return <TruckLoader />;
-
-    return (
-      <section className="max-w-5xl mx-auto rounded-lg bg-slate-900 border border-slate-800 px-6 py-6">
-        <h2 className="text-lg font-bold mb-1 text-slate-100">
-          Manage Account
-        </h2>
-        <p className="text-xs text-slate-400 mb-6">
-          Update your profile details and sign-in credentials.
-        </p>
-
-        {error && (
-          <div
-            role="alert"
-            className="mb-4 rounded-lg bg-red-500/10 border border-red-500/50 px-4 py-2 text-xs text-red-200"
-          >
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div
-            role="status"
-            className="mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/50 px-4 py-2 text-xs text-emerald-200"
-          >
-            {success}
-          </div>
-        )}
-
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          {/* Username */}
-          <div className="space-y-2">
-            <Label
-              htmlFor="username"
-              className="text-xs font-medium text-slate-300"
-            >
-              Username
-            </Label>
-            <Input
-              id="username"
-              name="username"
-              type="text"
-              value={form.username}
-              onChange={onChange}
-              required
-              placeholder="Enter your username"
-            />
-          </div>
-
-          {/* First / Last */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label
-                htmlFor="first_name"
-                className="text-xs font-medium text-slate-300"
-              >
-                First Name
-              </Label>
-              <Input
-                id="first_name"
-                name="first_name"
-                type="text"
-                value={form.first_name}
-                onChange={onChange}
-                required
-                placeholder="Enter your first name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label
-                htmlFor="last_name"
-                className="text-xs font-medium text-slate-300"
-              >
-                Last Name
-              </Label>
-              <Input
-                id="last_name"
-                name="last_name"
-                type="text"
-                value={form.last_name}
-                onChange={onChange}
-                required
-                placeholder="Enter your last name"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label
-                htmlFor="contact_number"
-                className="text-xs font-medium text-slate-300"
-              >
-                Contact Number
-              </Label>
-              <Input
-                id="contact_number"
-                name="contact_number"
-                type="tel"
-                value={form.contact_number}
-                onChange={onChange}
-                required
-                placeholder="09123456789"
-                maxLength={11}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                className="text-xs font-medium text-slate-300"
-              >
-                Email
-              </Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={onChange}
-                required
-                disabled
-                readOnly
-                placeholder="user@tagbilaran.gov.ph"
-                className="cursor-not-allowed opacity-60"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label
-              htmlFor="password"
-              className="text-xs font-medium text-slate-300"
-            >
-              Password
-            </Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              value={form.password}
-              onChange={onChange}
-              placeholder="Leave blank to keep current password"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label
-              htmlFor="confirm_password"
-              className="text-xs font-medium text-slate-300"
-            >
-              Confirm Password
-            </Label>
-            <Input
-              id="confirm_password"
-              name="confirm_password"
-              type="password"
-              value={form.confirm_password}
-              onChange={onChange}
-              placeholder="Confirm your new password"
-            />
-          </div>
-
-          <div className="flex justify-end pt-3">
-            <Button type="submit">Update Account</Button>
-          </div>
-        </form>
-      </section>
-    );
-  }
 
   const sidebarItems = [
     {
@@ -4030,6 +4077,7 @@ export default function AdminDashboard() {
                     form={manageAccountForm}
                     loading={manageAccountLoading}
                     error={manageAccountError}
+                    passwordError={manageAccountPasswordError}
                     success={manageAccountSuccess}
                     onChange={handleManageAccountFormChange}
                     onSubmit={handleManageAccountSubmit}

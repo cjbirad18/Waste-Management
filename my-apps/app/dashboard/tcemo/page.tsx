@@ -63,6 +63,7 @@ function InputField({
   disabled = false,
   minLength,
   maxLength,
+  error,
 }: {
   label: string;
   name: string;
@@ -74,6 +75,7 @@ function InputField({
   disabled?: boolean;
   minLength?: number;
   maxLength?: number;
+  error?: string | null;
 }) {
   return (
     <div className="mb-4 space-y-2">
@@ -95,6 +97,7 @@ function InputField({
         maxLength={maxLength}
         className={disabled ? "cursor-not-allowed opacity-60" : undefined}
       />
+      {error ? <p className="text-xs text-red-400 mt-1">{error}</p> : null}
     </div>
   );
 }
@@ -267,11 +270,13 @@ export default function TcemoDashboard() {
 
   const reportStatusClasses: Record<string, string> = {
     Submitted: "bg-blue-500/15 text-blue-300 border border-blue-500/30",
-    Validated: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
+    Validated:
+      "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
     Rejected: "bg-rose-500/15 text-rose-300 border border-rose-500/30",
     "Under Review": "bg-amber-500/15 text-amber-300 border border-amber-500/30",
     Scheduled: "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30",
-    "Action Ongoing": "bg-orange-500/15 text-orange-300 border border-orange-500/30",
+    "Action Ongoing":
+      "bg-orange-500/15 text-orange-300 border border-orange-500/30",
     Resolved: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
   };
 
@@ -523,6 +528,9 @@ export default function TcemoDashboard() {
   const [manageAccountError, setManageAccountError] = useState<string | null>(
     null,
   );
+  const [manageAccountPasswordError, setManageAccountPasswordError] = useState<
+    string | null
+  >(null);
   const [manageAccountSuccess, setManageAccountSuccess] = useState<
     string | null
   >(null);
@@ -865,9 +873,29 @@ export default function TcemoDashboard() {
     if (manageAccountForm.password || manageAccountForm.confirm_password) {
       if (manageAccountForm.password.length < 6)
         return "New password must be at least 6 characters.";
+      if (!/[A-Z]/.test(manageAccountForm.password))
+        return "New password must include at least one uppercase letter.";
+      if (!/[^A-Za-z0-9]/.test(manageAccountForm.password))
+        return "New password must include at least one special character.";
       if (manageAccountForm.password !== manageAccountForm.confirm_password)
         return "Passwords do not match.";
     }
+    return null;
+  };
+
+  const validateManageAccountPasswordFields = (
+    password: string,
+    confirmPassword: string,
+  ) => {
+    if (!password && !confirmPassword) return null;
+    if (password.length < 6)
+      return "New password must be at least 6 characters.";
+    if (!/[A-Z]/.test(password))
+      return "New password must include at least one uppercase letter.";
+    if (!/[^A-Za-z0-9]/.test(password))
+      return "New password must include at least one special character.";
+    if (confirmPassword && password !== confirmPassword)
+      return "Passwords do not match.";
     return null;
   };
 
@@ -885,6 +913,20 @@ export default function TcemoDashboard() {
         ...manageAccountForm,
         contact_number: sanitized,
       });
+      return;
+    }
+    if (e.target.name === "password" || e.target.name === "confirm_password") {
+      const updatedForm = {
+        ...manageAccountForm,
+        [e.target.name]: e.target.value,
+      };
+      setManageAccountForm(updatedForm);
+      setManageAccountPasswordError(
+        validateManageAccountPasswordFields(
+          updatedForm.password,
+          updatedForm.confirm_password,
+        ),
+      );
       return;
     }
     setManageAccountForm({
@@ -1071,10 +1113,18 @@ export default function TcemoDashboard() {
     if (!confirmed) return;
 
     setManageAccountError(null);
+    setManageAccountPasswordError(null);
     setManageAccountSuccess(null);
     const error = validateManageAccountForm();
     if (error) {
-      setManageAccountError(error);
+      if (
+        error.toLowerCase().includes("password") ||
+        error === "Passwords do not match."
+      ) {
+        setManageAccountPasswordError(error);
+      } else {
+        setManageAccountError(error);
+      }
       return;
     }
     try {
@@ -1623,7 +1673,9 @@ export default function TcemoDashboard() {
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <span
                                     className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                                      reportStatusClasses[report.current_status] ??
+                                      reportStatusClasses[
+                                        report.current_status
+                                      ] ??
                                       "bg-slate-800 text-slate-200 border border-slate-700"
                                     }`}
                                   >
@@ -1632,7 +1684,9 @@ export default function TcemoDashboard() {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
                                   {report.date_submitted
-                                    ? new Date(report.date_submitted).toLocaleString()
+                                    ? new Date(
+                                        report.date_submitted,
+                                      ).toLocaleString()
                                     : "-"}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -1663,7 +1717,9 @@ export default function TcemoDashboard() {
                       <div className="flex justify-center items-center gap-3 mt-4">
                         <button
                           type="button"
-                          onClick={() => setReportPage((prev) => Math.max(1, prev - 1))}
+                          onClick={() =>
+                            setReportPage((prev) => Math.max(1, prev - 1))
+                          }
                           disabled={currentReportPage === 1}
                           className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
                         >
@@ -1685,7 +1741,11 @@ export default function TcemoDashboard() {
                         ))}
                         <button
                           type="button"
-                          onClick={() => setReportPage((prev) => Math.min(totalReportPages, prev + 1))}
+                          onClick={() =>
+                            setReportPage((prev) =>
+                              Math.min(totalReportPages, prev + 1),
+                            )
+                          }
                           disabled={currentReportPage === totalReportPages}
                           className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
                         >
@@ -2169,6 +2229,7 @@ export default function TcemoDashboard() {
                     form={manageAccountForm}
                     loading={manageAccountLoading}
                     error={manageAccountError}
+                    passwordError={manageAccountPasswordError}
                     success={manageAccountSuccess}
                     onChange={handleManageAccountFormChange}
                     onSubmit={handleManageAccountSubmit}
@@ -2234,6 +2295,7 @@ function ManageAccountSection({
   form,
   loading,
   error,
+  passwordError,
   success,
   onChange,
   onSubmit,
@@ -2249,6 +2311,7 @@ function ManageAccountSection({
   };
   loading: boolean;
   error: string | null;
+  passwordError: string | null;
   success: string | null;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: FormEvent) => void;
@@ -2318,6 +2381,7 @@ function ManageAccountSection({
           value={form.password}
           onChange={onChange}
           placeholder="Leave blank to keep current password"
+          error={passwordError}
         />
         <InputField
           label="Confirm New Password"

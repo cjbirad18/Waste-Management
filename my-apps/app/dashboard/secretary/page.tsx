@@ -299,7 +299,7 @@ function ScheduleFormWithCalendar({
     (b) => !scheduledBarangayIds.includes(b.barangay_id),
   );
 
-  // Filter out GCPs already assigned to an active schedule
+  // Hide GCPs already assigned to an active schedule.
   const assignedGcpIds = new Set(schedules.map((s) => s.gcp_user_id));
   const availableGcps = gcps.filter((g) => !assignedGcpIds.has(g.user_id));
 
@@ -1075,12 +1075,43 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
       )
     )
       return;
+
+    const scheduleId = schedule?.schedule_id;
+    if (scheduleId === undefined || scheduleId === null || scheduleId === "") {
+      alert("Cannot archive schedule: missing schedule_id.");
+      return;
+    }
+
+    if (typeof scheduleId !== "string" && typeof scheduleId !== "number") {
+      alert(
+        `Cannot archive schedule: unexpected schedule_id type ${typeof scheduleId}`,
+      );
+      return;
+    }
+
     try {
-      const { error } = await supabase
-        .from("collection_schedules")
-        .update({ status: "Archived" })
-        .eq("schedule_id", schedule.schedule_id);
-      if (error) throw error;
+      const archiveRes = await fetch("/api/collection-schedules/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduleId }),
+      });
+
+      const archiveData = await archiveRes.json();
+      if (!archiveRes.ok || !archiveData.success) {
+        throw new Error(
+          archiveData?.error ||
+            `Schedule archive API failed for schedule_id=${String(scheduleId)}`,
+        );
+      }
+
+      const updatedSchedule = archiveData.data;
+      if (!updatedSchedule || updatedSchedule.status !== "Archived") {
+        throw new Error(
+          `Schedule archive failed; archive endpoint did not return Archived status for schedule_id=${String(
+            scheduleId,
+          )}`,
+        );
+      }
 
       // Notify residents and GCP of schedule archival
       const notificationRes = await fetch(
@@ -1090,7 +1121,7 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             scheduleId: schedule.schedule_id,
-            barangayId: schedule.barangay.barangay_id,
+            barangayId: schedule.barangay?.barangay_id,
             updateType: "archived",
             scheduleDate: schedule.date_created,
           }),
@@ -1107,9 +1138,14 @@ function SchedulesSidebarItem({ barangays }: SchedulesSidebarItemProps) {
       setSchedules((s) =>
         s.filter((sc: any) => sc.schedule_id !== schedule.schedule_id),
       );
-      fetchArchivedSchedules();
+      await fetchSchedulesForBarangay(selectedBarangay);
+      await fetchArchivedSchedules();
     } catch (err) {
-      alert("Failed to archive schedule.");
+      console.error("Archive schedule failed:", err);
+      alert(
+        "Failed to archive schedule: " +
+          (err instanceof Error ? err.message : String(err)),
+      );
     }
   };
 
@@ -1706,6 +1742,7 @@ function ManageAccountSection({
   form,
   loading,
   error,
+  passwordError,
   success,
   onChange,
   onSubmit,
@@ -1713,6 +1750,7 @@ function ManageAccountSection({
   form: ManageAccountForm;
   loading: boolean;
   error: string | null;
+  passwordError: string | null;
   success: string | null;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: FormEvent) => void;
@@ -1863,6 +1901,9 @@ function ManageAccountSection({
             onChange={onChange}
             placeholder="Leave blank to keep current password"
           />
+          {passwordError ? (
+            <p className="text-xs text-red-400 mt-1">{passwordError}</p>
+          ) : null}
         </div>
 
         <div className="space-y-2">
@@ -1945,6 +1986,7 @@ function SecretaryReportsSection() {
   // View modal state
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewReport, setViewReport] = useState<any | null>(null);
+  const [viewReportGcpName, setViewReportGcpName] = useState<string>("");
 
   // Barangay filter
   const [barangayFilter, setBarangayFilter] = useState<string>("all");
@@ -2047,6 +2089,35 @@ function SecretaryReportsSection() {
     setTaskDetails("");
     setAssignError("");
     setAssignModalOpen(true);
+  };
+
+  const handleOpenViewReport = async (report: any) => {
+    setViewReport(report);
+    setViewReportGcpName("");
+    setViewModalOpen(true);
+
+    try {
+      const { data: assignmentData, error: assignmentError } = await supabase
+        .from("gcp_assignment")
+        .select("user:user_id(first_name, last_name)")
+        .eq("report_id", report.report_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!assignmentError && assignmentData?.user) {
+        const user = Array.isArray(assignmentData.user)
+          ? assignmentData.user[0]
+          : assignmentData.user;
+        if (user) {
+          const name =
+            `${user.first_name || ""} ${user.last_name || ""}`.trim();
+          setViewReportGcpName(name || "");
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load assigned GCP for report view", err);
+    }
   };
 
   const handleSubmitAssign = async () => {
@@ -2368,10 +2439,7 @@ function SecretaryReportsSection() {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => {
-                              setViewReport(report);
-                              setViewModalOpen(true);
-                            }}
+                            onClick={() => handleOpenViewReport(report)}
                             className="text-blue-400 hover:text-blue-300 font-semibold text-sm transition-colors"
                           >
                             View
@@ -2596,6 +2664,7 @@ function SecretaryReportsSection() {
                     onChange={(e) => setTaskDetails(e.target.value)}
                     placeholder="Describe the task requirements and any specific instructions for the GCP officer..."
                     className="rounded-lg bg-slate-800/50 border-slate-700/50 text-slate-200 placeholder:text-slate-500 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 resize-none min-h-[100px]"
+                    required
                   />
                 </div>
 
@@ -2746,7 +2815,7 @@ function SecretaryReportsSection() {
                   <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
                     <div className="flex items-center gap-2 mb-2">
                       <svg
-                        className="w-4 h-4 text-emerald-400"
+                        className="w-4 h-4 text-cyan-400"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -2755,15 +2824,15 @@ function SecretaryReportsSection() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={1.5}
-                          d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                         />
                       </svg>
-                      <span className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider">
-                        Barangay
+                      <span className="text-xs font-semibold text-cyan-400/80 uppercase tracking-wider">
+                        Assigned GCP
                       </span>
                     </div>
                     <p className="text-sm font-medium text-slate-200">
-                      {viewReport.barangay?.barangay_name || "—"}
+                      {viewReportGcpName || "Not assigned"}
                     </p>
                   </div>
 
@@ -5208,6 +5277,9 @@ export default function SecretaryDashboard() {
   const [manageAccountError, setManageAccountError] = useState<string | null>(
     null,
   );
+  const [manageAccountPasswordError, setManageAccountPasswordError] = useState<
+    string | null
+  >(null);
   const [manageAccountSuccess, setManageAccountSuccess] = useState<
     string | null
   >(null);
@@ -5458,18 +5530,50 @@ export default function SecretaryDashboard() {
     value.replace(/[^A-Za-z\s]/g, "");
 
   // Handlers for Schedule form inputs
+  const validateManageAccountPasswordFields = (
+    password: string,
+    confirmPassword: string,
+  ) => {
+    if (!password && !confirmPassword) return null;
+    if (password.length > 0 && password.length < 6)
+      return "Password must be at least 6 characters.";
+    if (password.length > 0 && !/[A-Z]/.test(password))
+      return "Password must include at least one uppercase letter.";
+    if (password.length > 0 && !/[^A-Za-z0-9]/.test(password))
+      return "Password must include at least one special character.";
+    if (password !== confirmPassword) return "Passwords do not match.";
+    return null;
+  };
+
   const handleManageAccountFormChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.name === "first_name" || e.target.name === "last_name") {
-      setManageAccountForm({
-        ...manageAccountForm,
-        [e.target.name]: sanitizeNameField(e.target.value),
+    const { name, value } = e.target;
+    if (name === "first_name" || name === "last_name") {
+      setManageAccountForm((prev) => ({
+        ...prev,
+        [name]: sanitizeNameField(value),
+      }));
+      return;
+    }
+    if (name === "password" || name === "confirm_password") {
+      setManageAccountForm((prev) => {
+        const updatedForm = {
+          ...prev,
+          [name]: value,
+        };
+        setManageAccountPasswordError(
+          validateManageAccountPasswordFields(
+            updatedForm.password,
+            updatedForm.confirm_password,
+          ),
+        );
+        return updatedForm;
       });
       return;
     }
-    setManageAccountForm({
-      ...manageAccountForm,
-      [e.target.name]: e.target.value,
-    });
+    setManageAccountForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   // Form validation for Manage Account
@@ -5493,15 +5597,11 @@ export default function SecretaryDashboard() {
     ) {
       return "First and last names can only contain letters and spaces.";
     }
-    if (
-      manageAccountForm.password.length > 0 &&
-      manageAccountForm.password.length < 6
-    ) {
-      return "Password must be at least 6 characters.";
-    }
-    if (manageAccountForm.password !== manageAccountForm.confirm_password) {
-      return "Passwords do not match.";
-    }
+    const passwordError = validateManageAccountPasswordFields(
+      manageAccountForm.password,
+      manageAccountForm.confirm_password,
+    );
+    if (passwordError) return passwordError;
     if (manageAccountForm.contact_number.length !== 11) {
       return "Contact number must be exactly 11 digits.";
     }
@@ -5525,10 +5625,15 @@ export default function SecretaryDashboard() {
       return;
 
     setManageAccountError(null);
+    setManageAccountPasswordError(null);
     setManageAccountSuccess(null);
     const error = validateManageAccountForm();
     if (error) {
-      setManageAccountError(error);
+      if (error.toLowerCase().includes("password")) {
+        setManageAccountPasswordError(error);
+      } else {
+        setManageAccountError(error);
+      }
       return;
     }
     try {
@@ -6026,6 +6131,7 @@ export default function SecretaryDashboard() {
                     form={manageAccountForm}
                     loading={manageAccountLoading}
                     error={manageAccountError}
+                    passwordError={manageAccountPasswordError}
                     success={manageAccountSuccess}
                     onChange={handleManageAccountFormChange}
                     onSubmit={handleManageAccountSubmit}

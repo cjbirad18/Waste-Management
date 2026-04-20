@@ -1581,6 +1581,7 @@ function ManageAccountSection({
   loading,
   error,
   success,
+  fieldErrors,
   onChange,
   onSubmit,
 }: {
@@ -1588,6 +1589,7 @@ function ManageAccountSection({
   loading: boolean;
   error: string | null;
   success: string | null;
+  fieldErrors: { [K in keyof ManageAccountForm]: string | null };
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: FormEvent) => void;
 }) {
@@ -1628,6 +1630,7 @@ function ManageAccountSection({
             value={form.first_name}
             onChange={onChange}
             required
+            error={fieldErrors.first_name}
           />
           <InputField
             label="Last Name"
@@ -1636,6 +1639,7 @@ function ManageAccountSection({
             value={form.last_name}
             onChange={onChange}
             required
+            error={fieldErrors.last_name}
           />
           <InputField
             label="Username"
@@ -1644,6 +1648,7 @@ function ManageAccountSection({
             value={form.username}
             onChange={onChange}
             required
+            error={fieldErrors.username}
           />
           <InputField
             label="Email"
@@ -1653,6 +1658,7 @@ function ManageAccountSection({
             onChange={onChange}
             required
             disabled
+            error={fieldErrors.email}
           />
           <InputField
             label="Contact Number"
@@ -1661,6 +1667,7 @@ function ManageAccountSection({
             value={form.contact_number}
             onChange={onChange}
             required
+            error={fieldErrors.contact_number}
           />
           <InputField
             label="New Password"
@@ -1669,6 +1676,7 @@ function ManageAccountSection({
             value={form.password}
             onChange={onChange}
             placeholder="Leave blank to keep current password"
+            error={fieldErrors.password}
           />
           <InputField
             label="Confirm New Password"
@@ -1677,6 +1685,7 @@ function ManageAccountSection({
             value={form.confirm_password}
             onChange={onChange}
             placeholder="Confirm your new password"
+            error={fieldErrors.confirm_password}
           />
         </div>
 
@@ -1697,6 +1706,7 @@ function InputField({
   required = false,
   placeholder = "",
   disabled = false,
+  error = null,
 }: {
   label: string;
   name: string;
@@ -1706,6 +1716,7 @@ function InputField({
   required?: boolean;
   placeholder?: string;
   disabled?: boolean;
+  error?: string | null;
 }) {
   return (
     <div className="mb-4 space-y-2">
@@ -1727,6 +1738,7 @@ function InputField({
           disabled ? "text-xs cursor-not-allowed opacity-60" : "text-xs"
         }
       />
+      {error ? <p className="text-xs text-rose-300 mt-1">{error}</p> : null}
     </div>
   );
 }
@@ -1921,6 +1933,17 @@ export default function ResidentDashboard() {
   const [manageAccountSuccess, setManageAccountSuccess] = useState<
     string | null
   >(null);
+  const [manageAccountFieldErrors, setManageAccountFieldErrors] = useState<{
+    [K in keyof ManageAccountForm]: string | null;
+  }>({
+    username: null,
+    first_name: null,
+    last_name: null,
+    email: null,
+    contact_number: null,
+    password: null,
+    confirm_password: null,
+  });
   const [hasLoadedManageAccount, setHasLoadedManageAccount] = useState(false);
 
   // Schedule Form States
@@ -2303,17 +2326,90 @@ export default function ResidentDashboard() {
   const sanitizeNameField = (value: string) =>
     value.replace(/[^A-Za-z\s]/g, "");
 
-  const handleManageAccountFormChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.name === "first_name" || e.target.name === "last_name") {
-      setManageAccountForm({
-        ...manageAccountForm,
-        [e.target.name]: sanitizeNameField(e.target.value),
-      });
-      return;
+  const validateManageAccountField = (
+    field: keyof ManageAccountForm,
+    value: string,
+    form: ManageAccountForm,
+  ) => {
+    switch (field) {
+      case "first_name":
+      case "last_name": {
+        const label = field === "first_name" ? "First" : "Last";
+        if (!value.trim()) return `${label} name is required.`;
+        if (!nameRegex.test(value))
+          return `${label} name can only contain letters and spaces.`;
+        return null;
+      }
+      case "username":
+        if (!value.trim()) return "Username is required.";
+        return null;
+      case "email":
+        if (!value.trim()) return "Email is required.";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+          return "Invalid email format.";
+        return null;
+      case "contact_number":
+        if (!value.trim()) return "Contact number is required.";
+        if (!/^09\d{9}$/.test(value))
+          return "Contact number must start with 09 and be 11 digits.";
+        return null;
+      case "password":
+        if (!value && !form.confirm_password) return null;
+        if (value.length > 0 && value.length < 6)
+          return "Password must be at least 6 characters.";
+        if (form.confirm_password && value !== form.confirm_password)
+          return "Passwords do not match.";
+        return null;
+      case "confirm_password":
+        if (!value && !form.password) return null;
+        if (form.password && value !== form.password)
+          return "Passwords do not match.";
+        return null;
+      default:
+        return null;
     }
-    setManageAccountForm({
+  };
+
+  const handleManageAccountFormChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const fieldName = e.target.name as keyof ManageAccountForm;
+    const fieldValue =
+      fieldName === "first_name" || fieldName === "last_name"
+        ? sanitizeNameField(e.target.value)
+        : e.target.value;
+
+    const updatedForm = {
       ...manageAccountForm,
-      [e.target.name]: e.target.value,
+      [fieldName]: fieldValue,
+    };
+
+    setManageAccountForm(updatedForm);
+    setManageAccountError(null);
+    setManageAccountSuccess(null);
+
+    setManageAccountFieldErrors((prev) => {
+      const nextErrors = {
+        ...prev,
+        [fieldName]: validateManageAccountField(
+          fieldName,
+          fieldValue,
+          updatedForm,
+        ),
+      };
+
+      if (fieldName === "password" || fieldName === "confirm_password") {
+        nextErrors.password = validateManageAccountField(
+          "password",
+          updatedForm.password,
+          updatedForm,
+        );
+        nextErrors.confirm_password = validateManageAccountField(
+          "confirm_password",
+          updatedForm.confirm_password,
+          updatedForm,
+        );
+      }
+
+      return nextErrors;
     });
   };
   const handleScheduleChange = (
@@ -2940,6 +3036,7 @@ export default function ResidentDashboard() {
                 loading={manageAccountLoading}
                 error={manageAccountError}
                 success={manageAccountSuccess}
+                fieldErrors={manageAccountFieldErrors}
                 onChange={handleManageAccountFormChange}
                 onSubmit={handleManageAccountSubmit}
               />

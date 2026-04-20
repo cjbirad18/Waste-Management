@@ -1,122 +1,102 @@
-// Notify SWMO/TCEMO Secretary, BWMC, and Residents when collection is missed
+// Notify SWMO Secretary and residents when collection is missed
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import { sendSMS } from "@/lib/sms";
 
 export async function POST(req: NextRequest) {
   try {
-    const { scheduleId, barangayId, barangayName } = await req.json();
+    const { scheduleId, barangayId, barangayName, reason } = await req.json();
 
-    const notifications = [];
+    const notifications: string[] = [];
 
-    // Get SWMO/TCEMO Secretary
-    const { data: secretary } = await supabase
+    // Get SWMO Secretary users
+    const { data: secretaries, error: secretaryError } = await supabase
       .from("users")
       .select("first_name, last_name, contact_number, user_id")
       .eq("role", "Secretary")
-      .maybeSingle();
+      .not("contact_number", "is", null);
 
-    // Get BWMC
-    const { data: bwmc } = await supabase
-      .from("users")
-      .select("first_name, last_name, contact_number, user_id")
-      .eq("role", "BWMC")
-      .eq("barangay_id", barangayId)
-      .maybeSingle();
+    if (secretaryError) {
+      console.error("Failed to fetch secretaries:", secretaryError);
+    }
 
-    // Get residents
-    const { data: residents } = await supabase
+    // Get residents in the assigned barangay
+    const { data: residents, error: residentError } = await supabase
       .from("users")
       .select("first_name, last_name, contact_number, user_id")
       .eq("role", "Resident")
       .eq("barangay_id", barangayId)
-      .eq("notification_enabled", true);
+      .not("contact_number", "is", null);
 
-    // Message for staff
-    const staffMessage = `TTruck: OFFICIAL NOTICE: Scheduled garbage collection in ${barangayName} was not completed as planned. The vehicle did not enter or finish the assigned route. Please investigate and establish a rescheduled service window as soon as possible.\n\n - Track the Truck`;
+    if (residentError) {
+      console.error("Failed to fetch residents:", residentError);
+    }
 
-    // Message for residents
-    const residentMessage = `TTruck: NOTICE: Scheduled garbage collection for ${barangayName} was missed today. We apologize for the inconvenience. You will be notified of the rescheduled collection.\n\n - Track the Truck`;
+    const reasonText = reason ? ` Reason: ${reason}` : "";
+    const staffMessage = `TTruck: OFFICIAL NOTICE: Scheduled garbage collection in ${barangayName} was missed today.${reasonText}\n Please review and arrange a rescheduled collection as soon as possible. \n\n -Track the Truck`;
+    const residentMessage = `TTruck: NOTICE: Scheduled garbage collection for ${barangayName} was missed today.${reasonText} We apologize for the inconvenience and will notify you once a rescheduled collection is arranged. \n\n -Track the Truck`;
 
-    // Notify Secretary
-    if (secretary) {
-      const smsResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-sms`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: secretary.contact_number,
-            message: staffMessage,
-          }),
-        },
-      );
+    const uniqueRecipients = new Map<
+      string,
+      {
+        user_id: string;
+        message: string;
+        notification_type: string;
+      }
+    >();
 
-      if ((await smsResponse.json()).success) {
-        await supabase.from("sms_notifications").insert({
+    // Notify secretaries
+    const secretaryRecipients = Array.isArray(secretaries) ? secretaries : [];
+    for (const secretary of secretaryRecipients) {
+      if (!secretary.contact_number) continue;
+      if (!uniqueRecipients.has(secretary.contact_number)) {
+        uniqueRecipients.set(secretary.contact_number, {
           user_id: secretary.user_id,
-          notification_type: "collection_missed",
           message: staffMessage,
-          phone_number: secretary.contact_number,
-          sent_at: new Date().toISOString(),
-          status: "sent",
+          notification_type: "collection_missed",
         });
-        notifications.push("Secretary");
       }
     }
 
-    // Notify BWMC
-    if (bwmc) {
-      const smsResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-sms`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: bwmc.contact_number,
-            message: staffMessage,
-          }),
-        },
-      );
+    // Notify residents
+    const residentRecipients = Array.isArray(residents) ? residents : [];
+    for (const resident of residentRecipients) {
+      if (!resident.contact_number) continue;
+      if (!uniqueRecipients.has(resident.contact_number)) {
+        uniqueRecipients.set(resident.contact_number, {
+          user_id: resident.user_id,
+          message: residentMessage,
+          notification_type: "collection_missed",
+        });
+      }
+    }
 
-      if ((await smsResponse.json()).success) {
+    for (const [phone_number, recipient] of uniqueRecipients.entries()) {
+      try {
+        await sendSMS(phone_number, recipient.message);
         await supabase.from("sms_notifications").insert({
-          user_id: bwmc.user_id,
-          notification_type: "collection_missed",
-          message: staffMessage,
-          phone_number: bwmc.contact_number,
+          user_id: recipient.user_id,
+          notification_type: recipient.notification_type,
+          message: recipient.message,
+          phone_number,
           sent_at: new Date().toISOString(),
           status: "sent",
         });
-        notifications.push("BWMC");
-      }
-    }
-
-    // Notify Residents
-    if (residents) {
-      for (const resident of residents) {
-        const smsResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/send-sms`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: resident.contact_number,
-              message: residentMessage,
-            }),
-          },
-        );
-
-        if ((await smsResponse.json()).success) {
-          await supabase.from("sms_notifications").insert({
-            user_id: resident.user_id,
-            notification_type: "collection_missed",
-            message: residentMessage,
-            phone_number: resident.contact_number,
-            sent_at: new Date().toISOString(),
-            status: "sent",
-          });
-          notifications.push(`Resident: ${resident.first_name}`);
-        }
+        notifications.push(phone_number);
+      } catch (error: any) {
+        console.error("Failed to send missed notification SMS:", error, {
+          phone_number,
+          user_id: recipient.user_id,
+        });
+        await supabase.from("sms_notifications").insert({
+          user_id: recipient.user_id,
+          notification_type: recipient.notification_type,
+          message: recipient.message,
+          phone_number,
+          sent_at: new Date().toISOString(),
+          status: "failed",
+          error_message: error?.message ?? String(error) ?? "Unknown SMS error",
+        });
       }
     }
 

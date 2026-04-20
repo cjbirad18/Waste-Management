@@ -416,6 +416,9 @@ export default function BWMCdashboard() {
   const [manageAccountError, setManageAccountError] = useState<string | null>(
     null,
   );
+  const [manageAccountPasswordError, setManageAccountPasswordError] = useState<
+    string | null
+  >(null);
   const [manageAccountSuccess, setManageAccountSuccess] = useState<
     string | null
   >(null);
@@ -851,17 +854,49 @@ export default function BWMCdashboard() {
     value.replace(/[^A-Za-z\s]/g, "");
 
   const handleManageAccountFormChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.name === "first_name" || e.target.name === "last_name") {
-      setManageAccountForm({
-        ...manageAccountForm,
-        [e.target.name]: sanitizeNameField(e.target.value),
+    const { name, value } = e.target;
+    if (name === "first_name" || name === "last_name") {
+      setManageAccountForm((prev) => ({
+        ...prev,
+        [name]: sanitizeNameField(value),
+      }));
+      return;
+    }
+    if (name === "password" || name === "confirm_password") {
+      setManageAccountForm((prev) => {
+        const updatedForm = {
+          ...prev,
+          [name]: value,
+        };
+        setManageAccountPasswordError(
+          validateManageAccountPasswordFields(
+            updatedForm.password,
+            updatedForm.confirm_password,
+          ),
+        );
+        return updatedForm;
       });
       return;
     }
-    setManageAccountForm({
-      ...manageAccountForm,
-      [e.target.name]: e.target.value,
-    });
+    setManageAccountForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const validateManageAccountPasswordFields = (
+    password: string,
+    confirmPassword: string,
+  ) => {
+    if (!password && !confirmPassword) return null;
+    if (password.length > 0 && password.length < 6)
+      return "Password must be at least 6 characters.";
+    if (password.length > 0 && !/[A-Z]/.test(password))
+      return "Password must include at least one uppercase letter.";
+    if (password.length > 0 && !/[^A-Za-z0-9]/.test(password))
+      return "Password must include at least one special character.";
+    if (password !== confirmPassword) return "Passwords do not match.";
+    return null;
   };
 
   const validateManageAccountForm = () => {
@@ -884,15 +919,11 @@ export default function BWMCdashboard() {
     ) {
       return "First and last names can only contain letters and spaces.";
     }
-    if (
-      manageAccountForm.password.length > 0 &&
-      manageAccountForm.password.length < 6
-    ) {
-      return "Password must be at least 6 characters.";
-    }
-    if (manageAccountForm.password !== manageAccountForm.confirm_password) {
-      return "Passwords do not match.";
-    }
+    const passwordError = validateManageAccountPasswordFields(
+      manageAccountForm.password,
+      manageAccountForm.confirm_password,
+    );
+    if (passwordError) return passwordError;
     if (manageAccountForm.contact_number.length !== 11) {
       return "Contact number must be 11 digits.";
     }
@@ -908,10 +939,15 @@ export default function BWMCdashboard() {
     if (!confirmed) return;
 
     setManageAccountError(null);
+    setManageAccountPasswordError(null);
     setManageAccountSuccess(null);
     const error = validateManageAccountForm();
     if (error) {
-      setManageAccountError(error);
+      if (error.toLowerCase().includes("password")) {
+        setManageAccountPasswordError(error);
+      } else {
+        setManageAccountError(error);
+      }
       return;
     }
     try {
@@ -3139,7 +3175,7 @@ export default function BWMCdashboard() {
                 )}
 
                 {/* Map Section with Toggle Button */}
-                <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
+                <section className="pt-5 grid grid-cols-1 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)] gap-6">
                   <div className="dashboard-section overflow-hidden">
                     <div className="dashboard-section-glow" />
                     <div className="relative z-10">
@@ -3179,7 +3215,7 @@ export default function BWMCdashboard() {
                     No pending accounts.
                   </div>
                 ) : (
-                  <div className="rounded-3xl border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl overflow-hidden">
+                  <div className="rounded-lg border border-emerald-800/60 bg-slate-900/90 shadow-2xl shadow-emerald-900/40 backdrop-blur-xl overflow-hidden">
                     <div className="px-5 py-3 border-b border-emerald-700/60 bg-slate-900/95 flex items-center justify-between">
                       <span className="text-emerald-200 font-semibold text-lg">
                         Pending Accounts
@@ -3598,6 +3634,7 @@ export default function BWMCdashboard() {
                     loading={manageAccountLoading}
                     error={manageAccountError}
                     success={manageAccountSuccess}
+                    passwordError={manageAccountPasswordError}
                     onChange={handleManageAccountFormChange}
                     onSubmit={handleManageAccountSubmit}
                   />
@@ -3623,13 +3660,15 @@ type ManageAccountSectionProps = {
   };
   loading: boolean;
   error: string | null;
+  passwordError: string | null;
   success: string | null;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: FormEvent) => void;
 };
 
 function ManageAccountSection(props: ManageAccountSectionProps) {
-  const { form, loading, error, success, onChange, onSubmit } = props;
+  const { form, loading, error, passwordError, success, onChange, onSubmit } =
+    props;
 
   if (loading) return <TruckLoader />;
 
@@ -3775,6 +3814,9 @@ function ManageAccountSection(props: ManageAccountSectionProps) {
             onChange={onChange}
             placeholder="Leave blank to keep current password"
           />
+          {passwordError && (
+            <p className="text-xs text-red-400 mt-1">{passwordError}</p>
+          )}
         </div>
 
         <div className="space-y-2">

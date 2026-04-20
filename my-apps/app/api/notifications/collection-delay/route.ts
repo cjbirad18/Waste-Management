@@ -1,6 +1,7 @@
 // Notify Secretary, BWMC, and Residents when a collection is delayed
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import { sendSMS } from "@/lib/sms";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,7 +23,6 @@ export async function POST(req: NextRequest) {
     }
 
     const notifications: string[] = [];
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
     // Staff message (Secretary + BWMC)
     const staffMessage =
@@ -44,26 +44,16 @@ export async function POST(req: NextRequest) {
     if (secretaries?.length) {
       for (const secretary of secretaries) {
         try {
-          const smsResponse = await fetch(`${baseUrl}/api/send-sms`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: secretary.contact_number,
-              message: staffMessage,
-            }),
+          await sendSMS(secretary.contact_number, staffMessage);
+          await supabase.from("sms_notifications").insert({
+            user_id: secretary.user_id,
+            notification_type: "collection_delayed",
+            message: staffMessage,
+            phone_number: secretary.contact_number,
+            sent_at: new Date().toISOString(),
+            status: "sent",
           });
-          const result = await smsResponse.json();
-          if (result.success) {
-            await supabase.from("sms_notifications").insert({
-              user_id: secretary.user_id,
-              notification_type: "collection_delayed",
-              message: staffMessage,
-              phone_number: secretary.contact_number,
-              sent_at: new Date().toISOString(),
-              status: "sent",
-            });
-            notifications.push(`Secretary: ${secretary.first_name}`);
-          }
+          notifications.push(`Secretary: ${secretary.first_name}`);
         } catch (e) {
           console.error("Failed to notify secretary", e);
         }
@@ -80,26 +70,16 @@ export async function POST(req: NextRequest) {
 
     if (bwmc?.contact_number) {
       try {
-        const smsResponse = await fetch(`${baseUrl}/api/send-sms`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: bwmc.contact_number,
-            message: staffMessage,
-          }),
+        await sendSMS(bwmc.contact_number, staffMessage);
+        await supabase.from("sms_notifications").insert({
+          user_id: bwmc.user_id,
+          notification_type: "collection_delayed",
+          message: staffMessage,
+          phone_number: bwmc.contact_number,
+          sent_at: new Date().toISOString(),
+          status: "sent",
         });
-        const result = await smsResponse.json();
-        if (result.success) {
-          await supabase.from("sms_notifications").insert({
-            user_id: bwmc.user_id,
-            notification_type: "collection_delayed",
-            message: staffMessage,
-            phone_number: bwmc.contact_number,
-            sent_at: new Date().toISOString(),
-            status: "sent",
-          });
-          notifications.push(`BWMC: ${bwmc.first_name}`);
-        }
+        notifications.push(`BWMC: ${bwmc.first_name}`);
       } catch (e) {
         console.error("Failed to notify BWMC", e);
       }
@@ -116,26 +96,16 @@ export async function POST(req: NextRequest) {
     if (residents?.length) {
       for (const resident of residents) {
         try {
-          const smsResponse = await fetch(`${baseUrl}/api/send-sms`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: resident.contact_number,
-              message: residentMessage,
-            }),
+          await sendSMS(resident.contact_number, residentMessage);
+          await supabase.from("sms_notifications").insert({
+            user_id: resident.user_id,
+            notification_type: "collection_delayed",
+            message: residentMessage,
+            phone_number: resident.contact_number,
+            sent_at: new Date().toISOString(),
+            status: "sent",
           });
-          const result = await smsResponse.json();
-          if (result.success) {
-            await supabase.from("sms_notifications").insert({
-              user_id: resident.user_id,
-              notification_type: "collection_delayed",
-              message: residentMessage,
-              phone_number: resident.contact_number,
-              sent_at: new Date().toISOString(),
-              status: "sent",
-            });
-            notifications.push(`Resident: ${resident.first_name}`);
-          }
+          notifications.push(`Resident: ${resident.first_name}`);
         } catch (e) {
           console.error("Failed to notify resident", e);
         }

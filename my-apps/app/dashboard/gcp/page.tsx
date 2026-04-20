@@ -509,6 +509,7 @@ function CollectionDelayMonitor({
   const STORAGE_KEY_DELAY_PENDING = "gcp_delay_pending";
   const STORAGE_KEY_MISSED_PENDING = "gcp_missed_pending";
   const STORAGE_KEY_DONE_PENDING = "gcp_done_pending";
+  const DONE_SUBMITTED_SCHEDULE_KEY = "gcp_done_submitted_schedule";
 
   const [delayReason, setDelayReason] = useState("");
   const [customReason, setCustomReason] = useState("");
@@ -527,15 +528,22 @@ function CollectionDelayMonitor({
   const [missedError, setMissedError] = useState<string | null>(null);
   const [missedSuccess, setMissedSuccess] = useState<string | null>(null);
   const [missedSubmitted, setMissedSubmitted] = useState(false);
+  const [missedSubmittedScheduleId, setMissedSubmittedScheduleId] = useState<
+    string | null
+  >(null);
   const [missedSchedule, setMissedSchedule] = useState<Schedule | null>(null);
   const [missedSuppressedUntil, setMissedSuppressedUntil] = useState<
     number | null
   >(null);
   const MISSED_SUPPRESSION_KEY = "gcp_missed_suppressed";
+  const MISSED_SUBMITTED_SCHEDULE_KEY = "gcp_missed_submitted_schedule";
 
   const [doneModalOpen, setDoneModalOpen] = useState(false);
   const [donePending, setDonePending] = useState(false);
   const [doneSubmitted, setDoneSubmitted] = useState(false);
+  const [doneSubmittedScheduleId, setDoneSubmittedScheduleId] = useState<
+    string | null
+  >(null);
   const [doneSchedule, setDoneSchedule] = useState<Schedule | null>(null);
   const [doneDate, setDoneDate] = useState(
     new Date().toISOString().slice(0, 10),
@@ -611,7 +619,6 @@ function CollectionDelayMonitor({
 
   // Detect missed schedules
   const checkForMisses = useCallback(async () => {
-    if (missedSubmitted) return;
     if (!gcpUserId) return;
 
     const now = Date.now();
@@ -624,6 +631,28 @@ function CollectionDelayMonitor({
     const today = new Date().toISOString().slice(0, 10);
     const scheduleIds = schedules.map((s) => s.schedule_id);
     if (!scheduleIds.length) return;
+
+    const storedMissedSubmittedScheduleId =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(
+            getStorageKey(MISSED_SUBMITTED_SCHEDULE_KEY),
+          )
+        : null;
+    const activeMissedSubmittedScheduleId =
+      missedSubmittedScheduleId || storedMissedSubmittedScheduleId;
+    const normalizedMissedSubmittedScheduleId =
+      activeMissedSubmittedScheduleId != null
+        ? String(activeMissedSubmittedScheduleId)
+        : null;
+
+    if (
+      normalizedMissedSubmittedScheduleId &&
+      !scheduleIds.map(String).includes(normalizedMissedSubmittedScheduleId)
+    ) {
+      setMissedSubmitted(false);
+      setMissedSubmittedScheduleId(null);
+      localStorage.removeItem(getStorageKey(MISSED_SUBMITTED_SCHEDULE_KEY));
+    }
 
     const { data: details, error } = await supabase
       .from("collection_details")
@@ -641,6 +670,11 @@ function CollectionDelayMonitor({
 
     const missedSchedule = details.find((d) => d.status === "Missed");
     if (!missedSchedule) {
+      if (normalizedMissedSubmittedScheduleId) {
+        setMissedSubmitted(false);
+        setMissedSubmittedScheduleId(null);
+        localStorage.removeItem(getStorageKey(MISSED_SUBMITTED_SCHEDULE_KEY));
+      }
       setMissedSchedule(null);
       setMissedPending(false);
       localStorage.setItem(getStorageKey(STORAGE_KEY_MISSED_PENDING), "false");
@@ -648,11 +682,32 @@ function CollectionDelayMonitor({
       return;
     }
 
+    const normalizedMissedScheduleId = String(missedSchedule.schedule_id);
+    if (
+      normalizedMissedSubmittedScheduleId &&
+      normalizedMissedSubmittedScheduleId !== normalizedMissedScheduleId
+    ) {
+      setMissedSubmitted(false);
+      setMissedSubmittedScheduleId(null);
+      localStorage.removeItem(getStorageKey(MISSED_SUBMITTED_SCHEDULE_KEY));
+    }
+
     const foundSchedule = schedules.find(
-      (s) => s.schedule_id === missedSchedule.schedule_id,
+      (s) => String(s.schedule_id) === normalizedMissedScheduleId,
     );
     if (!foundSchedule) {
       setMissedSchedule(null);
+      setMissedPending(false);
+      localStorage.setItem(getStorageKey(STORAGE_KEY_MISSED_PENDING), "false");
+      setMissedModalOpen(false);
+      return;
+    }
+
+    if (
+      normalizedMissedSubmittedScheduleId &&
+      normalizedMissedSubmittedScheduleId === normalizedMissedScheduleId
+    ) {
+      setMissedSchedule(foundSchedule);
       setMissedPending(false);
       localStorage.setItem(getStorageKey(STORAGE_KEY_MISSED_PENDING), "false");
       setMissedModalOpen(false);
@@ -663,17 +718,44 @@ function CollectionDelayMonitor({
     setMissedPending(true);
     localStorage.setItem(getStorageKey(STORAGE_KEY_MISSED_PENDING), "true");
     setMissedModalOpen(true);
-  }, [schedules, missedSubmitted, gcpUserId, missedSuppressedUntil]);
+  }, [
+    schedules,
+    missedSubmitted,
+    gcpUserId,
+    missedSuppressedUntil,
+    missedSubmittedScheduleId,
+  ]);
 
   // Detect completed (Done) schedules
   const checkForDone = useCallback(async () => {
-    if (doneSubmitted) return;
-
     const today = new Date().toISOString().slice(0, 10);
 
     if (!gcpUserId || !schedules.length) return;
 
     const scheduleIds = schedules.map((s) => s.schedule_id);
+
+    const storedDoneSubmittedScheduleId =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(
+            getStorageKey(DONE_SUBMITTED_SCHEDULE_KEY),
+          )
+        : null;
+    const activeDoneSubmittedScheduleId =
+      doneSubmittedScheduleId || storedDoneSubmittedScheduleId;
+    const normalizedSubmittedId =
+      activeDoneSubmittedScheduleId != null
+        ? String(activeDoneSubmittedScheduleId)
+        : null;
+
+    if (
+      normalizedSubmittedId &&
+      !scheduleIds.map(String).includes(normalizedSubmittedId)
+    ) {
+      setDoneSubmitted(false);
+      setDoneSubmittedScheduleId(null);
+      localStorage.removeItem(getStorageKey(DONE_SUBMITTED_SCHEDULE_KEY));
+    }
+
     const { data: doneRows, error: doneErr } = await supabase
       .from("collection_details")
       .select("schedule_id")
@@ -691,8 +773,16 @@ function CollectionDelayMonitor({
       return;
     }
 
+    const normalizedDoneScheduleId = String(doneRows.schedule_id);
+    if (normalizedSubmittedId === normalizedDoneScheduleId) {
+      setDonePending(false);
+      localStorage.setItem(getStorageKey(STORAGE_KEY_DONE_PENDING), "false");
+      setDoneModalOpen(false);
+      return;
+    }
+
     const foundSchedule = schedules.find(
-      (s) => s.schedule_id === doneRows.schedule_id,
+      (s) => String(s.schedule_id) === normalizedDoneScheduleId,
     );
     if (!foundSchedule) {
       setDoneSchedule(null);
@@ -706,7 +796,7 @@ function CollectionDelayMonitor({
     setDonePending(true);
     localStorage.setItem(getStorageKey(STORAGE_KEY_DONE_PENDING), "true");
     setDoneModalOpen(true);
-  }, [schedules, doneSubmitted, gcpUserId]);
+  }, [schedules, doneSubmittedScheduleId, gcpUserId]);
 
   // Initial check + 10-minute re-popup interval
   useEffect(() => {
@@ -719,19 +809,28 @@ function CollectionDelayMonitor({
 
       if (!userId) return;
 
+      const getUserStorageKey = (base: string) =>
+        userId ? `${base}_${userId}` : base;
+
       // cleanup older global keys when we switch users, to avoid cross-user leakage
       window.localStorage.removeItem(STORAGE_KEY_DELAY_PENDING);
       window.localStorage.removeItem(STORAGE_KEY_MISSED_PENDING);
       window.localStorage.removeItem(STORAGE_KEY_DONE_PENDING);
 
       const pendingDelay = window.localStorage.getItem(
-        getStorageKey(STORAGE_KEY_DELAY_PENDING),
+        getUserStorageKey(STORAGE_KEY_DELAY_PENDING),
       );
       const pendingMissed = window.localStorage.getItem(
-        getStorageKey(STORAGE_KEY_MISSED_PENDING),
+        getUserStorageKey(STORAGE_KEY_MISSED_PENDING),
       );
       const pendingDone = window.localStorage.getItem(
-        getStorageKey(STORAGE_KEY_DONE_PENDING),
+        getUserStorageKey(STORAGE_KEY_DONE_PENDING),
+      );
+      const submittedMissedScheduleId = window.localStorage.getItem(
+        getUserStorageKey(MISSED_SUBMITTED_SCHEDULE_KEY),
+      );
+      const submittedDoneScheduleId = window.localStorage.getItem(
+        getUserStorageKey(DONE_SUBMITTED_SCHEDULE_KEY),
       );
 
       // immediately re-check after user is known
@@ -744,14 +843,22 @@ function CollectionDelayMonitor({
       setDelayPending(pendingDelay === "true");
       setMissedPending(pendingMissed === "true");
       setDonePending(pendingDone === "true");
+      setMissedSubmitted(!!submittedMissedScheduleId);
+      setMissedSubmittedScheduleId(submittedMissedScheduleId);
+      setDoneSubmitted(!!submittedDoneScheduleId);
+      setDoneSubmittedScheduleId(submittedDoneScheduleId);
 
       if (pendingDelay === "true" && !delaySubmitted) {
         setDelayModalOpen(true);
       }
-      if (pendingMissed === "true" && !missedSubmitted) {
+      if (pendingMissed === "true" && !submittedMissedScheduleId) {
         setMissedModalOpen(true);
       }
-      if (pendingDone === "true" && !doneSubmitted) {
+      if (
+        pendingDone === "true" &&
+        !doneSubmitted &&
+        !submittedDoneScheduleId
+      ) {
         setDoneModalOpen(true);
       }
 
@@ -815,6 +922,7 @@ function CollectionDelayMonitor({
     delaySubmitted,
     missedSubmitted,
     doneSubmitted,
+    doneSubmittedScheduleId,
     delayPending,
     missedPending,
     donePending,
@@ -1035,6 +1143,7 @@ function CollectionDelayMonitor({
             scheduleId: missedSchedule.schedule_id,
             barangayId: missedSchedule.barangay?.barangay_id,
             barangayName: missedSchedule.barangay?.barangay_name,
+            reason: combinedReason,
           }),
         });
       } catch (notifyErr) {
@@ -1046,6 +1155,13 @@ function CollectionDelayMonitor({
 
       setMissedSuccess("Missed collection reported successfully.");
       setMissedSubmitted(true);
+      setMissedSubmittedScheduleId(missedSchedule?.schedule_id ?? null);
+      if (missedSchedule?.schedule_id) {
+        localStorage.setItem(
+          getStorageKey(MISSED_SUBMITTED_SCHEDULE_KEY),
+          missedSchedule.schedule_id,
+        );
+      }
       setMissedPending(false);
       localStorage.setItem(getStorageKey(STORAGE_KEY_MISSED_PENDING), "false");
       setTimeout(() => {
@@ -1154,6 +1270,34 @@ function CollectionDelayMonitor({
 
       setDoneSuccess("Done collection reported successfully.");
       setDoneSubmitted(true);
+      setDoneSubmittedScheduleId(doneSchedule?.schedule_id ?? null);
+      if (doneSchedule?.schedule_id) {
+        localStorage.setItem(
+          getStorageKey(DONE_SUBMITTED_SCHEDULE_KEY),
+          doneSchedule.schedule_id,
+        );
+      }
+
+      try {
+        await fetch("/api/notifications/collection-done", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            barangayId: doneSchedule.barangay?.barangay_id,
+            barangayName: doneSchedule.barangay?.barangay_name,
+            collectionDate: doneDate,
+            wasteWeight: weight,
+            garbageType: doneGarbageType,
+            scheduleTime: doneSchedule.start_time,
+          }),
+        });
+      } catch (notifyErr) {
+        console.error(
+          "Failed to notify SWMO Head about done collection:",
+          notifyErr,
+        );
+      }
+
       setDonePending(false);
       localStorage.setItem(getStorageKey(STORAGE_KEY_DONE_PENDING), "false");
       setTimeout(() => {
@@ -1568,22 +1712,28 @@ function CollectionDelayMonitor({
       <Dialog
         open={doneModalOpen}
         onOpenChange={(open: boolean) => {
-          if (!open && !doneSubmitted) {
+          if (!open) {
             setDoneModalOpen(false);
-            setDonePending(true);
-            localStorage.setItem(
-              getStorageKey(STORAGE_KEY_DONE_PENDING),
-              "true",
-            );
-          } else {
-            setDoneModalOpen(open);
-            if (open) {
+            if (!doneSubmitted) {
               setDonePending(true);
               localStorage.setItem(
                 getStorageKey(STORAGE_KEY_DONE_PENDING),
                 "true",
               );
+            } else {
+              setDonePending(false);
+              localStorage.setItem(
+                getStorageKey(STORAGE_KEY_DONE_PENDING),
+                "false",
+              );
             }
+          } else {
+            setDoneModalOpen(true);
+            setDonePending(true);
+            localStorage.setItem(
+              getStorageKey(STORAGE_KEY_DONE_PENDING),
+              "true",
+            );
           }
         }}
       >
@@ -1632,7 +1782,7 @@ function CollectionDelayMonitor({
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-semibold text-blue-400/80 uppercase tracking-wider">
-                Waste weight (kg) <span className="text-red-400">*</span>
+                Waste weight (Tons) <span className="text-red-400">*</span>
               </Label>
               <Input
                 type="number"
@@ -2026,7 +2176,8 @@ function GCPAssignedTasksSection() {
               location,
               landmark,
               current_status,
-              date_submitted
+              date_submitted,
+              barangay:barangay_id (barangay_name)
             )
           `,
           )
@@ -2426,16 +2577,6 @@ function GCPAssignedTasksSection() {
                   <Button
                     type="button"
                     className="h-auto"
-                    onClick={() => setActiveIncident(t.report)}
-                    disabled={!t.report?.description}
-                  >
-                    View Incident Description
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="h-auto"
                     onClick={() => setActiveTask(t)}
                     disabled={!t.task_details}
                   >
@@ -2510,6 +2651,7 @@ function GCPAssignedTasksSection() {
                   rows={4}
                   value={responseText}
                   onChange={(e) => setResponseText(e.target.value)}
+                  required
                   className="bg-slate-900/80 text-slate-100"
                 />
               </div>
@@ -2521,7 +2663,7 @@ function GCPAssignedTasksSection() {
               <DialogFooter className="sm:justify-end">
                 <Button
                   type="button"
-                  variant="secondary"
+                  className="h-auto bg-emerald-500 text-white hover:bg-emerald-600"
                   onClick={() => setResponseModalOpen(false)}
                   disabled={responseSaving}
                 >
@@ -2633,9 +2775,8 @@ function GCPAssignedTasksSection() {
             <DialogFooter className="sm:justify-end">
               <Button
                 type="button"
-                variant="secondary"
+                className="h-auto bg-emerald-500 text-white hover:bg-emerald-600"
                 onClick={() => setActiveIncident(null)}
-                className="h-auto"
               >
                 Close
               </Button>
@@ -2658,18 +2799,65 @@ function GCPAssignedTasksSection() {
               </p>
             </DialogHeader>
 
-            <div className="rounded-lg bg-slate-900/80 border border-slate-700/70 px-3 py-2">
-              <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed break-words">
-                {activeTask?.task_details}
-              </p>
+            <div className="space-y-4 rounded-lg bg-slate-900/80 border border-slate-700/70 px-3 py-2">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <p className="text-[11px] uppercase text-slate-400">
+                    Location
+                  </p>
+                  <p className="text-sm text-slate-200">
+                    {activeTask?.report?.location || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase text-slate-400">
+                    Barangay
+                  </p>
+                  <p className="text-sm text-slate-200">
+                    {activeTask?.report?.barangay?.barangay_name || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase text-slate-400">
+                    Landmark
+                  </p>
+                  <p className="text-sm text-slate-200">
+                    {activeTask?.report?.landmark || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase text-slate-400">Status</p>
+                  <p className="text-sm text-slate-200">
+                    {activeTask?.report?.current_status || "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-slate-950/80 border border-slate-700/70 p-3">
+                <p className="text-[11px] uppercase text-slate-400 mb-1">
+                  Description
+                </p>
+                <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed break-words">
+                  {activeTask?.report?.description ||
+                    "No description available."}
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-slate-900/80 border border-slate-700/70 px-3 py-2">
+                <p className="text-[11px] uppercase text-slate-400 mb-1">
+                  Secretary Task
+                </p>
+                <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed break-words">
+                  {activeTask?.task_details || "No task details available."}
+                </p>
+              </div>
             </div>
 
             <DialogFooter className="sm:justify-end">
               <Button
                 type="button"
-                variant="secondary"
+                className="h-auto bg-emerald-500 text-white hover:bg-emerald-600"
                 onClick={() => setActiveTask(null)}
-                className="h-auto"
               >
                 Close
               </Button>
@@ -2768,6 +2956,56 @@ export default function GCPDashboard() {
   const [manageAccountSuccess, setManageAccountSuccess] = useState<
     string | null
   >(null);
+  const [manageAccountPasswordError, setManageAccountPasswordError] = useState<
+    string | null
+  >(null);
+  const [manageAccountFieldErrors, setManageAccountFieldErrors] = useState({
+    username: null as string | null,
+    first_name: null as string | null,
+    last_name: null as string | null,
+    contact_number: null as string | null,
+    password: null as string | null,
+    confirm_password: null as string | null,
+  });
+
+  const validateManageAccountField = (
+    field: string,
+    value: string,
+    form: typeof manageAccountForm,
+  ) => {
+    switch (field) {
+      case "username":
+        if (!value.trim()) return "Username is required.";
+        return null;
+      case "first_name":
+      case "last_name": {
+        const label = field === "first_name" ? "First" : "Last";
+        if (!value.trim()) return `${label} name is required.`;
+        if (!nameRegex.test(value))
+          return `${label} name can only contain letters and spaces.`;
+        return null;
+      }
+      case "contact_number":
+        if (!value.trim()) return "Contact number is required.";
+        if (!/^09\d{9}$/.test(value))
+          return "Contact number must start with 09 and be 11 digits.";
+        return null;
+      case "password":
+        if (!value && !form.confirm_password) return null;
+        if (value.length > 0 && value.length < 6)
+          return "Password must be at least 6 characters.";
+        if (form.confirm_password && value !== form.confirm_password)
+          return "Passwords do not match.";
+        return null;
+      case "confirm_password":
+        if (!value && !form.password) return null;
+        if (form.password && value !== form.password)
+          return "Passwords do not match.";
+        return null;
+      default:
+        return null;
+    }
+  };
 
   // Manage Account updater
   useEffect(() => {
@@ -2819,18 +3057,62 @@ export default function GCPDashboard() {
   const sanitizeNameField = (value: string) =>
     value.replace(/[^A-Za-z\s]/g, "");
 
-  const handleManageAccountFormChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.name === "first_name" || e.target.name === "last_name") {
-      setManageAccountForm({
-        ...manageAccountForm,
-        [e.target.name]: sanitizeNameField(e.target.value),
-      });
-      return;
+  const validatePasswordFields = (
+    password: string,
+    confirm_password: string,
+  ) => {
+    if (!password && !confirm_password) {
+      return null;
     }
-    setManageAccountForm({
+    if (password && password.length < 6) {
+      return "Password must be at least 6 characters.";
+    }
+    if (confirm_password && password !== confirm_password) {
+      return "Passwords do not match.";
+    }
+    return null;
+  };
+
+  const handleManageAccountFormChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value =
+      e.target.name === "first_name" || e.target.name === "last_name"
+        ? sanitizeNameField(e.target.value)
+        : e.target.value;
+
+    const updatedForm = {
       ...manageAccountForm,
-      [e.target.name]: e.target.value,
-    });
+      [e.target.name]: value,
+    };
+
+    setManageAccountForm(updatedForm);
+
+    const updatedErrors = {
+      ...manageAccountFieldErrors,
+      [e.target.name]: validateManageAccountField(
+        e.target.name,
+        value,
+        updatedForm,
+      ),
+    };
+
+    if (e.target.name === "password" || e.target.name === "confirm_password") {
+      updatedErrors.password = validateManageAccountField(
+        "password",
+        updatedForm.password,
+        updatedForm,
+      );
+      updatedErrors.confirm_password = validateManageAccountField(
+        "confirm_password",
+        updatedForm.confirm_password,
+        updatedForm,
+      );
+    }
+
+    setManageAccountFieldErrors(updatedErrors);
+    setManageAccountPasswordError(
+      updatedErrors.password || updatedErrors.confirm_password || null,
+    );
+    setManageAccountError(null);
   };
 
   const validateManageAccountForm = () => {
@@ -3187,7 +3469,7 @@ export default function GCPDashboard() {
                   )}
                 </section>
 
-                <section>
+                <section className="pt-5">
                   <div className="relative bg-slate-900/70 border border-emerald-900/40 rounded-2xl p-6 overflow-hidden shadow-2xl shadow-emerald-900/20">
                     <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-sky-500/5 opacity-70 pointer-events-none" />
                     <div className="flex items-center justify-between mb-6">
@@ -3223,6 +3505,8 @@ export default function GCPDashboard() {
                     loading={manageAccountLoading}
                     error={manageAccountError}
                     success={manageAccountSuccess}
+                    passwordError={manageAccountPasswordError}
+                    fieldErrors={manageAccountFieldErrors}
                     onChange={handleManageAccountFormChange}
                     onSubmit={handleManageAccountSubmit}
                   />
@@ -3234,239 +3518,276 @@ export default function GCPDashboard() {
       </div>
     </div>
   );
+}
 
-  // ---- ManageAccountSection + InputField ----
-  function ManageAccountSection({
-    form,
-    loading,
-    error,
-    success,
-    onChange,
-    onSubmit,
-  }: {
-    form: typeof ManageAccountSection.prototype.form;
-    loading: boolean;
-    error: string | null;
-    success: string | null;
-    onChange: (e: ChangeEvent<HTMLInputElement>) => void;
-    onSubmit: (e: FormEvent) => void;
-  }) {
-    if (loading) return <TruckLoader />;
+function ManageAccountSection({
+  form,
+  loading,
+  error,
+  success,
+  passwordError,
+  fieldErrors,
+  onChange,
+  onSubmit,
+}: {
+  form: typeof ManageAccountSection.prototype.form;
+  loading: boolean;
+  error: string | null;
+  success: string | null;
+  passwordError: string | null;
+  fieldErrors: {
+    username: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    contact_number: string | null;
+    password: string | null;
+    confirm_password: string | null;
+  };
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onSubmit: (e: FormEvent) => void;
+}) {
+  if (loading) return <TruckLoader />;
 
-    return (
-      <section className="max-w-5xl mx-auto rounded-3xl bg-slate-900/95 border border-slate-800 px-10 py-8 shadow-2xl">
-        <h2 className="text-3xl font-bold mb-1 text-emerald-400">
-          Manage Account
-        </h2>
-        <p className="text-[11px] text-slate-400 mb-6">
-          Update your profile details and sign-in credentials.
-        </p>
+  return (
+    <section className="max-w-5xl mx-auto rounded-3xl bg-slate-900/95 border border-slate-800 px-10 py-8 shadow-2xl">
+      <h2 className="text-3xl font-bold mb-1 text-emerald-400">
+        Manage Account
+      </h2>
+      <p className="text-[11px] text-slate-400 mb-6">
+        Update your profile details and sign-in credentials.
+      </p>
 
-        {error && (
-          <div
-            role="alert"
-            className="mb-4 rounded-lg bg-red-500/10 border border-red-500/50 px-4 py-2 text-xs text-red-200"
+      {error && (
+        <div
+          role="alert"
+          className="mb-4 rounded-lg bg-red-500/10 border border-red-500/50 px-4 py-2 text-xs text-red-200"
+        >
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div
+          role="status"
+          className="mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/50 px-4 py-2 text-xs text-emerald-200"
+        >
+          {success}
+        </div>
+      )}
+
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        {/* Username */}
+        <div>
+          <Label
+            htmlFor="username"
+            className="block text-xs font-semibold text-slate-100 mb-1"
           >
-            {error}
-          </div>
-        )}
+            Username
+          </Label>
+          <Input
+            id="username"
+            name="username"
+            type="text"
+            value={form.username}
+            onChange={onChange}
+            required
+            className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
+            placeholder="Enter your username"
+          />
+          {fieldErrors.username ? (
+            <p className="mt-2 text-xs text-rose-300">{fieldErrors.username}</p>
+          ) : null}
+        </div>
 
-        {success && (
-          <div
-            role="status"
-            className="mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/50 px-4 py-2 text-xs text-emerald-200"
-          >
-            {success}
-          </div>
-        )}
-
-        <form onSubmit={onSubmit} className="space-y-4" noValidate>
-          {/* Username */}
+        {/* First / Last */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label
-              htmlFor="username"
+              htmlFor="first_name"
               className="block text-xs font-semibold text-slate-100 mb-1"
             >
-              Username
+              First Name
             </Label>
             <Input
-              id="username"
-              name="username"
+              id="first_name"
+              name="first_name"
               type="text"
-              value={form.username}
+              value={form.first_name}
               onChange={onChange}
               required
               className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
-              placeholder="Enter your username"
+              placeholder="Enter your first name"
             />
+            {fieldErrors.first_name ? (
+              <p className="mt-2 text-xs text-rose-300">
+                {fieldErrors.first_name}
+              </p>
+            ) : null}
           </div>
-
-          {/* First / Last */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label
-                htmlFor="first_name"
-                className="block text-xs font-semibold text-slate-100 mb-1"
-              >
-                First Name
-              </Label>
-              <Input
-                id="first_name"
-                name="first_name"
-                type="text"
-                value={form.first_name}
-                onChange={onChange}
-                required
-                className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
-                placeholder="Enter your first name"
-              />
-            </div>
-            <div>
-              <Label
-                htmlFor="last_name"
-                className="block text-xs font-semibold text-slate-100 mb-1"
-              >
-                Last Name
-              </Label>
-              <Input
-                id="last_name"
-                name="last_name"
-                type="text"
-                value={form.last_name}
-                onChange={onChange}
-                required
-                className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
-                placeholder="Enter your last name"
-              />
-            </div>
-          </div>
-
-          {/* Contact / Email */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label
-                htmlFor="contact_number"
-                className="block text-xs font-semibold text-slate-100 mb-1"
-              >
-                Contact Number
-              </Label>
-              <Input
-                id="contact_number"
-                name="contact_number"
-                type="tel"
-                value={form.contact_number}
-                onChange={onChange}
-                required
-                className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
-                placeholder="09123456789"
-              />
-            </div>
-            <div>
-              <Label
-                htmlFor="email"
-                className="block text-xs font-semibold text-slate-100 mb-1"
-              >
-                Email
-              </Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={onChange}
-                required
-                disabled
-                readOnly
-                className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500 cursor-not-allowed opacity-60"
-                placeholder="user@tagbilaran.gov.ph"
-              />
-            </div>
-          </div>
-
-          {/* Passwords */}
           <div>
             <Label
-              htmlFor="password"
+              htmlFor="last_name"
               className="block text-xs font-semibold text-slate-100 mb-1"
             >
-              Password
+              Last Name
             </Label>
             <Input
-              id="password"
-              name="password"
-              type="password"
-              value={form.password}
+              id="last_name"
+              name="last_name"
+              type="text"
+              value={form.last_name}
               onChange={onChange}
+              required
               className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
-              placeholder="Leave blank to keep current password"
+              placeholder="Enter your last name"
             />
+            {fieldErrors.last_name ? (
+              <p className="mt-2 text-xs text-rose-300">
+                {fieldErrors.last_name}
+              </p>
+            ) : null}
           </div>
+        </div>
 
+        {/* Contact / Email */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label
-              htmlFor="confirm_password"
+              htmlFor="contact_number"
               className="block text-xs font-semibold text-slate-100 mb-1"
             >
-              Confirm Password
+              Contact Number
             </Label>
             <Input
-              id="confirm_password"
-              name="confirm_password"
-              type="password"
-              value={form.confirm_password}
+              id="contact_number"
+              name="contact_number"
+              type="tel"
+              value={form.contact_number}
               onChange={onChange}
+              required
               className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
-              placeholder="Confirm your new password"
+              placeholder="09123456789"
+            />
+            {fieldErrors.contact_number ? (
+              <p className="mt-2 text-xs text-rose-300">
+                {fieldErrors.contact_number}
+              </p>
+            ) : null}
+          </div>
+          <div>
+            <Label
+              htmlFor="email"
+              className="block text-xs font-semibold text-slate-100 mb-1"
+            >
+              Email
+            </Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={onChange}
+              required
+              disabled
+              readOnly
+              className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500 cursor-not-allowed opacity-60"
+              placeholder="user@tagbilaran.gov.ph"
             />
           </div>
+        </div>
 
-          <div className="flex justify-end pt-3">
-            <Button type="submit" className="h-auto">
-              Update Account
-            </Button>
-          </div>
-        </form>
-      </section>
-    );
-  }
+        {/* Passwords */}
+        <div>
+          <Label
+            htmlFor="password"
+            className="block text-xs font-semibold text-slate-100 mb-1"
+          >
+            Password
+          </Label>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            value={form.password}
+            onChange={onChange}
+            className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
+            placeholder="Leave blank to keep current password"
+          />
+          {fieldErrors.password ? (
+            <p className="mt-2 text-xs text-rose-300">{fieldErrors.password}</p>
+          ) : null}
+        </div>
 
-  function InputField({
-    label,
-    name,
-    type,
-    value,
-    onChange,
-    required = false,
-    placeholder = "",
-  }: {
-    label: string;
-    name: string;
-    type: string;
-    value: string;
-    onChange: (e: ChangeEvent<HTMLInputElement>) => void;
-    required?: boolean;
-    placeholder?: string;
-  }) {
-    return (
-      <div className="mb-4">
-        <Label
-          htmlFor={name}
-          className="block mb-1 text-xs font-semibold text-slate-100"
-        >
-          {label}
-        </Label>
-        <Input
-          id={name}
-          name={name}
-          type={type}
-          value={value}
-          onChange={onChange}
-          required={required}
-          placeholder={placeholder}
-          autoComplete="off"
-          className="bg-slate-900/90 border-slate-700 text-slate-100 placeholder:text-slate-400 focus-visible:ring-emerald-500"
-        />
-      </div>
-    );
-  }
+        <div>
+          <Label
+            htmlFor="confirm_password"
+            className="block text-xs font-semibold text-slate-100 mb-1"
+          >
+            Confirm Password
+          </Label>
+          <Input
+            id="confirm_password"
+            name="confirm_password"
+            type="password"
+            value={form.confirm_password}
+            onChange={onChange}
+            className="bg-slate-950/80 border-slate-800 text-slate-100 placeholder:text-slate-500 focus-visible:ring-emerald-500"
+            placeholder="Confirm your new password"
+          />
+          {fieldErrors.confirm_password ? (
+            <p className="mt-2 text-xs text-rose-300">
+              {fieldErrors.confirm_password}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="flex justify-end pt-3">
+          <Button type="submit" className="h-auto">
+            Update Account
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+// ---- ManageAccountSection + InputField ----
+function InputField({
+  label,
+  name,
+  type,
+  value,
+  onChange,
+  required = false,
+  placeholder = "",
+}: {
+  label: string;
+  name: string;
+  type: string;
+  value: string;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  required?: boolean;
+  placeholder?: string;
+}) {
+  return (
+    <div className="mb-4">
+      <Label
+        htmlFor={name}
+        className="block mb-1 text-xs font-semibold text-slate-100"
+      >
+        {label}
+      </Label>
+      <Input
+        id={name}
+        name={name}
+        type={type}
+        value={value}
+        onChange={onChange}
+        required={required}
+        placeholder={placeholder}
+        autoComplete="off"
+        className="bg-slate-900/90 border-slate-700 text-slate-100 placeholder:text-slate-400 focus-visible:ring-emerald-500"
+      />
+    </div>
+  );
 }
