@@ -72,6 +72,14 @@ type ManageAccountSectionProps = {
   onSubmit: (e: FormEvent) => void;
 };
 
+type ConfirmDialogState = {
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: () => Promise<void> | void;
+};
+
 function ManageAccountSection(props: ManageAccountSectionProps) {
   const { form, loading, error, passwordError, success, onChange, onSubmit } =
     props;
@@ -475,6 +483,62 @@ export default function AdminDashboard() {
     });
     return sorted;
   }, [users, userSortKey, userSortDir]);
+
+  const [userListPage, setUserListPage] = useState(1);
+  const userListPerPage = 8;
+  const totalUserListPages = Math.max(
+    1,
+    Math.ceil(sortedUsers.length / userListPerPage),
+  );
+  const currentUserListPage = Math.min(userListPage, totalUserListPages);
+  const userListStartIndex = (currentUserListPage - 1) * userListPerPage;
+  const pagedSortedUsers = sortedUsers.slice(
+    userListStartIndex,
+    userListStartIndex + userListPerPage,
+  );
+
+  const visibleUserListPages = (() => {
+    const maxVisiblePages = 5;
+    const halfRange = Math.floor(maxVisiblePages / 2);
+    let start = Math.max(1, currentUserListPage - halfRange);
+    let end = Math.min(totalUserListPages, start + maxVisiblePages - 1);
+    start = Math.max(1, end - maxVisiblePages + 1);
+    return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+  })();
+
+  useEffect(() => {
+    setUserListPage(1);
+  }, [sortedUsers]);
+
+  const [userAdminPage, setUserAdminPage] = useState(1);
+  const userAdminPerPage = 8;
+  const filteredAdminUsers = sortedUsers.filter(
+    (user) => userRoleFilter === "all" || user.role === userRoleFilter,
+  );
+  const totalUserAdminPages = Math.max(
+    1,
+    Math.ceil(filteredAdminUsers.length / userAdminPerPage),
+  );
+  const currentUserAdminPage = Math.min(userAdminPage, totalUserAdminPages);
+  const userAdminStartIndex = (currentUserAdminPage - 1) * userAdminPerPage;
+  const pagedAdminUsers = filteredAdminUsers.slice(
+    userAdminStartIndex,
+    userAdminStartIndex + userAdminPerPage,
+  );
+
+  const visibleUserAdminPages = (() => {
+    const maxVisiblePages = 5;
+    const halfRange = Math.floor(maxVisiblePages / 2);
+    let start = Math.max(1, currentUserAdminPage - halfRange);
+    let end = Math.min(totalUserAdminPages, start + maxVisiblePages - 1);
+    start = Math.max(1, end - maxVisiblePages + 1);
+    return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+  })();
+
+  useEffect(() => {
+    setUserAdminPage(1);
+  }, [userRoleFilter, sortedUsers]);
+
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [errorUsers, setErrorUsers] = useState<string | null>(null);
 
@@ -594,6 +658,10 @@ export default function AdminDashboard() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingUserForm, setEditingUserForm] = useState<any>(null);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [showAddUserConfirmModal, setShowAddUserConfirmModal] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(
+    null,
+  );
   const [isViewOnly, setIsViewOnly] = useState(false);
   const [otherUsersError, setOtherUsersError] = useState<string | null>(null);
   const [otherUsersSuccess, setOtherUsersSuccess] = useState<string | null>(
@@ -1611,14 +1679,27 @@ export default function AdminDashboard() {
     },
   ];
 
+  const openConfirmDialog = (dialog: ConfirmDialogState) =>
+    setConfirmDialog(dialog);
+  const closeConfirmDialog = () => setConfirmDialog(null);
+  const confirmDialogAction = async () => {
+    if (!confirmDialog) return;
+    const callback = confirmDialog.onConfirm;
+    closeConfirmDialog();
+    await callback();
+  };
+
   const handleLogout = () => {
-    if (
-      typeof window !== "undefined" &&
-      window.confirm("Are you sure you want to logout?")
-    ) {
-      localStorage.removeItem("authToken");
-      router.push("/");
-    }
+    openConfirmDialog({
+      title: "Confirm Logout",
+      description: "Are you sure you want to logout?",
+      confirmLabel: "Logout",
+      cancelLabel: "Cancel",
+      onConfirm: async () => {
+        localStorage.removeItem("authToken");
+        router.push("/");
+      },
+    });
   };
 
   const nameRegex = /^[A-Za-z\s]+$/;
@@ -1718,9 +1799,13 @@ export default function AdminDashboard() {
 
   const handleAddUser = async (e: FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+    setFormSuccess(null);
+    setShowAddUserConfirmModal(true);
+  };
 
-    const confirmed = window.confirm("Are you sure you want to add this user?");
-    if (!confirmed) return;
+  const confirmAddUser = async () => {
+    setShowAddUserConfirmModal(false);
     setFormError(null);
     setFormSuccess(null);
     const validationError = validateUserForm();
@@ -1728,6 +1813,7 @@ export default function AdminDashboard() {
       setFormError(validationError);
       return;
     }
+
     // ensure email/username not already used
     const { data: existingUsers, error: queryError } = await supabase
       .from("users")
@@ -1891,17 +1977,11 @@ export default function AdminDashboard() {
     return null;
   };
 
-  const handleManageAccountSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-
-    const confirmed = window.confirm(
-      "Are you sure you want to update your account details?",
-    );
-    if (!confirmed) return;
-
+  const submitManageAccount = async () => {
     setManageAccountError(null);
     setManageAccountPasswordError(null);
     setManageAccountSuccess(null);
+
     const error = validateManageAccountForm();
     if (error) {
       if (error.toLowerCase().includes("password")) {
@@ -1961,6 +2041,18 @@ export default function AdminDashboard() {
     } catch (err) {
       setManageAccountError(`Unexpected error: ${(err as Error).message}`);
     }
+  };
+
+  const handleManageAccountSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+
+    openConfirmDialog({
+      title: "Confirm Update",
+      description: "Are you sure you want to update your account details?",
+      confirmLabel: "Update",
+      cancelLabel: "Cancel",
+      onConfirm: submitManageAccount,
+    });
   };
 
   // Fetch other users (TCEMO, Secretary, BWMC, GCP)
@@ -2066,103 +2158,111 @@ export default function AdminDashboard() {
   };
 
   // Archive user account
-  const handleArchiveUser = async (userId: string, userName: string) => {
-    if (
-      !window.confirm(`Archive account for ${userName}? This cannot be undone.`)
-    ) {
-      return;
-    }
+  const handleArchiveUser = (userId: string, userName: string) => {
+    openConfirmDialog({
+      title: "Confirm Archive",
+      description: `Archive account for ${userName}? This cannot be undone.`,
+      confirmLabel: "Archive",
+      cancelLabel: "Cancel",
+      onConfirm: async () => {
+        try {
+          const now = new Date();
+          const currentMonthStart = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            1,
+          ).toISOString();
+          const currentMonthEnd = new Date(
+            now.getFullYear(),
+            now.getMonth() + 1,
+            0,
+            23,
+            59,
+            59,
+          ).toISOString();
 
-    try {
-      // Prevent archiving when the GCP has an active assignment this month.
-      const now = new Date();
-      const currentMonthStart = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        1,
-      ).toISOString();
-      const currentMonthEnd = new Date(
-        now.getFullYear(),
-        now.getMonth() + 1,
-        0,
-        23,
-        59,
-        59,
-      ).toISOString();
+          const { data: scheduleAssignments, error: scheduleError } =
+            await supabase
+              .from("collection_schedules")
+              .select("schedule_id")
+              .eq("gcp_user_id", userId)
+              .eq("status", "Active")
+              .limit(1);
 
-      const { data: scheduleAssignments, error: scheduleError } = await supabase
-        .from("collection_schedules")
-        .select("schedule_id")
-        .eq("gcp_user_id", userId)
-        .eq("status", "Active")
-        .limit(1);
+          if (scheduleError) {
+            setOtherUsersError(
+              `Archive check failed: ${scheduleError.message}`,
+            );
+            return;
+          }
 
-      if (scheduleError) {
-        setOtherUsersError(`Archive check failed: ${scheduleError.message}`);
-        return;
-      }
+          const { data: detailAssignments, error: detailError } = await supabase
+            .from("collection_details")
+            .select("collectiondetails_id")
+            .eq("gcp_user_id", userId)
+            .gte("collection_date", currentMonthStart)
+            .lte("collection_date", currentMonthEnd)
+            .limit(1);
 
-      const { data: detailAssignments, error: detailError } = await supabase
-        .from("collection_details")
-        .select("collectiondetails_id")
-        .eq("gcp_user_id", userId)
-        .gte("collection_date", currentMonthStart)
-        .lte("collection_date", currentMonthEnd)
-        .limit(1);
+          if (detailError) {
+            setOtherUsersError(`Archive check failed: ${detailError.message}`);
+            return;
+          }
 
-      if (detailError) {
-        setOtherUsersError(`Archive check failed: ${detailError.message}`);
-        return;
-      }
+          if (
+            (scheduleAssignments && scheduleAssignments.length > 0) ||
+            (detailAssignments && detailAssignments.length > 0)
+          ) {
+            setOtherUsersError(
+              `Cannot archive ${userName}. There is an active assignment for this month.`,
+            );
+            return;
+          }
 
-      if (
-        (scheduleAssignments && scheduleAssignments.length > 0) ||
-        (detailAssignments && detailAssignments.length > 0)
-      ) {
-        setOtherUsersError(
-          `Cannot archive ${userName}. There is an active assignment for this month.`,
-        );
-        return;
-      }
+          const { error } = await supabase
+            .from("users")
+            .update({ status: "archived" })
+            .eq("user_id", userId);
 
-      const { error } = await supabase
-        .from("users")
-        .update({ status: "archived" })
-        .eq("user_id", userId);
+          if (error) {
+            setOtherUsersError(`Archive failed: ${error.message}`);
+            return;
+          }
 
-      if (error) {
-        setOtherUsersError(`Archive failed: ${error.message}`);
-        return;
-      }
-
-      setOtherUsersSuccess(`${userName} account archived successfully!`);
-      await Promise.all([fetchOtherUsers(), fetchUsers()]);
-    } catch (err) {
-      setOtherUsersError(`Unexpected error: ${(err as Error).message}`);
-    }
+          setOtherUsersSuccess(`${userName} account archived successfully!`);
+          await Promise.all([fetchOtherUsers(), fetchUsers()]);
+        } catch (err) {
+          setOtherUsersError(`Unexpected error: ${(err as Error).message}`);
+        }
+      },
+    });
   };
 
-  const handleUnarchiveUser = async (userId: string, userName: string) => {
-    if (!window.confirm(`Unarchive account for ${userName}?`)) {
-      return;
-    }
+  const handleUnarchiveUser = (userId: string, userName: string) => {
+    openConfirmDialog({
+      title: "Confirm Unarchive",
+      description: `Unarchive account for ${userName}?`,
+      confirmLabel: "Unarchive",
+      cancelLabel: "Cancel",
+      onConfirm: async () => {
+        try {
+          const { error } = await supabase
+            .from("users")
+            .update({ status: "active" })
+            .eq("user_id", userId);
 
-    try {
-      const { error } = await supabase
-        .from("users")
-        .update({ status: "active" })
-        .eq("user_id", userId);
+          if (error) {
+            setOtherUsersError(`Unarchive failed: ${error.message}`);
+            return;
+          }
 
-      if (error) {
-        setOtherUsersError(`Unarchive failed: ${error.message}`);
-        return;
-      }
-
-      setOtherUsersSuccess(`${userName} account unarchived successfully!`);
-      await Promise.all([fetchOtherUsers(), fetchUsers()]);
-    } catch (err) {
-      setOtherUsersError(`Unexpected error: ${(err as Error).message}`);
-    }
+          setOtherUsersSuccess(`${userName} account unarchived successfully!`);
+          await Promise.all([fetchOtherUsers(), fetchUsers()]);
+        } catch (err) {
+          setOtherUsersError(`Unexpected error: ${(err as Error).message}`);
+        }
+      },
+    });
   };
 
   // View report details
@@ -2742,7 +2842,7 @@ export default function AdminDashboard() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {sortedUsers.map((user) => (
+                                    {pagedSortedUsers.map((user) => (
                                       <tr
                                         key={
                                           user.id || user.user_id || user.email
@@ -2806,6 +2906,64 @@ export default function AdminDashboard() {
                                     ))}
                                   </tbody>
                                 </table>
+                                {sortedUsers.length > userListPerPage && (
+                                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-slate-400">
+                                    <div>
+                                      Showing {userListStartIndex + 1} to{" "}
+                                      {Math.min(
+                                        userListStartIndex + userListPerPage,
+                                        sortedUsers.length,
+                                      )}{" "}
+                                      of {sortedUsers.length} users
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setUserListPage((prev) =>
+                                            Math.max(1, prev - 1),
+                                          )
+                                        }
+                                        disabled={currentUserListPage === 1}
+                                        className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
+                                      >
+                                        Previous
+                                      </button>
+                                      {visibleUserListPages.map((page) => (
+                                        <button
+                                          key={page}
+                                          type="button"
+                                          onClick={() => setUserListPage(page)}
+                                          className={`rounded-lg px-3 py-1 text-sm ${
+                                            page === currentUserListPage
+                                              ? "bg-emerald-600 text-white"
+                                              : "bg-slate-800 text-slate-200"
+                                          }`}
+                                        >
+                                          {page}
+                                        </button>
+                                      ))}
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setUserListPage((prev) =>
+                                            Math.min(
+                                              totalUserListPages,
+                                              prev + 1,
+                                            ),
+                                          )
+                                        }
+                                        disabled={
+                                          currentUserListPage ===
+                                          totalUserListPages
+                                        }
+                                        className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
+                                      >
+                                        Next
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
@@ -3119,18 +3277,7 @@ export default function AdminDashboard() {
                             </tr>
                           </thead>
                           <tbody>
-                            {(typeof sortedUsers !== "undefined"
-                              ? sortedUsers.filter(
-                                  (user) =>
-                                    userRoleFilter === "all" ||
-                                    user.role === userRoleFilter,
-                                )
-                              : users.filter(
-                                  (user) =>
-                                    userRoleFilter === "all" ||
-                                    user.role === userRoleFilter,
-                                )
-                            ).map((user) => {
+                            {pagedAdminUsers.map((user) => {
                               const initials =
                                 `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase();
                               return (
@@ -3166,6 +3313,60 @@ export default function AdminDashboard() {
                             })}
                           </tbody>
                         </table>
+                        {filteredAdminUsers.length > userAdminPerPage && (
+                          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-slate-400 px-4 pb-4">
+                            <div>
+                              Showing {userAdminStartIndex + 1} to{" "}
+                              {Math.min(
+                                userAdminStartIndex + userAdminPerPage,
+                                filteredAdminUsers.length,
+                              )}{" "}
+                              of {filteredAdminUsers.length} users
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setUserAdminPage((prev) =>
+                                    Math.max(1, prev - 1),
+                                  )
+                                }
+                                disabled={currentUserAdminPage === 1}
+                                className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
+                              >
+                                Previous
+                              </button>
+                              {visibleUserAdminPages.map((page) => (
+                                <button
+                                  key={page}
+                                  type="button"
+                                  onClick={() => setUserAdminPage(page)}
+                                  className={`rounded-lg px-3 py-1 text-sm ${
+                                    page === currentUserAdminPage
+                                      ? "bg-emerald-600 text-white"
+                                      : "bg-slate-800 text-slate-200"
+                                  }`}
+                                >
+                                  {page}
+                                </button>
+                              ))}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setUserAdminPage((prev) =>
+                                    Math.min(totalUserAdminPages, prev + 1),
+                                  )
+                                }
+                                disabled={
+                                  currentUserAdminPage === totalUserAdminPages
+                                }
+                                className="rounded-lg bg-slate-800 px-3 py-1 text-sm text-slate-200 disabled:opacity-50"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -4082,6 +4283,92 @@ export default function AdminDashboard() {
                     onChange={handleManageAccountFormChange}
                     onSubmit={handleManageAccountSubmit}
                   />
+                </div>
+              </div>
+            )}
+
+            {/* Add User Confirmation Modal */}
+            {showAddUserConfirmModal && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-lg max-w-lg w-full overflow-hidden">
+                  <div className="flex items-start justify-between bg-slate-950 border-b border-slate-800 p-6">
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-100">
+                        Confirm Add User
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Are you sure you want to add this user?
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddUserConfirmModal(false)}
+                      className="text-slate-400 hover:text-slate-100 transition-colors text-2xl leading-none"
+                      aria-label="Close modal"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <p className="text-sm text-slate-300">
+                      This will create a new user account and send a temporary
+                      password via SMS.
+                    </p>
+                  </div>
+                  <div className="flex justify-end gap-3 border-t border-slate-800 bg-slate-950/80 p-4">
+                    <Button
+                      type="button"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => setShowAddUserConfirmModal(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="button" onClick={confirmAddUser}>
+                      Confirm
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {confirmDialog && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-lg max-w-lg w-full overflow-hidden">
+                  <div className="flex items-start justify-between bg-slate-950 border-b border-slate-800 p-6">
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-100">
+                        {confirmDialog.title}
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {confirmDialog.description}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={closeConfirmDialog}
+                      className="text-slate-400 hover:text-slate-100 transition-colors text-2xl leading-none"
+                      aria-label="Close modal"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <p className="text-sm text-slate-300">
+                      {confirmDialog.description}
+                    </p>
+                  </div>
+                  <div className="flex justify-end gap-3 border-t border-slate-800 bg-slate-950/80 p-4">
+                    <Button
+                      type="button"
+                      className="bg-slate-700 hover:bg-slate-600 text-white"
+                      onClick={closeConfirmDialog}
+                    >
+                      {confirmDialog.cancelLabel ?? "Cancel"}
+                    </Button>
+                    <Button type="button" onClick={confirmDialogAction}>
+                      {confirmDialog.confirmLabel ?? "Confirm"}
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}

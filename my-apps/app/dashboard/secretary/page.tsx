@@ -4800,8 +4800,8 @@ function GarbageTrucksSection({ gcps }: GarbageTrucksSectionProps) {
                     <option value="Under maintenance" className="bg-slate-900">
                       Under Maintenance
                     </option>
-                    <option value="Retired" className="bg-slate-900">
-                      Retired
+                    <option value="Unserviceable" className="bg-slate-900">
+                      Unserviceable
                     </option>
                   </select>
                   <svg
